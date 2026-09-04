@@ -8,6 +8,8 @@ window.SOS_RIDER_CONFIG = {
   // Tema automatico: DAY 07:00-18:29, NIGHT 18:30-06:59. L'utente può forzarlo manualmente.
   dayStartMinutes: 7 * 60,
   nightStartMinutes: 18 * 60 + 30,
+  // Web Push: chiave pubblica VAPID (sicura da esporre nel frontend).
+  vapidPublicKey: 'BGo4fM4Vjkv9d4sYxhpA69ec7NPs6JTVPpQ27Mkx--Vf1SYk1IWMp43Z98scVoBVSFhSZ7NBG6LOaHziVIYJicg',
   // La passkey si abilita solo dopo aver validato perfettamente email + password.
   enablePasskeys: false
 };
