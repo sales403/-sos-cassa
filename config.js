@@ -4,7 +4,7 @@
 window.SOS_RIDER_CONFIG = {
   apiBase: 'https://sosrider.sales-3c8.workers.dev',
   supabaseUrl: 'https://fgzlthizmysuebtsigef.supabase.co',
-  supabaseAnonKey: 'INSERISCI_SUPABASE_PUBLISHABLE_KEY',
+  supabaseAnonKey: 'sb_publishable_uFXzct6v_LB8qTvcSCQi1w_YJsg9CTO',
   // Tema automatico: DAY 07:00-18:29, NIGHT 18:30-06:59. L'utente può forzarlo manualmente.
   dayStartMinutes: 7 * 60,
   nightStartMinutes: 18 * 60 + 30,
