@@ -1,7 +1,7 @@
 (() => {
 'use strict';
 
-const APP_VERSION = '10.0.0';
+const APP_VERSION = '10.0.1';
 const KEY = 'sosRiderUnifiedV10';
 const V9_KEY = 'sosRiderUnifiedV9';
 const OLD_KEY = 'sosRiderGestV7';
@@ -48,6 +48,7 @@ let alarmTimer = null;
 let alarmActiveCode = null;
 let alarmEnabled = localStorage.getItem('sosRiderAlarmEnabledV10') === '1';
 let lastRemoteNewCodes = new Set();
+let cashStacks = {};
 const searchSlots = new Map();
 
 function defaultState(){
@@ -576,13 +577,36 @@ function renderDeliveries(){
   $('statFund').textContent=money(s.fundStart);$('statAvailable').textContent=money(Math.max(0,s.fundStart-cash.change));$('statUnsorted').textContent=money(cash.unsorted);$('statDue').textContent=money(cash.due);$('statFees').textContent=money(delivered.reduce((a,o)=>a+num(o.fee),0));$('shiftName').textContent=s.name;$('shiftMeta').textContent=`Iniziato ${fmtDateTime(s.startAt)} · ${orders.length} consegne registrate`;
   const active=orders.filter(o=>!['delivered','cancelled'].includes(o.status)&&o.outcome!=='cancelled');$('activeCount').textContent=active.length;$('activeOrders').innerHTML=active.length?active.slice().reverse().map(orderCard).join(''):'<p class="muted">Nessuna consegna attiva.</p>';renderRestaurantCash(s.id);
 }
+function cashPanel(o){
+  const rec=num(o.received), change=rec>=o.total?roundHalf(rec-o.total):0, stack=cashStacks[o.id]||[];
+  const counts={}; stack.forEach(v=>counts[v]=(counts[v]||0)+1);
+  const stackText=Object.entries(counts).map(([v,n])=>`€${v} × ${n}`).join(' · ');
+  return `<div class="cash-panel">
+    <div class="cash-note"><b>💶 CASSA ALLA PORTA</b><br>Tocca le banconote che il cliente ti dà oppure inserisci l'importo manualmente.</div>
+    <div class="cash-total-box"><small>CLIENTE TI DÀ</small><b>${money(rec)}</b><div class="cash-stack">${stackText||'Nessuna banconota selezionata'}</div></div>
+    <div class="change-box cash-change"><small>RESTO DA DARE</small><b>${money(change)}</b></div>
+    <div class="quick-cash">
+      <button class="btn ghost cash-exact" data-cash-action="exact" data-order-id="${o.id}">PRECISO ${money(o.total)}</button>
+      <button class="btn ghost" data-cash-action="add" data-value="5" data-order-id="${o.id}">+ €5</button>
+      <button class="btn ghost" data-cash-action="add" data-value="10" data-order-id="${o.id}">+ €10</button>
+      <button class="btn ghost" data-cash-action="add" data-value="20" data-order-id="${o.id}">+ €20</button>
+      <button class="btn ghost" data-cash-action="add" data-value="50" data-order-id="${o.id}">+ €50</button>
+      <button class="btn ghost" data-cash-action="add" data-value="100" data-order-id="${o.id}">+ €100</button>
+      <button class="btn ghost" data-cash-action="undo" data-order-id="${o.id}">↶ ULTIMA</button>
+      <button class="btn ghost" data-cash-action="reset" data-order-id="${o.id}">AZZERA</button>
+    </div>
+    <label class="cash-manual">Oppure importo ricevuto manuale
+      <input data-received="${o.id}" type="number" inputmode="decimal" min="0" step="0.01" value="${rec||''}" placeholder="Importo ricevuto">
+    </label>
+  </div>`;
+}
 function orderCard(o){
   const pickup={label:o.pickupAddress,lat:o.pickupLat,lon:o.pickupLon},del={label:o.address,lat:o.lat,lon:o.lon};
   let actions='';
   if(o.status==='to_pickup') actions=`<a class="btn ghost" href="${mapsNavigate(pickup,o.vehicle)}" target="_blank" rel="noopener">📍 VAI AL RITIRO</a><button class="btn primary" data-order-action="picked" data-order-id="${o.id}">✓ RITIRATO</button>`;
   else if(o.status==='picked') actions=`<a class="btn ghost" href="${mapsNavigate(del,o.vehicle)}" target="_blank" rel="noopener">🏁 NAVIGA CLIENTE</a><button class="btn primary" data-order-action="arrived" data-order-id="${o.id}">📍 ARRIVATO</button>`;
   else if(o.status==='arrived') actions=`<button class="btn ghost" data-order-action="cancel" data-order-id="${o.id}">ANNULLA</button><button class="btn primary" data-order-action="delivered" data-order-id="${o.id}">✓ CONSEGNATO</button>`;
-  const cash=o.payment==='cash'?`<div class="cash-panel"><div class="cash-row"><label>Cliente consegna<input data-received="${o.id}" type="number" min="0" step="0.01" value="${num(o.received)||''}" placeholder="${num(o.total).toFixed(2)}"></label><div class="change-box"><small>RESTO</small><b>${money(o.change)}</b></div></div></div>`:'';
+  const cash=o.payment==='cash'&&o.status==='arrived'?cashPanel(o):'';
   return `<article class="order-card" data-order-id="${o.id}"><div class="order-top"><div><div class="code">${esc(o.code)}</div><div class="tiny">${vehicleIcon(o.vehicle)} ${esc(vehicleLabel(o.vehicle))} · pronto ${esc(o.readyTime||'—')}</div></div><span class="pill yellow">${o.status==='to_pickup'?'DA RITIRARE':o.status==='picked'?'IN CONSEGNA':'ARRIVATO'}</span></div><div class="route-box"><b>🏪 ${esc(o.restaurant)}</b><br>${esc(o.pickupAddress)}<br><br><b>👤 ${esc(o.customer)}</b> · ${esc(o.phone||'—')}<br>${esc(o.address)}</div><div class="order-grid"><div class="kv"><small>TARIFFA SOS</small><b>${money(o.fee)}</b></div><div class="kv"><small>PAGAMENTO ORDINE</small><b>${esc(paymentLabel(o.payment))}</b></div>${o.payment==='cash'?`<div class="kv"><small>DA INCASSARE</small><b>${money(o.total)}</b></div>`:''}<div class="kv"><small>DISTANZA</small><b>${num(o.distanceKm).toFixed(1)} km</b></div></div>${cash}<div class="order-actions">${actions}</div></article>`;
 }
 async function orderAction(id,action){
@@ -712,8 +736,20 @@ function bindEvents(){
   $('openWaImporter').onclick=openWhatsAppImporter;$('newManualOrder').onclick=openWhatsAppImporter;
   $('startShiftBtn').onclick=()=>openModal('Inizia turno',`<label>Nome turno<input id="mShiftName" value="${esc(new Date().toLocaleDateString('it-IT',{weekday:'long',day:'2-digit',month:'2-digit'})+' sera')}"></label><label style="margin-top:8px">Fondo resto<input id="mFund" type="number" min="0" value="100"></label>`,[{label:'ANNULLA',cls:'ghost'},{label:'INIZIA',cls:'primary',keep:true,fn:()=>{startShift($('mShiftName').value.trim(),num($('mFund').value));closeModal()}}]);
   $('closeShiftBtn').onclick=closeCurrentShift;
-  $('activeOrders').addEventListener('click',e=>{const b=e.target.closest('[data-order-action]');if(b)orderAction(b.dataset.orderId,b.dataset.orderAction)});
-  $('activeOrders').addEventListener('input',e=>{const i=e.target.closest('[data-received]');if(!i)return;const o=state.orders.find(x=>x.id===i.dataset.received);if(!o)return;o.received=num(i.value);o.change=o.received>=o.total?roundHalf(o.received-o.total):0;saveState();const b=i.closest('.order-card')?.querySelector('.change-box b');if(b)b.textContent=money(o.change)});
+  $('activeOrders').addEventListener('click',e=>{
+    const cashBtn=e.target.closest('[data-cash-action]');
+    if(cashBtn){
+      const o=state.orders.find(x=>x.id===cashBtn.dataset.orderId);if(!o)return;
+      const action=cashBtn.dataset.cashAction;
+      if(action==='exact'){cashStacks[o.id]=[];o.received=num(o.total);o.change=0;}
+      else if(action==='add'){cashStacks[o.id]=cashStacks[o.id]||[];cashStacks[o.id].push(num(cashBtn.dataset.value));o.received=cashStacks[o.id].reduce((a,v)=>a+v,0);o.change=o.received>=o.total?roundHalf(o.received-o.total):0;}
+      else if(action==='undo'){cashStacks[o.id]=cashStacks[o.id]||[];cashStacks[o.id].pop();o.received=cashStacks[o.id].reduce((a,v)=>a+v,0);o.change=o.received>=o.total?roundHalf(o.received-o.total):0;}
+      else if(action==='reset'){cashStacks[o.id]=[];o.received=0;o.change=0;}
+      saveState();renderDeliveries();return;
+    }
+    const b=e.target.closest('[data-order-action]');if(b)orderAction(b.dataset.orderId,b.dataset.orderAction);
+  });
+  $('activeOrders').addEventListener('input',e=>{const i=e.target.closest('[data-received]');if(!i)return;const o=state.orders.find(x=>x.id===i.dataset.received);if(!o)return;cashStacks[o.id]=[];o.received=num(i.value);o.change=o.received>=o.total?roundHalf(o.received-o.total):0;saveState();const b=i.closest('.order-card')?.querySelector('.change-box b');if(b)b.textContent=money(o.change)});
   $('restaurantCash').addEventListener('click',e=>{const a=e.target.closest('[data-sort-cash]');if(a)return sortCashForRestaurant(a.dataset.sortCash);const t=e.target.closest('[data-settle]');if(t)return settleRestaurant(t.dataset.settle)});
   $('historySearch').addEventListener('input',renderHistory);$('exportHistory').onclick=()=>download('sos-rider-storico.csv',csvExport(),'text/csv;charset=utf-8');
   document.querySelectorAll('[data-period]').forEach(b=>b.onclick=()=>{analyticsPeriod=b.dataset.period;document.querySelectorAll('[data-period]').forEach(x=>x.classList.toggle('active',x===b));renderAnalytics()});
