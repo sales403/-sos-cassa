@@ -9,7 +9,7 @@ window.SOS_RIDER_CONFIG = {
   dayStartMinutes: 7 * 60,
   nightStartMinutes: 18 * 60 + 30,
   // Web Push: chiave pubblica VAPID (sicura da esporre nel frontend).
-  vapidPublicKey: 'BGo4fM4Vjkv9d4sYxhpA69ec7NPs6JTVPpQ27Mkx--Vf1SYk1IWMp43Z98scVoBVSFhSZ7NBG6LOaHziVIYJicg',
+  vapidPublicKey: 'BIyQVvPNTE1Tbwb2GgWsnCigIEiJ7-PSIzVTnzG89IXGWKKzf3huZuBfCKgtBSciumT8TTaxqaMFAJygpm4Xl0c',
   // La passkey si abilita solo dopo aver validato perfettamente email + password.
   enablePasskeys: false
 };
