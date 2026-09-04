@@ -10,11 +10,11 @@ export default {
     if (request.method === "OPTIONS") return new Response(null, { headers: cors });
 
     if (url.pathname === "/") {
-      return new Response("SOS Rider V7.3 autocomplete proxy OK", { status: 200, headers: cors });
+      return new Response("SOS Rider V8 autocomplete proxy OK", { status: 200, headers: cors });
     }
 
     if (url.pathname === "/api/status" && request.method === "GET") {
-      return json({ ok: true, version: "V7.3", autocomplete: true, googleKeyRequired: false }, 200, cors);
+      return json({ ok: true, version: "V8", autocomplete: true, googleKeyRequired: false }, 200, cors);
     }
 
     if (url.pathname === "/api/address" && request.method === "GET") {
