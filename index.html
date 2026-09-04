@@ -9,7 +9,7 @@
 <meta name="apple-mobile-web-app-title" content="SOS Rider">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="icon-192.png">
-<title>SOS Rider — Gestionale V8.1 FIX</title>
+<title>SOS Rider — Gestionale V8.2 SMART</title>
 <style>
 :root{--bg:#070707;--card:#151515;--panel:#0d0d0d;--line:#2c2c2c;--line2:#414141;--text:#f7f7f7;--muted:#aaa;--yellow:#ffd000;--green:#6fda94;--red:#ff7777;--blue:#79b7ff}
 *{box-sizing:border-box}html{background:var(--bg)}body{margin:0;background:var(--bg);color:var(--text);font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif}
@@ -55,7 +55,7 @@ input:-moz-autofill{background:#090909!important;color:#fff!important}
 </style>
 </head>
 <body>
-<!-- SOS RIDER V8.1 FIX — splash animata -->
+<!-- SOS RIDER V8.2 SMART — splash animata -->
 <style>
 #sosSplash{position:fixed;inset:0;z-index:999999;display:flex;align-items:center;justify-content:center;background:radial-gradient(circle at 50% 45%,rgba(255,208,0,.10),transparent 42%),#050505;overflow:hidden;transition:opacity .38s ease,visibility .38s ease}
 #sosSplash.out{opacity:0;visibility:hidden;pointer-events:none}
@@ -81,7 +81,7 @@ input:-moz-autofill{background:#090909!important;color:#fff!important}
 </script>
 
 <div class="shell">
-<div class="topbar"><header class="brand"><img src="logo-sos-rider.png" alt="SOS Rider"><div><h1>SOS RIDER</h1><div class="sub">Gestionale operativo • Carpi-Soliera <span style="display:inline-block;margin-left:6px;padding:2px 6px;border:1px solid #665700;border-radius:999px;color:#ffd000;font-size:9px;font-weight:900;vertical-align:middle">V8.1 FIX</span></div></div></header><button id="refreshApp" class="refreshbtn" type="button" title="Ricarica app">↻</button></div>
+<div class="topbar"><header class="brand"><img src="logo-sos-rider.png" alt="SOS Rider"><div><h1>SOS RIDER</h1><div class="sub">Gestionale operativo • Carpi-Soliera <span style="display:inline-block;margin-left:6px;padding:2px 6px;border:1px solid #665700;border-radius:999px;color:#ffd000;font-size:9px;font-weight:900;vertical-align:middle">V8.2 SMART</span></div></div></header><button id="refreshApp" class="refreshbtn" type="button" title="Ricarica app">↻</button></div>
 
 <main id="page-work" class="page active">
   <section id="noShift" class="card hidden"><div class="title">Nessun turno aperto</div><div class="hint">Apri un turno per iniziare.</div><button id="startShift" class="primary fullbtn" style="margin-top:10px">⚡ INIZIA NUOVO TURNO</button></section>
@@ -98,7 +98,7 @@ input:-moz-autofill{background:#090909!important;color:#fff!important}
       <div class="title">Nuova consegna <span id="draftState" class="draftpill hidden">BOZZA SALVATA</span></div>
       <button id="toggleWaImport" type="button" class="wa-import-launch">📲 INCOLLA ORDINE WHATSAPP · AUTOCOMPILA</button>
       <div id="waImportPanel" class="wa-import hidden">
-        <div class="wa-import-head"><div><b>⚡ Autocompila da WhatsApp</b><small>Incolla il messaggio del locale. Il parser lavora sul dispositivo: nessuna API AI e nessun costo.</small></div><span class="badge blue">MINI PARSER</span></div>
+        <div class="wa-import-head"><div><b>⚡ Autocompila da WhatsApp</b><small>Incolla anche messaggi scritti di corsa: il parser riconosce frasi naturali, nomi, indirizzi, importi e servizio. Tutto sul dispositivo, zero API e zero costi.</small></div><span class="badge blue">SMART PARSER</span></div>
         <textarea id="waOrderText" placeholder="Esempio:
 Cliente: Marco
 Telefono: 3491234567
@@ -213,10 +213,58 @@ function shiftStats(s){const arr=state.orders.filter(o=>o.shiftId===s.id&&o.stat
 
 function normLabel(s){return String(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().trim()}
 function parseMoneyText(s){const vals=[...String(s||'').matchAll(/(\d{1,4}(?:[.,]\d{1,2})?)\s*(?:€|euro|eur)?/gi)].map(m=>Number(m[1].replace(',','.'))).filter(Number.isFinite);return vals.length?vals[vals.length-1]:null}
-function detectVehicle(s){const t=normLabel(s);if(/\b(express|moto|rapida|rapido|urgente|urgenza)\b/.test(t))return'moto';if(/\b(cargo|auto|macchina|carico|voluminos)\w*\b/.test(t))return'auto';if(/\b(standard|economy|e[- ]?bike|ebike|bici|bicicletta|normale)\b/.test(t))return'ebike';return null}
-function detectPayment(s){const t=normLabel(s);if(/\b(contant|cash)\w*\b/.test(t))return'cash';if(/\b(pos|carta|bancomat)\b/.test(t))return'pos';if(/\b(gia pagat|già pagat|pagato|prepagat)\w*\b/.test(t))return'paid';return null}
+function detectVehicle(s){const t=normLabel(s);if(/\b(express|moto|rapida|rapido|urgente|urgenza|veloce|prioritaria|prioritario)\b/.test(t))return'moto';if(/\b(cargo|auto|macchina|carico|voluminos)\w*\b/.test(t))return'auto';if(/\b(standard|economy|e[- ]?bike|ebike|bici|bicicletta|normale)\b/.test(t))return'ebike';return null}
+function detectPayment(s){const t=normLabel(s);if(/\b(contant|cash|da incassare|incassare|alla consegna)\w*\b/.test(t))return'cash';if(/\b(pos|carta|bancomat)\b/.test(t))return'pos';if(/\b(gia pagat|pagato|prepagat|saldat)\w*\b/.test(t))return'paid';return null}
 function cleanPhone(s){const d=String(s||'').replace(/[^\d+]/g,'');const n=d.replace(/^\+?39/,'');return /^3\d{8,9}$/.test(n)?n:''}
 function looksLikeAddress(s){const t=normLabel(s);return /\b(via|viale|piazza|corso|strada|vicolo|largo|localita|frazione|ss|sp)\b/.test(t)&&/\d/.test(t)}
+function cleanCapturedText(s){return String(s||'').replace(/^[\s,:;=\-–—]+/,'').replace(/[\s,;:.\-–—]+$/,'').trim()}
+function cleanPersonName(s){let v=cleanCapturedText(s);v=v.replace(/\s+(?:consegna|indirizzo|destinazione|telefono|tel|cellulare|numero|totale|importo|pagamento|servizio|tipo|note|citofono)\b.*$/i,'').trim();v=v.replace(/\s{2,}/g,' ');return v.split(/\s+/).slice(0,4).join(' ')}
+function extractCustomer(text,lines,used){
+  const patterns=[
+    /\b(?:il\s+)?cliente\s*(?::|=|-)?\s*(?:(?:è|e'|e\s|si\s+chiama)\s*)?([A-Za-zÀ-ÖØ-öø-ÿ'’-]+(?:\s+[A-Za-zÀ-ÖØ-öø-ÿ'’-]+){0,3})(?=\s*[,;.\n]|\s+(?:consegna|indirizzo|destinazione|tel|telefono|numero|totale|sono|pagamento|servizio|citofono|note)\b|$)/i,
+    /\bdestinatario\s*(?::|=|-)?\s*([A-Za-zÀ-ÖØ-öø-ÿ'’-]+(?:\s+[A-Za-zÀ-ÖØ-öø-ÿ'’-]+){0,3})(?=\s*[,;.\n]|$)/i,
+    /\bconsegna\s+per\s+([A-Za-zÀ-ÖØ-öø-ÿ'’-]+(?:\s+[A-Za-zÀ-ÖØ-öø-ÿ'’-]+){0,3})(?=\s*[,;.\n]|$)/i,
+    /\b(?:nome(?:\s+cliente)?)\s*(?::|=|-)\s*([A-Za-zÀ-ÖØ-öø-ÿ'’-]+(?:\s+[A-Za-zÀ-ÖØ-öø-ÿ'’-]+){0,3})/i,
+    /\bper\s+([A-Za-zÀ-ÖØ-öø-ÿ'’-]+(?:\s+[A-Za-zÀ-ÖØ-öø-ÿ'’-]+){0,2})\s*(?=,|;|\s+-\s+|\s+\b(?:via|viale|piazza|corso|strada|vicolo|largo|indirizzo|destinazione)\b)/i
+  ];
+  for(const re of patterns){const m=text.match(re);if(m){const v=cleanPersonName(m[1]);if(v&&v.length>=2)return v}}
+  const idx=lines.findIndex((l,i)=>!used.has(i)&&l.split(/\s+/).length<=4&&!/\d/.test(l)&&!detectVehicle(l)&&!detectPayment(l)&&!/\b(ciao|salve|buonasera|buongiorno|grazie|ordine|consegna)\b/i.test(l));
+  if(idx>=0){used.add(idx);return cleanPersonName(lines[idx])}
+  return'';
+}
+function extractAddress(text,lines,used){
+  const explicit=text.match(/\b(?:indirizzo(?:\s+(?:cliente|consegna))?|destinazione|localit[aà]\s+cliente)\s*(?::|=|-)\s*([^\n]+)/i);
+  if(explicit){let v=explicit[1];v=v.replace(/\s+(?:tel(?:efono)?|cell(?:ulare)?|numero(?:\s+cliente)?|totale|importo|pagamento|servizio|tipo|note|citofono)\b.*$/i,'');v=cleanCapturedText(v);if(v)return v}
+  const street=/\b(?:via|viale|piazza|corso|strada|vicolo|largo|localit[aà]|frazione)\b/i.exec(text);
+  if(street){let v=text.slice(street.index).split(/\n/)[0];v=v.replace(/\s*[-–—,]\s*(?=(?:\+?39[ .-]*)?3(?:[ .-]*\d){8,9})[\s\S]*$/i,'');v=v.replace(/\s+(?:tel(?:efono)?|cell(?:ulare)?|numero\s+cliente|totale|importo|pagamento|servizio|tipo|direi|note|citofono)\b.*$/i,'');v=v.replace(/\s*[-–—,]\s*\d{1,4}(?:[.,]\d{1,2})?\s*(?:€|euro|eur|contanti|cash)\b.*$/i,'');v=v.replace(/\s+(?:sono|da\s+incassare)\s+\d.*$/i,'');v=cleanCapturedText(v);if(v)return v}
+  const idx=lines.findIndex((l,i)=>!used.has(i)&&looksLikeAddress(l));if(idx>=0){used.add(idx);return cleanCapturedText(lines[idx])}
+  return'';
+}
+function extractTotal(text,lines){
+  const patterns=[
+    /\b(?:totale(?:\s+ordine)?|importo(?:\s+ordine)?|valore\s+ordine|sono|da\s+incassare|incasso)\s*(?::|=|-)?\s*(?:€\s*)?(\d{1,4}(?:[.,]\d{1,2})?)\s*(?:€|euro|eur)?\b/i,
+    /\b(\d{1,4}(?:[.,]\d{1,2})?)\s*(?:€|euro|eur)\b/i,
+    /\b(\d{1,4}(?:[.,]\d{1,2})?)\s+(?=contanti\b|cash\b|pagat[oa]\b|pos\b|carta\b|bancomat\b)/i
+  ];
+  for(const re of patterns){const m=text.match(re);if(m){const n=Number(m[1].replace(',','.'));if(Number.isFinite(n))return n}}
+  const cand=lines.find(l=>/(totale|importo|ordine|incass|€|euro)/i.test(l)&&parseMoneyText(l)!=null);return cand?parseMoneyText(cand):null;
+}
+function extractRestaurant(text,lines,used){
+  const explicit=text.match(/\b(?:locale|attivit[aà]|negozio)\s*(?::|=|-)\s*([^\n,;.]+)/i);if(explicit)return cleanCapturedText(explicit[1]);
+  const named=text.match(/(?:^|\n)\s*((?:pizzeria|ristorante|sushi|kebab|gastronomia|bar|rosticceria|pasticceria)\s+[A-Za-z0-9À-ÖØ-öø-ÿ'’ ._-]+?)(?=\s+per\b|[,;\n]|$)/i);if(named)return cleanCapturedText(named[1]);
+  const from=text.match(/\b(?:ritiro|ordine)\s+(?:da|presso)\s+((?:pizzeria|ristorante|sushi|kebab|gastronomia|bar|rosticceria|pasticceria)\s+[A-Za-z0-9À-ÖØ-öø-ÿ'’ ._-]+?)(?=\s+per\b|[,;\n]|$)/i);if(from)return cleanCapturedText(from[1]);
+  const shorthand=text.match(/(?:^|\n)\s*([^,\n]{2,40}),\s*per\s+[A-Za-zÀ-ÖØ-öø-ÿ'’-]+/i);if(shorthand&&!/\b(ciao|salve|buonasera|buongiorno|allora)\b/i.test(shorthand[1]))return cleanCapturedText(shorthand[1]);
+  const idx=lines.findIndex((l,i)=>!used.has(i)&&/\b(pizzeria|ristorante|sushi|kebab|gastronomia|bar|rosticceria|pasticceria)\b/i.test(l));if(idx>=0){used.add(idx);return cleanCapturedText(lines[idx].replace(/\s+per\s+.*$/i,''))}
+  return'';
+}
+function extractNotes(text){
+  const lines=String(text||'').split(/\n/).map(x=>x.trim()).filter(Boolean),out=[];
+  for(let i=0;i<lines.length;i++){
+    const l=lines[i];const m=l.match(/\b(?:note|indicazioni|citofono)\s*(?::|=|-)?\s*(.*)$/i);
+    if(m){const prefix=/citofono/i.test(l)?'Citofono ':'';let v=(prefix+m[1]).trim();if(i+1<lines.length&&!/\b(?:cliente|telefono|tel|indirizzo|totale|pagamento|servizio|tipo|locale|pizzeria|ristorante)\b/i.test(lines[i+1])&&!/\d{8,}/.test(lines[i+1]))v+=' · '+lines[i+1];out.push(v)}
+  }
+  return [...new Set(out)].join(' · ');
+}
 function parseWhatsAppOrder(raw){
   const text=String(raw||'').replace(/\r/g,'').trim();if(!text)return null;
   const lines=text.split('\n').map(x=>x.replace(/^[•*\-–—\s]+/,'').trim()).filter(Boolean);
@@ -236,10 +284,12 @@ function parseWhatsAppOrder(raw){
   if(!d.phone){const m=text.match(/(?:\+?39[ .-]*)?(3(?:[ .-]*\d){8,9})/);if(m)d.phone=cleanPhone(m[0])}
   if(!d.service)d.service=detectVehicle(text)||'';
   if(!d.payment)d.payment=detectPayment(text)||'';
-  if(d.total==null){const cand=lines.find(l=>/(totale|importo|ordine|€|euro)/i.test(l)&&parseMoneyText(l)!=null);if(cand)d.total=parseMoneyText(cand)}
-  if(!d.address){const idx=lines.findIndex((l,i)=>!used.has(i)&&looksLikeAddress(l));if(idx>=0){d.address=lines[idx];used.add(idx)}}
-  if(!d.restaurant){const idx=lines.findIndex((l,i)=>!used.has(i)&&/\b(pizzeria|ristorante|sushi|kebab|gastronomia|bar|rosticceria|pasticceria)\b/i.test(l));if(idx>=0){d.restaurant=lines[idx];used.add(idx)}}
-  if(!d.customer){const idx=lines.findIndex((l,i)=>!used.has(i)&&l.split(/\s+/).length<=4&&!/\d/.test(l)&&!detectVehicle(l)&&!detectPayment(l));if(idx>=0)d.customer=lines[idx]}
+  if(d.total==null)d.total=extractTotal(text,lines);
+  if(!d.address)d.address=extractAddress(text,lines,used);
+  if(!d.restaurant)d.restaurant=extractRestaurant(text,lines,used);
+  if(!d.customer)d.customer=extractCustomer(text,lines,used);
+  if(!d.notes)d.notes=extractNotes(text);
+  if(d.notes)d.notes=cleanCapturedText(d.notes);
   return d;
 }
 function findSavedRestaurant(name){const all=state.settings.restaurantAddresses||{},target=normLabel(name);const k=Object.keys(all).find(x=>normLabel(x)===target);return k?{name:k,data:all[k]}:null}
