@@ -1,7 +1,7 @@
 (() => {
 'use strict';
 
-const APP_VERSION = '10.0.4';
+const APP_VERSION = '10.0.5';
 const KEY = 'sosRiderUnifiedV10';
 const V9_KEY = 'sosRiderUnifiedV9';
 const OLD_KEY = 'sosRiderGestV7';
@@ -758,7 +758,19 @@ function renderRestaurantCash(shiftId){
   const cashOrders=state.orders.filter(o=>o.shiftId===shiftId&&o.status==='delivered'&&o.payment==='cash'&&o.outcome!=='cancelled');
   const groups={};cashOrders.forEach(o=>(groups[o.restaurant]||(groups[o.restaurant]=[])).push(o));const names=Object.keys(groups);
   if(!names.length){$('restaurantCash').innerHTML='<p class="muted">Nessun incasso in contanti da gestire.</p>';return;}
-  $('restaurantCash').innerHTML=names.map(name=>{const arr=groups[name],uns=arr.filter(o=>!o.cashSorted),due=arr.filter(o=>!o.restaurantSettled);return `<article class="restaurant-card"><div class="restaurant-top"><div><b>${esc(name)}</b><div class="tiny">${arr.length} ordini in contanti</div></div>${due.length?'<span class="pill yellow">DA SALDARE</span>':'<span class="pill green">SALDATO</span>'}</div><div class="restaurant-money"><div class="kv"><small>DA SISTEMARE</small><b>${money(uns.reduce((a,o)=>a+o.received,0))}</b></div><div class="kv"><small>DA RENDERE</small><b>${money(due.reduce((a,o)=>a+o.total,0))}</b></div><div class="kv"><small>CONSEGNE</small><b>${arr.length}</b></div></div><div class="request-actions">${uns.length?`<button class="btn ghost" data-sort-cash="${esc(name)}">✓ SOLDI SISTEMATI</button>`:'<span></span>'}${due.length?`<button class="btn primary" data-settle="${esc(name)}">SALDA LOCALE</button>`:''}</div></article>`}).join('');
+  $('restaurantCash').innerHTML=names.map(name=>{
+    const arr=groups[name],uns=arr.filter(o=>!o.cashSorted),due=arr.filter(o=>!o.restaurantSettled);
+    const first=arr[0]||{};
+    const saved=state.settings.restaurantAddresses?.[name];
+    const destination=(saved&&typeof saved==='object')
+      ? {label:saved.label||first.pickupAddress||name,lat:saved.lat??first.pickupLat,lon:saved.lon??first.pickupLon}
+      : {label:(typeof saved==='string'&&saved)||first.pickupAddress||name,lat:first.pickupLat,lon:first.pickupLon};
+    const vehicle=arr[arr.length-1]?.vehicle||'auto';
+    const navHref=mapsNavigate(destination,vehicle);
+    const baseLabel=destination.label||first.pickupAddress||name;
+    const returnMap=due.length?`<div class="restaurant-return"><div><small>BASE / LOCALE</small><b>📍 ${esc(baseLabel)}</b></div><a class="btn map-return-btn" href="${esc(navHref)}" target="_blank" rel="noopener">🗺️ TORNA AL LOCALE</a></div>`:'';
+    return `<article class="restaurant-card"><div class="restaurant-top"><div><b>${esc(name)}</b><div class="tiny">${arr.length} ordini in contanti</div></div>${due.length?'<span class="pill yellow">DA SALDARE</span>':'<span class="pill green">SALDATO</span>'}</div><div class="restaurant-money"><div class="kv"><small>DA SISTEMARE</small><b>${money(uns.reduce((a,o)=>a+o.received,0))}</b></div><div class="kv"><small>DA RENDERE</small><b>${money(due.reduce((a,o)=>a+o.total,0))}</b></div><div class="kv"><small>CONSEGNE</small><b>${arr.length}</b></div></div>${returnMap}<div class="request-actions">${uns.length?`<button class="btn ghost" data-sort-cash="${esc(name)}">✓ SOLDI SISTEMATI</button>`:'<span></span>'}${due.length?`<button class="btn primary" data-settle="${esc(name)}">SALDA LOCALE</button>`:''}</div></article>`;
+  }).join('');
 }
 function sortCashForRestaurant(name){state.orders.filter(o=>o.restaurant===name&&o.payment==='cash'&&o.status==='delivered').forEach(o=>o.cashSorted=true);saveState();renderDeliveries()}
 function settleRestaurant(name){const arr=state.orders.filter(o=>o.restaurant===name&&o.payment==='cash'&&o.status==='delivered'&&!o.restaurantSettled&&o.outcome!=='cancelled');const total=arr.reduce((a,o)=>a+num(o.total),0);if(!arr.length)return;if(confirm(`Confermi di aver restituito ${money(total)} a ${name}?`)){arr.forEach(o=>o.restaurantSettled=true);saveState();renderDeliveries()}}
