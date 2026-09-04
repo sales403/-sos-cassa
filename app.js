@@ -1,7 +1,7 @@
 (() => {
 'use strict';
 
-const APP_VERSION = '10.0.3';
+const APP_VERSION = '10.0.4';
 const KEY = 'sosRiderUnifiedV10';
 const V9_KEY = 'sosRiderUnifiedV9';
 const OLD_KEY = 'sosRiderGestV7';
@@ -309,16 +309,86 @@ function featureLabel(f){
   if(p.state && p.state!==town) parts.push(p.state);
   return parts.filter(Boolean).join(', ');
 }
+let lastNominatimAt=0;
+function normalizeNominatimFeature(f){
+  const p=f?.properties||{}, a=p.address||{};
+  return {
+    type:'Feature',
+    geometry:f.geometry,
+    properties:{
+      name:p.name||a.road||a.pedestrian||a.village||a.town||a.city||'',
+      street:a.road||a.pedestrian||a.residential||'',
+      housenumber:a.house_number||'',
+      city:a.city||a.town||a.village||a.municipality||'',
+      locality:a.suburb||a.hamlet||'',
+      district:a.city_district||a.county||'',
+      county:a.county||'',
+      postcode:a.postcode||'',
+      state:a.state||'',
+      countrycode:String(a.country_code||'it').toUpperCase()
+    }
+  };
+}
+async function directPhoton(query,controller){
+  const u=new URL('https://photon.komoot.io/api/');
+  u.searchParams.set('q',query);
+  u.searchParams.set('limit','7');
+  u.searchParams.set('lang','it');
+  u.searchParams.set('lat','44.783');
+  u.searchParams.set('lon','10.884');
+  const r=await fetch(u.toString(),{signal:controller.signal,cache:'no-store',headers:{Accept:'application/json'}});
+  if(!r.ok)throw new Error('Photon non disponibile');
+  const d=await r.json();
+  return d.features||[];
+}
+async function directNominatim(query,controller){
+  const wait=Math.max(0,1100-(Date.now()-lastNominatimAt));
+  if(wait)await new Promise((resolve,reject)=>{
+    const t=setTimeout(resolve,wait);
+    controller.signal.addEventListener('abort',()=>{clearTimeout(t);reject(new DOMException('Aborted','AbortError'))},{once:true});
+  });
+  lastNominatimAt=Date.now();
+  const u=new URL('https://nominatim.openstreetmap.org/search');
+  u.searchParams.set('q',query);
+  u.searchParams.set('format','geojson');
+  u.searchParams.set('addressdetails','1');
+  u.searchParams.set('countrycodes','it');
+  u.searchParams.set('limit','7');
+  u.searchParams.set('accept-language','it');
+  u.searchParams.set('viewbox','10.45,45.05,11.15,44.45');
+  const r=await fetch(u.toString(),{signal:controller.signal,cache:'no-store',headers:{Accept:'application/geo+json,application/json'}});
+  if(!r.ok)throw new Error('Nominatim non disponibile');
+  const d=await r.json();
+  return (d.features||[]).map(normalizeNominatimFeature);
+}
 async function searchAddresses(query, slotKey){
   const existing = searchSlots.get(slotKey);
   existing?.controller?.abort();
   const controller = new AbortController();
   searchSlots.set(slotKey, {...existing, controller});
-  const u = new URL(apiBase()+'/api/address');
-  u.searchParams.set('q', query);
-  const res = await fetch(u.toString(), {signal:controller.signal, cache:'no-store', headers:{Accept:'application/json'}});
-  if(!res.ok) throw new Error('Autocomplete non disponibile');
-  const d=await res.json(); return d.features||[];
+
+  // 1) Worker SOS Rider
+  try{
+    const u = new URL(apiBase()+'/api/address');
+    u.searchParams.set('q', query);
+    const res = await fetch(u.toString(), {signal:controller.signal, cache:'no-store', headers:{Accept:'application/json'}});
+    if(res.ok){
+      const d=await res.json();
+      if(Array.isArray(d.features) && d.features.length) return d.features;
+    }
+  }catch(e){ if(e.name==='AbortError') throw e; }
+
+  // 2) Fallback diretto Photon
+  try{
+    const f=await directPhoton(query,controller);
+    if(f.length)return f;
+  }catch(e){ if(e.name==='AbortError') throw e; }
+
+  // 3) Fallback OpenStreetMap/Nominatim
+  const n=await directNominatim(query,controller);
+  if(n.length)return n;
+
+  return [];
 }
 function wireAutocomplete({inputId,boxId,statusId,mapsId,slotKey,onSelect}){
   const input=$(inputId), box=$(boxId), status=$(statusId);
