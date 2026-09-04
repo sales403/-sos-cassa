@@ -1,7 +1,7 @@
 (() => {
 'use strict';
 
-const APP_VERSION = '10.0.1';
+const APP_VERSION = '10.0.2';
 const KEY = 'sosRiderUnifiedV10';
 const V9_KEY = 'sosRiderUnifiedV9';
 const OLD_KEY = 'sosRiderGestV7';
@@ -547,6 +547,29 @@ async function refreshRemoteRequests(){
     $('syncDot').className='sync-dot offline';$('syncTitle').textContent='Sync non disponibile';$('syncText').textContent=e.status===401||e.status===403?'Sessione o ruolo non valido. Accedi di nuovo.':'Controlla Worker/API e connessione.';$('riderSyncSmall').textContent='Offline · dati locali disponibili';
   }
 }
+async function manualRiderRefresh(){
+  const b=$('riderRefresh');
+  if(!b||b.disabled)return;
+  const oldTitle=b.title;
+  b.disabled=true;
+  b.classList.add('refreshing');
+  b.setAttribute('aria-busy','true');
+  b.title='Aggiornamento in corso';
+  if($('syncTitle'))$('syncTitle').textContent='Aggiornamento…';
+  if($('syncText'))$('syncText').textContent='Controllo nuove richieste e stato rider.';
+  const started=Date.now();
+  try{
+    await Promise.all([refreshRemoteRequests(),refreshAvailability()]);
+  }finally{
+    const wait=Math.max(0,550-(Date.now()-started));
+    setTimeout(()=>{
+      b.classList.remove('refreshing');
+      b.disabled=false;
+      b.removeAttribute('aria-busy');
+      b.title=oldTitle||'Aggiorna';
+    },wait);
+  }
+}
 function startRiderPolling(){stopRiderPolling();riderPolling=setInterval(refreshRemoteRequests,4000)}
 function stopRiderPolling(){if(riderPolling){clearInterval(riderPolling);riderPolling=null;}}
 function remoteStatusLabel(s){return s==='new'?'NUOVA':s==='accepted'?'ACCETTATA':s==='picked'?'IN CONSEGNA':s==='arrived'?'ARRIVATO':s==='delivered'?'COMPLETATA':s==='rejected'?'RIFIUTATA':s==='cancelled'?'ANNULLATA':String(s||'').toUpperCase();}
@@ -730,7 +753,7 @@ function bindEvents(){
   $('clientCalcQuote').onclick=calculateClientQuote;$('clientEditQuote').onclick=()=>{$('clientQuoteSection').classList.add('hidden');$('clientFormCard').scrollIntoView({behavior:'smooth',block:'start'})};$('clientSendRequest').onclick=submitClientRequest;
   $('clientNewRequest').onclick=()=>{localStorage.removeItem(CLIENT_ACTIVE_KEY);stopClientPolling();lastClientStatus=null;$('clientRequestStatus').classList.add('hidden');$('clientFormCard').classList.remove('hidden');clearClientDeliveryFields();$('clientFormCard').scrollIntoView({behavior:'smooth'})};
   $('clientRecentList').addEventListener('click',e=>{const b=e.target.closest('[data-repeat-client]');if(b)repeatClientRequest(b.dataset.repeatClient)});
-  $('riderRefresh').onclick=refreshRemoteRequests;$('openSettings').onclick=openSettings;$('riderAvailableBtn').onclick=()=>setRiderAvailability(true);$('riderOfflineBtn').onclick=()=>setRiderAvailability(false);$('riderEtaSelect').onchange=()=>{if(currentAvailability)setRiderAvailability(!!currentAvailability.enabled)};$('enableRiderAlarm').onclick=enableAlarm;
+  $('riderRefresh').onclick=manualRiderRefresh;$('openSettings').onclick=openSettings;$('riderAvailableBtn').onclick=()=>setRiderAvailability(true);$('riderOfflineBtn').onclick=()=>setRiderAvailability(false);$('riderEtaSelect').onchange=()=>{if(currentAvailability)setRiderAvailability(!!currentAvailability.enabled)};$('enableRiderAlarm').onclick=enableAlarm;
   document.querySelectorAll('[data-rider-page]').forEach(b=>b.onclick=()=>switchRiderPage(b.dataset.riderPage));
   $('remoteRequestsList').addEventListener('click',e=>{const a=e.target.closest('[data-accept]');if(a)return acceptRemote(a.dataset.accept);const r=e.target.closest('[data-reject]');if(r)return rejectRemote(r.dataset.reject);const m=e.target.closest('[data-map-remote]');if(m){const x=normalizeRemote(findRemote(m.dataset.mapRemote));window.open(mapsRoute({label:x.pickupAddress,lat:x.pickupLat,lon:x.pickupLon},{label:x.deliveryAddress,lat:x.deliveryLat,lon:x.deliveryLon},x.service),'_blank','noopener');return}const o=e.target.closest('[data-open-delivery]');if(o){const rr=findRemote(o.dataset.openDelivery);if(rr&&!state.orders.some(x=>x.remoteCode===rr.code))ensureShiftThen(()=>createLocalOrderFromRemote(rr));switchRiderPage('deliveries')}});
   $('openWaImporter').onclick=openWhatsAppImporter;$('newManualOrder').onclick=openWhatsAppImporter;
