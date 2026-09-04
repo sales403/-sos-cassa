@@ -1,7 +1,7 @@
 (() => {
 'use strict';
 
-const APP_VERSION = '10.0.5';
+const APP_VERSION = '10.0.6';
 const KEY = 'sosRiderUnifiedV10';
 const V9_KEY = 'sosRiderUnifiedV9';
 const OLD_KEY = 'sosRiderGestV7';
@@ -294,8 +294,58 @@ function getAudioCtx(kind='client'){const C=window.AudioContext||window.webkitAu
 function tone(ctx,freq,duration=.14,volume=.18,delay=0){if(!ctx)return;const o=ctx.createOscillator(),g=ctx.createGain();o.frequency.value=freq;o.type='sine';g.gain.setValueAtTime(0.0001,ctx.currentTime+delay);g.gain.exponentialRampToValueAtTime(volume,ctx.currentTime+delay+.01);g.gain.exponentialRampToValueAtTime(.0001,ctx.currentTime+delay+duration);o.connect(g).connect(ctx.destination);o.start(ctx.currentTime+delay);o.stop(ctx.currentTime+delay+duration+.02)}
 function playDing(){const c=getAudioCtx('client');if(!c)return;c.resume?.();tone(c,880,.12,.13);tone(c,1320,.16,.10,.11)}
 function alarmBurst(){const c=getAudioCtx('alarm');if(c){c.resume?.();tone(c,740,.22,.38);tone(c,980,.22,.38,.28);tone(c,740,.22,.38,.56)}if(navigator.vibrate)navigator.vibrate([420,140,420,140,650]);}
-function updateAlarmUI(){if(!$('riderAlarmCard'))return;$('riderAlarmCard').classList.toggle('active',alarmEnabled);$('riderAlarmState').textContent=alarmEnabled?'Attivo su questo dispositivo':'Da attivare su questo dispositivo';$('enableRiderAlarm').textContent=alarmEnabled?'🔔 ATTIVO':'🔔 ATTIVA';}
-async function enableAlarm(){alarmEnabled=true;localStorage.setItem('sosRiderAlarmEnabledV10','1');const c=getAudioCtx('alarm');await c?.resume?.();alarmBurst();setTimeout(()=>navigator.vibrate?.(0),900);if('Notification'in window&&Notification.permission==='default')Notification.requestPermission().catch(()=>{});updateAlarmUI();}
+function updateAlarmUI(pushText=''){
+  if(!$('riderAlarmCard'))return;
+  $('riderAlarmCard').classList.toggle('active',alarmEnabled);
+  $('riderAlarmState').textContent=pushText || (alarmEnabled?'Attivo su questo dispositivo':'Da attivare su questo dispositivo');
+  $('enableRiderAlarm').textContent=alarmEnabled?'🔔 ATTIVO':'🔔 ATTIVA';
+}
+function base64UrlToUint8Array(v){
+  const s=String(v||'').replace(/-/g,'+').replace(/_/g,'/');
+  const pad='='.repeat((4-s.length%4)%4);
+  const raw=atob(s+pad);
+  return Uint8Array.from(raw,c=>c.charCodeAt(0));
+}
+function isStandalonePwa(){
+  return window.matchMedia?.('(display-mode: standalone)').matches || window.navigator.standalone===true;
+}
+async function setupBackgroundPush(){
+  if(!authSession||authProfile?.role!=='rider')throw new Error('Accedi come Rider prima di attivare le push.');
+  if(!('serviceWorker'in navigator) || !('PushManager'in window) || !('Notification'in window))throw new Error('Questo dispositivo/browser non supporta Web Push.');
+  if(/iPhone|iPad|iPod/i.test(navigator.userAgent) && !isStandalonePwa())throw new Error('Su iPhone aggiungi SOS Rider alla schermata Home e aprila dall’icona.');
+  const permission=await Notification.requestPermission();
+  if(permission!=='granted')throw new Error('Permesso notifiche non concesso.');
+  const reg=await navigator.serviceWorker.ready;
+  let sub=await reg.pushManager.getSubscription();
+  if(!sub){
+    const key=PUBLIC_CONFIG.vapidPublicKey;
+    if(!key)throw new Error('Chiave Web Push non configurata.');
+    sub=await reg.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:base64UrlToUint8Array(key)});
+  }
+  await fetchJson(apiBase()+'/api/rider/push/subscribe',{
+    method:'POST',
+    headers:riderHeaders(),
+    body:JSON.stringify({subscription:sub.toJSON(),device:clampText(navigator.userAgent,220)})
+  },9000);
+  localStorage.setItem('sosRiderPushEnabledV10','1');
+  return sub;
+}
+async function enableAlarm(){
+  alarmEnabled=true;
+  localStorage.setItem('sosRiderAlarmEnabledV10','1');
+  const c=getAudioCtx('alarm');
+  await c?.resume?.();
+  alarmBurst();
+  setTimeout(()=>navigator.vibrate?.(0),900);
+  updateAlarmUI('Attivo su questo dispositivo · attivo le push…');
+  try{
+    await setupBackgroundPush();
+    updateAlarmUI('Push attive anche ad app chiusa');
+  }catch(e){
+    console.warn('Web Push non attiva',e);
+    updateAlarmUI('Allarme app attivo · push da completare');
+  }
+}
 function startAlarm(code){if(!alarmEnabled||alarmActiveCode===code||$('riderHub')?.classList.contains('hidden'))return;stopAlarm();alarmActiveCode=code;alarmBurst();alarmTimer=setInterval(alarmBurst,1400);let ov=document.getElementById('alarmOverlay');if(!ov){ov=document.createElement('div');ov.id='alarmOverlay';ov.className='alarm-overlay';ov.innerHTML='<div>⚡ NUOVA RICHIESTA SOS RIDER</div>';document.body.appendChild(ov)}ov.classList.remove('hidden');if('Notification'in window&&Notification.permission==='granted'){try{new Notification('SOS Rider · Nuova richiesta',{body:code,icon:'icon-192.png',tag:code})}catch{}}}
 function stopAlarm(code){if(code&&alarmActiveCode&&code!==alarmActiveCode)return;if(alarmTimer)clearInterval(alarmTimer);alarmTimer=null;alarmActiveCode=null;navigator.vibrate?.(0);document.getElementById('alarmOverlay')?.classList.add('hidden')}
 
