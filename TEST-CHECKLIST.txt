@@ -1,0 +1,30 @@
+SOS RIDER V10 — TEST PRIMA DEL LANCIO
+====================================
+[ ] Tema AUTO passa DAY tra 07:00-18:29 e NIGHT fuori fascia.
+[ ] Toggle tema: AUTO -> DAY -> NIGHT -> AUTO.
+[ ] Logo leggibile in entrambi i temi.
+[ ] Autocomplete ritiro restituisce indirizzi veri.
+[ ] Autocomplete consegna restituisce indirizzi veri.
+[ ] E-bike <= 1,00 km = €2,50 (+ €2 se serale).
+[ ] E-bike > 1 km e <=3 km = €6,50 (+ serale se applicabile).
+[ ] Moto e Auto mantengono i rispettivi scaglioni V9.
+[ ] Preventivo mostrato = preventivo immagine.
+[ ] Preventivo frontend = tariffa salvata dal Worker.
+[ ] Rider NON DISPONIBILE blocca invio automatico.
+[ ] Rider DISPONIBILE consente invio.
+[ ] Prima richiesta fa diventare stato pubblico OCCUPATO.
+[ ] Account Client non apre Area Rider.
+[ ] Endpoint Rider risponde 403 a token Client.
+[ ] Account Rider non apre Portale Cliente mentre è loggato.
+[ ] Richiesta Guest compare in Area Rider.
+[ ] Richiesta Client compare in Area Rider e nello storico del Client.
+[ ] Telegram arriva con codice/indirizzi/orario/prezzo.
+[ ] Allarme Rider, dopo ATTIVA, parte su nuova richiesta.
+[ ] ACCETTA/RIFIUTA ferma allarme.
+[ ] ACCETTA cambia dashboard Client senza reload.
+[ ] RITIRATO -> Client vede IN CONSEGNA + ding.
+[ ] CONSEGNATO -> Client vede COMPLETATO.
+[ ] Turni/cassa/storico/analytics V9 ancora funzionano.
+[ ] Logout Client e Logout Rider puliscono correttamente la sessione.
+[ ] Recupero password via email apre il flusso nuova password.
+[ ] Passkey testata solo dopo setup Supabase WebAuthn.

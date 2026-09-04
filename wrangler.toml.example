@@ -1,0 +1,19 @@
+name = "sosrider"
+main = "worker.js"
+compatibility_date = "2026-09-04"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "sos-rider"
+database_id = "INSERISCI_DATABASE_ID"
+
+[vars]
+ALLOWED_ORIGINS = "https://sales403.github.io,https://sos-rider-richiesta.marcello-marcellopo.chatgpt.site"
+SUPABASE_URL = "https://INSERISCI-PROJECT-REF.supabase.co"
+# La anon/publishable key NON è una service-role key. Può essere var o secret.
+SUPABASE_ANON_KEY = "INSERISCI_SUPABASE_ANON_O_PUBLISHABLE_KEY"
+
+# SECRET/VALORI PRIVATI DA NON COMMITTARE:
+# npx wrangler secret put RIDER_EMAILS
+# npx wrangler secret put TELEGRAM_BOT_TOKEN
+# npx wrangler secret put TELEGRAM_CHAT_ID

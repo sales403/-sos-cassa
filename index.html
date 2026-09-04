@@ -1,425 +1,324 @@
 <!doctype html>
 <html lang="it">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="theme-color" content="#070707">
-<meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="SOS Rider">
-<link rel="manifest" href="manifest.webmanifest">
-<link rel="apple-touch-icon" href="icon-192.png">
-<title>SOS Rider — Gestionale V8.3</title>
-<style>
-:root{--bg:#070707;--card:#151515;--panel:#0d0d0d;--line:#2c2c2c;--line2:#414141;--text:#f7f7f7;--muted:#aaa;--yellow:#ffd000;--green:#6fda94;--red:#ff7777;--blue:#79b7ff}
-*{box-sizing:border-box}html{background:var(--bg)}body{margin:0;background:var(--bg);color:var(--text);font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif}
-button,input,select,textarea{font:inherit}.shell{width:min(1100px,100%);margin:auto;padding:calc(10px + env(safe-area-inset-top)) 10px calc(92px + env(safe-area-inset-bottom))}
-.brand{display:flex;gap:13px;align-items:center;margin:2px 0 14px}.brand img{width:86px;height:86px;object-fit:contain;background:transparent;border-radius:0;filter:drop-shadow(0 0 8px rgba(255,208,0,.18))}.brand h1{margin:0;font-size:24px}.brand .sub{color:var(--muted);font-size:12px;margin-top:4px}
-.page{display:none}.page.active{display:block}.card{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:14px}.section{margin-top:11px}.title{font-size:18px;font-weight:900;margin:0 0 10px}.meta,.hint{font-size:12px;color:var(--muted);line-height:1.45}
-.notice{font-size:12px;line-height:1.5;border:1px solid #51470c;background:#171405;color:#efdc79;border-radius:13px;padding:10px}.notice.green{background:#102318;border-color:#2b6040;color:#b9efca}.notice.blue{background:#0f1926;border-color:#2d4d72;color:#c7e0ff}
-.grid{display:grid;gap:9px}.stats{grid-template-columns:repeat(5,minmax(0,1fr))}.stat small{display:block;font-size:10px;color:var(--muted)}.stat b{display:block;font-size:20px;margin-top:5px}.hot b{color:var(--yellow)}
-.formgrid{display:grid;grid-template-columns:1fr 1fr;gap:10px}.full{grid-column:1/-1}label{display:block;font-size:13px;color:#e7e7e7}input,select,textarea{color-scheme:dark;width:100%;min-height:47px;margin-top:6px;padding:12px 13px;border:1px solid var(--line2);border-radius:13px;background:#090909;color:white;outline:none;font-size:16px}input:focus,select:focus,textarea:focus{border-color:var(--yellow)}
-/* Forza il tema scuro anche quando Chrome/Safari applicano l'autofill */
-input:-webkit-autofill,input:-webkit-autofill:hover,input:-webkit-autofill:focus,textarea:-webkit-autofill,select:-webkit-autofill{-webkit-text-fill-color:#fff!important;caret-color:#fff!important;-webkit-box-shadow:0 0 0 1000px #090909 inset!important;box-shadow:0 0 0 1000px #090909 inset!important;border-color:var(--line2)!important;transition:background-color 9999s ease-out 0s}
-input:-moz-autofill{background:#090909!important;color:#fff!important}
-.toolbar,.actions,.filters{display:flex;gap:7px;flex-wrap:wrap}button,.action{min-height:44px;border:1px solid transparent;border-radius:12px;padding:10px 12px;font-size:13px;font-weight:900;color:#fff;background:#252525;display:inline-flex;align-items:center;justify-content:center;text-decoration:none;cursor:pointer}.primary{background:var(--yellow);color:#111}.success{background:#11261a;border-color:#2b6340;color:#b9f0ca}.danger{background:#2c1111;border-color:#6c2828;color:#ffb0b0}.ghost{background:#101010;border-color:#343434}.bluebtn{background:#102035;border-color:#2b5685;color:#c6deff}.fullbtn{width:100%;min-height:52px}button:disabled{opacity:.4}
-.badge{display:inline-flex;border:1px solid #3b3b3b;background:#202020;border-radius:999px;padding:4px 8px;font-size:10px;font-weight:900}.badge.green{border-color:#28603b;background:#102418;color:#b0efc2}.badge.yellow{border-color:#665700;background:#282200;color:#ffe16b}.badge.red{border-color:#6d2929;background:#281010;color:#ffb0b0}.badge.blue{border-color:#2b5683;background:#102033;color:#c2ddff}
-.order{margin-top:9px;background:#0d0d0d;border:1px solid var(--line);border-radius:16px;padding:12px}.order.active{border-left:4px solid var(--yellow)}.order.success{border-left:4px solid var(--green)}.order.problem{border-left:4px solid #f0b54c}.order.cancelled{border-left:4px solid var(--red)}
-.order-head{display:flex;justify-content:space-between;gap:9px;align-items:flex-start}.order-code{font-size:16px;font-weight:900}.order-body{margin-top:8px;font-size:13px;line-height:1.55}.route{margin-top:9px;padding:10px;border:1px solid #31465e;background:#0e1722;border-radius:13px}.route .actions{margin-top:8px}.route .action,.route button{flex:1;min-width:115px}
-.cashbox{margin-top:10px;border-top:1px solid #292929;padding-top:10px}.paygrid{display:grid;grid-template-columns:1fr auto;gap:8px;align-items:end}.changebox{min-width:120px;text-align:center;background:#131313;border:1px solid #333;border-radius:12px;padding:9px}.changebox small{font-size:10px;color:var(--muted)}.changebox b{display:block;font-size:23px;color:var(--yellow);margin-top:3px}.quick{display:grid;grid-template-columns:repeat(5,1fr);gap:6px;margin-top:8px}.quick button{padding:8px 5px}
-.restaurant{margin-top:9px;background:#0d0d0d;border:1px solid var(--line);border-left:4px solid var(--yellow);border-radius:15px;padding:12px}.rhead{display:flex;justify-content:space-between;gap:8px}.rmoney{display:grid;grid-template-columns:repeat(4,1fr);gap:7px;margin-top:8px}.rbox{background:#151515;border:1px solid #292929;border-radius:11px;padding:9px}.rbox small{display:block;color:var(--muted);font-size:10px}.rbox b{display:block;margin-top:3px;font-size:14px}
-.bottom-nav{position:fixed;z-index:100;left:50%;transform:translateX(-50%);bottom:0;width:min(1100px,100%);padding:8px 8px calc(8px + env(safe-area-inset-bottom));background:rgba(7,7,7,.96);border-top:1px solid #252525;display:grid;grid-template-columns:repeat(4,1fr);gap:6px}.navbtn{background:#111;border:1px solid #292929;color:#aaa;border-radius:13px;min-height:54px;padding:7px 4px;display:flex;flex-direction:column;gap:3px;font-size:10px}.navbtn span:first-child{font-size:19px}.navbtn.active{background:#272200;border-color:#5e5000;color:#ffe16a}
-.filters{overflow:auto}.chip{white-space:nowrap;border-radius:999px;min-height:0;padding:7px 10px;background:#151515;border:1px solid #303030;color:#bbb}.chip.active{background:#2b2500;border-color:#655500;color:#ffe269}
-.hist-card{margin-top:7px;background:#0d0d0d;border:1px solid #292929;border-radius:14px;padding:11px}.hist-top{display:flex;justify-content:space-between;gap:8px}.hist-code{font-weight:900;font-size:14px}.hist-metrics{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-top:8px}.hm{background:#151515;border:1px solid #292929;border-radius:10px;padding:8px}.hm small{display:block;font-size:9px;color:var(--muted)}.hm b{display:block;font-size:13px;margin-top:2px}.history-date{font-size:13px;font-weight:900;margin:14px 0 6px}
-.analytics-kpis{grid-template-columns:repeat(4,minmax(0,1fr))}.kpi{background:#0d0d0d;border:1px solid #292929;border-radius:14px;padding:11px}.kpi small{display:block;font-size:10px;color:var(--muted)}.kpi b{display:block;font-size:21px;margin-top:4px}.kpi.hot b{color:var(--yellow)}
-.chart{height:180px;display:flex;align-items:flex-end;gap:6px;overflow-x:auto;padding:10px 4px 0;border-bottom:1px solid #333}.barwrap{height:100%;min-width:34px;display:flex;flex-direction:column;justify-content:flex-end;align-items:center;gap:4px}.bar{width:24px;min-height:3px;background:linear-gradient(180deg,#ffe054,#c9a800);border-radius:5px 5px 0 0}.barval,.barlab{font-size:9px}.barlab{color:var(--muted)}
-.hour-row{display:grid;grid-template-columns:48px 1fr 72px;gap:8px;align-items:center;margin-top:8px}.hour-track{height:11px;background:#1d1d1d;border-radius:999px;overflow:hidden}.hour-fill{height:100%;background:var(--yellow);border-radius:999px}.hour-val{text-align:right;font-size:11px}
-.rank{margin-top:8px;padding:10px;background:#0e0e0e;border:1px solid #292929;border-radius:12px;display:grid;grid-template-columns:30px 1fr auto;gap:8px;align-items:center}.ranknum{width:28px;height:28px;border-radius:9px;background:#272200;color:#ffe16a;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:900}
-.turn{margin-top:8px;padding:11px;background:#0e0e0e;border:1px solid #292929;border-radius:13px}.turn-top{display:flex;justify-content:space-between;gap:8px}.turn-stats{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-top:8px}
-.address-wrap{position:relative}.suggestions{position:absolute;z-index:80;left:0;right:0;top:100%;margin-top:4px;background:#101010;border:1px solid #444;border-radius:13px;overflow:hidden;box-shadow:0 15px 34px rgba(0,0,0,.5)}.suggestion{display:block;width:100%;background:#101010;color:#fff;border:0;border-bottom:1px solid #292929;border-radius:0;text-align:left;padding:11px 12px;min-height:0}.suggestion:last-child{border-bottom:0}.suggestion strong{display:block;font-size:13px}.suggestion span{display:block;color:var(--muted);font-size:11px;margin-top:2px}.address-status{display:flex;justify-content:space-between;gap:8px;align-items:center;margin-top:6px}
-.modal-backdrop{position:fixed;z-index:200;inset:0;background:rgba(0,0,0,.72);display:flex;align-items:flex-end;justify-content:center;padding:12px}.modal{width:min(600px,100%);background:#151515;border:1px solid #383838;border-radius:22px;padding:16px;margin-bottom:calc(6px + env(safe-area-inset-bottom));max-height:82vh;overflow:auto}.modal h2{margin:0 0 8px;font-size:21px}.moneybig{font-size:34px;font-weight:900;color:var(--yellow)}.mrow{display:flex;justify-content:space-between;gap:12px;padding:9px 0;border-bottom:1px solid #2a2a2a;font-size:13px}.modal-actions{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-top:14px}
-.hidden{display:none!important}
-
-.topbar{display:flex;justify-content:space-between;gap:10px;align-items:center}.refreshbtn{width:46px;height:46px;padding:0;border-radius:14px;font-size:22px;background:#111;border-color:#373737}.vehicle-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:7px}.vehicle-card{min-height:86px;padding:10px 7px;background:#0e0e0e;border:1px solid #343434;border-radius:14px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;color:#bbb}.vehicle-card .vicon{font-size:25px}.vehicle-card b{font-size:12px}.vehicle-card small{font-size:9px;color:#888}.vehicle-card.active{border-color:#8b7400;background:#262000;color:#ffe36a;box-shadow:0 0 18px rgba(255,208,0,.12)}.quote-card{margin-top:10px;border:1px solid #5e5100;background:linear-gradient(180deg,#171400,#0d0c03);border-radius:16px;padding:12px}.quote-main{display:flex;justify-content:space-between;gap:12px;align-items:center}.quote-price{font-size:31px;font-weight:1000;color:var(--yellow)}.quote-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:7px;margin-top:9px}.quote-mini{background:#111;border:1px solid #2d2d2d;border-radius:11px;padding:8px}.quote-mini small{display:block;font-size:9px;color:#8f8f8f}.quote-mini b{display:block;margin-top:3px;font-size:13px}.sharebar{display:grid;grid-template-columns:repeat(4,1fr);gap:7px;margin-top:9px}.cash-total{margin-top:8px;text-align:center;background:#111;border:1px solid #333;border-radius:13px;padding:10px}.cash-total small{font-size:10px;color:var(--muted)}.cash-total b{display:block;font-size:24px;color:#fff;margin-top:3px}.cash-stack{font-size:11px;color:#bdbdbd;margin-top:4px}.quickcash{display:grid;grid-template-columns:repeat(3,1fr);gap:7px;margin-top:8px}.quickcash button{min-height:50px;font-size:16px}.quickcash .exact{grid-column:1/-1}.quickcash .utility{font-size:12px;color:#bbb}.field-icon{display:flex;align-items:center;gap:8px}.field-icon>span{font-size:18px;min-width:22px}.calc-status{font-size:11px;color:#bbb;margin-top:6px}.google-proof{font-size:11px;line-height:1.45;color:#e6da8a;margin-top:8px;border-top:1px solid #3d3609;padding-top:8px}.draftpill{display:inline-flex;margin-left:6px;font-size:9px;padding:3px 7px;border-radius:999px;border:1px solid #34513f;background:#112018;color:#a9e8bc}.route-warning{font-size:10px;color:#999;margin-top:6px}.preview-sheet{background:#090909;border:1px solid #4b4206;border-radius:16px;padding:14px}.preview-logo{display:flex;align-items:center;gap:9px}.preview-logo img{width:58px;height:58px;border-radius:12px;object-fit:contain}.preview-total{font-size:34px;color:var(--yellow);font-weight:1000}.preview-row{display:flex;justify-content:space-between;gap:12px;padding:8px 0;border-bottom:1px solid #272727;font-size:13px}.preview-row:last-child{border-bottom:0}.preview-proof{margin-top:10px;padding:10px;border-radius:12px;background:#211c00;border:1px solid #645600;color:#ffe36a;font-weight:800;font-size:12px;line-height:1.45}
-@media(max-width:880px){.stats{grid-template-columns:1fr 1fr}.stats .stat:last-child{grid-column:1/-1}.analytics-kpis{grid-template-columns:1fr 1fr}.rmoney,.turn-stats{grid-template-columns:1fr 1fr}}
-
-/* WhatsApp order importer — parser locale, nessuna API AI */
-.wa-import-launch{width:100%;min-height:48px;margin:2px 0 10px;background:#102418;border:1px solid #2c6841;color:#b8f0ca;font-size:13px}
-.wa-import{margin:0 0 12px;padding:12px;border:1px solid #2d4d72;background:linear-gradient(180deg,#0f1926,#0b121b);border-radius:15px}
-.wa-import-head{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:8px}.wa-import-head b{font-size:15px}.wa-import-head small{display:block;color:#9db7d6;margin-top:3px;line-height:1.4}
-.wa-import textarea{background:#080d13;border-color:#36577d;min-height:150px;resize:vertical}
-.wa-import-actions{display:grid;grid-template-columns:2fr 1fr 1fr;gap:7px;margin-top:8px}.wa-import-actions button{min-height:45px}
-.wa-result{margin-top:9px;padding:10px;border:1px solid #2a6040;background:#102318;color:#c2efd0;border-radius:12px;font-size:12px;line-height:1.55}.wa-result.warn{border-color:#665700;background:#282200;color:#ffe487}.wa-result .rows{display:grid;grid-template-columns:auto 1fr;gap:4px 8px;margin-top:5px}.wa-result .rows span:nth-child(odd){color:#8fb69d;font-weight:900}.wa-example{margin-top:8px;color:#8da7c5;font-size:11px;line-height:1.45}
-@media(max-width:650px){.wa-import-actions{grid-template-columns:1fr 1fr}.wa-import-actions .wa-main{grid-column:1/-1}}
-@media(max-width:650px){.vehicle-grid{grid-template-columns:repeat(3,1fr)}.quote-grid{grid-template-columns:1fr 1fr}.quote-mini:last-child{grid-column:1/-1}.sharebar{grid-template-columns:1fr}.quickcash{grid-template-columns:repeat(3,1fr)}.brand img{width:70px;height:70px}.brand h1{font-size:21px}.formgrid{grid-template-columns:1fr}.full{grid-column:auto}.order-head{flex-direction:column}.paygrid{grid-template-columns:1fr}.changebox{width:100%}.quick{grid-template-columns:repeat(2,1fr)}.quick button:first-child,.quick button:last-child{grid-column:1/-1}.actions .action,.actions button{flex:1;min-width:calc(50% - 5px)}.modal-actions{grid-template-columns:1fr}}
-</style>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta id="themeColorMeta" name="theme-color" content="#070707">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="SOS Rider">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="apple-touch-icon" href="icon-192.png">
+  <link rel="stylesheet" href="styles.css">
+  <title>SOS Rider Carpi-Soliera · V10</title>
 </head>
 <body>
-<!-- SOS RIDER V8.2 SMART — splash animata -->
-<style>
-#sosSplash{position:fixed;inset:0;z-index:999999;display:flex;align-items:center;justify-content:center;background:radial-gradient(circle at 50% 45%,rgba(255,208,0,.10),transparent 42%),#050505;overflow:hidden;transition:opacity .38s ease,visibility .38s ease}
-#sosSplash.out{opacity:0;visibility:hidden;pointer-events:none}
-#sosSplash:before{content:"";position:absolute;left:50%;top:50%;height:3px;width:0;transform:translate(-50%,-50%);background:#ffd000;box-shadow:0 0 14px #ffd000,0 0 40px rgba(255,208,0,.65);animation:sosLine .65s ease-out .28s forwards}
-.sosSplashInner{position:relative;z-index:2;text-align:center;padding:24px}
-.sosSplashLogo{width:min(76vw,340px);height:auto;opacity:0;transform:scale(.62) translateY(14px);animation:sosLogo .82s cubic-bezier(.18,.85,.25,1.15) forwards;filter:drop-shadow(0 0 0 rgba(255,208,0,0))}
-.sosSplashPlace{margin-top:12px;color:#ffd000;font-size:13px;font-weight:1000;letter-spacing:5px;opacity:0;transform:translateY(7px);animation:sosTxt .32s ease .55s forwards}
-.sosSplashPayoff{margin-top:7px;color:rgba(255,255,255,.72);font-size:11px;font-weight:800;letter-spacing:1.5px;opacity:0;transform:translateY(7px);animation:sosTxt .32s ease .68s forwards}
-@keyframes sosLogo{0%{opacity:0;transform:scale(.62) translateY(14px)}58%{opacity:1;transform:scale(1.07);filter:drop-shadow(0 0 28px rgba(255,208,0,.65))}80%{transform:scale(.98)}100%{opacity:1;transform:scale(1);filter:drop-shadow(0 0 11px rgba(255,208,0,.35))}}
-@keyframes sosTxt{to{opacity:1;transform:translateY(0)}}
-@keyframes sosLine{0%{width:0;opacity:0}25%{opacity:1}75%{width:100%;opacity:.75}100%{width:100%;opacity:0}}
-@media(prefers-reduced-motion:reduce){.sosSplashLogo,.sosSplashPlace,.sosSplashPayoff,#sosSplash:before{animation-duration:.01ms!important;animation-delay:0ms!important}}
-</style>
-<div id="sosSplash" aria-hidden="true">
-  <div class="sosSplashInner">
-    <img class="sosSplashLogo" src="logo-sos-rider.png" alt="SOS Rider Carpi-Soliera">
-    <div class="sosSplashPlace">CARPI · SOLIERA</div>
-    <div class="sosSplashPayoff">IL TUO RIDER DI EMERGENZA</div>
+  <div id="splash" class="splash" aria-hidden="true">
+    <div class="splash-inner">
+      <img src="logo-sos-rider.png" alt="SOS Rider Carpi-Soliera">
+      <div class="splash-place">CARPI · SOLIERA</div>
+      <div class="splash-payoff">IL TUO RIDER DI EMERGENZA</div>
+    </div>
   </div>
-</div>
-<script>
-(()=>{const s=document.getElementById('sosSplash');if(!s)return;const close=()=>{s.classList.add('out');setTimeout(()=>s.remove(),450)};if(document.readyState==='complete')setTimeout(close,2350);else window.addEventListener('load',()=>setTimeout(close,2350),{once:true});setTimeout(()=>{if(document.body.contains(s))close()},4600)})();
-</script>
 
-<div class="shell">
-<div class="topbar"><header class="brand"><img src="logo-sos-rider.png" alt="SOS Rider"><div><h1>SOS RIDER</h1><div class="sub">Gestionale operativo • Carpi-Soliera <span style="display:inline-block;margin-left:6px;padding:2px 6px;border:1px solid #665700;border-radius:999px;color:#ffd000;font-size:9px;font-weight:900;vertical-align:middle">V8.2 SMART</span></div></div></header><button id="refreshApp" class="refreshbtn" type="button" title="Ricarica app">↻</button></div>
-
-<main id="page-work" class="page active">
-  <section id="noShift" class="card hidden"><div class="title">Nessun turno aperto</div><div class="hint">Apri un turno per iniziare.</div><button id="startShift" class="primary fullbtn" style="margin-top:10px">⚡ INIZIA NUOVO TURNO</button></section>
-  <div id="workContent">
-    <section class="grid stats">
-      <div class="card stat"><small>Fondo iniziale</small><b id="statFund">€0</b></div>
-      <div class="card stat hot"><small>Fondo disponibile</small><b id="statAvailable">€0</b></div>
-      <div class="card stat"><small>Da sistemare</small><b id="statUnsorted">€0</b></div>
-      <div class="card stat"><small>Da rendere locali</small><b id="statDue">€0</b></div>
-      <div class="card stat"><small>Guadagno SOS turno</small><b id="statFees">€0</b></div>
+  <main id="hubHome" class="hub-home hidden">
+    <section class="hub-card brand-panel">
+      <div class="home-theme-row"><button class="theme-toggle" data-theme-toggle type="button" aria-label="Cambia tema">☀︎ / ☾</button></div>
+      <img class="hub-logo" src="logo-sos-rider.png" alt="SOS Rider Carpi-Soliera">
+      <div class="eyebrow">SOS RIDER CARPI-SOLIERA</div>
+      <h1>Il tuo rider di emergenza.</h1>
+      <p>Accedi al tuo profilo oppure richiedi una consegna subito, anche senza account.</p>
     </section>
-    <section class="card section"><div class="title">Turno attuale</div><div id="shiftInfo" class="notice blue"></div><button id="closeShift" style="margin-top:9px">🏁 CHIUDI TURNO</button></section>
-    <section class="card section">
-      <div class="title">Nuova consegna <span id="draftState" class="draftpill hidden">BOZZA SALVATA</span></div>
-      <button id="toggleWaImport" type="button" class="wa-import-launch">📲 INCOLLA ORDINE WHATSAPP · AUTOCOMPILA</button>
-      <div id="waImportPanel" class="wa-import hidden">
-        <div class="wa-import-head"><div><b>⚡ Autocompila da WhatsApp</b></div></div>
-        <textarea id="waOrderText" placeholder="Esempio:
-Cliente: Marco
-Telefono: 3491234567
-Indirizzo: Via Roma 24, Soliera
-Servizio: standard
-Totale ordine: 32 €
-Pagamento: contanti"></textarea>
-        <div class="wa-import-actions">
-          <button id="parseWaOrder" type="button" class="primary wa-main">⚡ ANALIZZA E COMPILA</button>
-          <button id="copyWaTemplate" type="button" class="bluebtn">📋 FORMATO LOCALE</button>
-          <button id="clearWaOrder" type="button" class="ghost">SVUOTA</button>
-        </div>
-        <div id="waParseResult" class="wa-result hidden"></div>
-        
+
+    <section id="homeAvailability" class="availability-card loading">
+      <span class="availability-dot"></span>
+      <div><b>Controllo disponibilità rider…</b><small>Stato aggiornato automaticamente</small></div>
+    </section>
+
+    <section class="hub-choice-grid">
+      <button id="openLoginHub" class="hub-choice rider-choice" type="button">
+        <span class="choice-icon">🔐</span>
+        <span class="choice-copy"><b>ACCEDI</b><small>Profilo cliente / Area Rider</small></span>
+        <span class="choice-arrow">›</span>
+      </button>
+      <button id="openClientHub" class="hub-choice client-choice" type="button">
+        <span class="choice-icon">📦</span>
+        <span class="choice-copy"><b>RICHIEDI SENZA ACCOUNT</b><small>Preventivo e richiesta guidata</small></span>
+        <span class="choice-arrow">›</span>
+      </button>
+    </section>
+
+    <section class="hub-card mini-info">
+      <div><b>Nessun costo fisso</b><span>Paghi solo quando serve</span></div>
+      <div><b>Contatto diretto</b><span>Risponde Marcello</span></div>
+      <div><b>Zona locale</b><span>Carpi · Limidi · Soliera</span></div>
+    </section>
+  </main>
+
+  <main id="authHub" class="app-shell narrow hidden" aria-label="Accesso SOS Rider">
+    <header class="app-topbar">
+      <button class="icon-btn" data-back-home type="button" aria-label="Torna alla home">‹</button>
+      <div class="compact-brand"><img src="logo-sos-rider.png" alt="SOS Rider"><div><b>ACCESSO SOS RIDER</b><small>Account separati per cliente e rider</small></div></div>
+      <button class="icon-btn" data-theme-toggle type="button" aria-label="Cambia tema">◐</button>
+    </header>
+    <section class="card login-card auth-card">
+      <div class="eyebrow">ACCOUNT</div>
+      <h2>Accedi al tuo profilo</h2>
+      <p>Il ruolo viene verificato dal server. Un account cliente non può entrare nell'Area Rider.</p>
+      <label>Email<input id="authEmail" type="email" autocomplete="email" placeholder="nome@email.it"></label>
+      <label style="margin-top:8px">Password<input id="authPassword" type="password" autocomplete="current-password" placeholder="Password"></label>
+      <button id="authLoginBtn" type="button" class="btn primary full big">ACCEDI</button>
+      <button id="authPasskeyLoginBtn" type="button" class="btn ghost full">🔑 ACCEDI CON PASSKEY <span class="beta-tag">BETA</span></button>
+      <div class="auth-links"><button id="authForgotBtn" type="button">Password dimenticata?</button><button id="authShowSignupBtn" type="button">Crea account cliente</button></div>
+      <div id="authStatus" class="status-line"></div>
+    </section>
+    <section id="signupCard" class="card section hidden">
+      <div class="eyebrow">NUOVO ACCOUNT CLIENTE</div><h2>Registrati</h2>
+      <div class="form-grid">
+        <label class="full">Nome locale / richiedente<input id="signupName" autocomplete="organization" placeholder="Es. Pizzeria Vesuvio"></label>
+        <label>Telefono<input id="signupPhone" inputmode="tel" autocomplete="tel"></label>
+        <label>Email<input id="signupEmail" type="email" autocomplete="email"></label>
+        <label class="full">Password<input id="signupPassword" type="password" autocomplete="new-password" placeholder="Almeno 8 caratteri"></label>
       </div>
-      <form id="orderForm"><div class="formgrid">
-        <label><span class="field-icon"><span>🏪</span><span>Locale</span></span><input id="restaurant" list="restaurantList" required placeholder="Es. Pizzeria Vesuvio"><datalist id="restaurantList"></datalist></label>
-        <div class="address-wrap"><label><span class="field-icon"><span>📍</span><span>Indirizzo ritiro</span></span><input id="pickupAddress" required autocomplete="off" placeholder="Es. Via Italia 21, Soliera"></label><div id="pickupSuggestions" class="suggestions hidden"></div><div class="address-status"><span id="pickupState" class="meta">Scrivi almeno 3 caratteri.</span><button id="verifyPickupMaps" class="ghost" type="button" style="min-height:34px;padding:6px 8px">📍 MAPS</button></div></div>
-        <label><span class="field-icon"><span>👤</span><span>Cliente</span></span><input id="customer" required placeholder="Nome cliente"></label>
-        <label><span class="field-icon"><span>📞</span><span>Telefono cliente</span></span><input id="phone" type="tel" inputmode="tel" placeholder="349..."></label>
-        <div class="address-wrap full"><label><span class="field-icon"><span>🏁</span><span>Indirizzo consegna</span></span><input id="address" required autocomplete="off" placeholder="Via, civico, località"></label><div id="addressSuggestions" class="suggestions hidden"></div><div class="address-status"><span id="addressState" class="meta">Scrivi almeno 3 caratteri.</span><button id="verifyMaps" class="ghost" type="button" style="min-height:34px;padding:6px 8px">📍 MAPS</button></div></div>
-        <div class="full"><label>Mezzo</label><div class="vehicle-grid"><button type="button" class="vehicle-card active" data-vehicle="ebike"><span class="vicon">🚲</span><b>ECONOMY E-BIKE</b><small>food / brevi tratte</small></button><button type="button" class="vehicle-card" data-vehicle="moto"><span class="vicon">🏍️</span><b>MOTO EXPRESS</b><small>urgenze / rapidità</small></button><button type="button" class="vehicle-card" data-vehicle="auto"><span class="vicon">🚗</span><b>AUTO CARGO</b><small>maltempo / carichi</small></button></div><div class="route-warning">Il preventivo usa una stima indicativa tra gli indirizzi verificati. Durante il lavoro, MAPS apre la navigazione reale dalla tua posizione corrente.</div></div>
-        <div class="full"><button id="calcQuote" type="button" class="primary fullbtn">🧮 CALCOLA TARIFFA</button><div id="calcStatus" class="calc-status">Inserisci ritiro e destinazione, poi scegli il mezzo.</div><div id="quoteCard" class="quote-card hidden"><div class="quote-main"><div><div class="meta">TARIFFA CONSIGLIATA</div><div id="quoteLabel" style="font-weight:900">Economy E-Bike</div></div><div id="quotePrice" class="quote-price">€0,00</div></div><div class="quote-grid"><div class="quote-mini"><small>DISTANZA STIMATA</small><b id="quoteDistance">—</b></div><div class="quote-mini"><small>TEMPO STIMATO</small><b id="quoteDuration">—</b></div><div class="quote-mini"><small>ORARIO</small><b id="quoteLate">Standard</b></div></div><div class="google-proof">📐 <b>Distanza e tempo sono stime basate sugli indirizzi verificati.</b><br>💶 <b>Prezzo sempre confermato prima della partenza.</b></div><div class="sharebar"><button id="quoteMaps" type="button">🗺️ PERCORSO</button><button id="quoteImage" type="button">🖼️ IMMAGINE</button><button id="quoteWhatsApp" type="button">💬 WHATSAPP</button><button id="quoteCopy" type="button">📋 COPIA</button></div></div></div>
-        <label>Totale ordine<input id="orderTotal" type="number" inputmode="decimal" min="0" step="0.01" required placeholder="0,00"></label>
-        <label>Compenso SOS<input id="fee" type="number" inputmode="decimal" min="0" step="0.01" value="0"></label>
-        <label class="full">Pagamento<select id="payment"><option value="cash">Contanti alla consegna</option><option value="paid">Già pagato</option><option value="pos">POS del locale</option></select></label>
-        <label class="full">Note<textarea id="notes" rows="2" placeholder="Citofono, piano, indicazioni..."></textarea></label>
-        <div class="full"><button class="primary fullbtn" type="submit">REGISTRA CONSEGNA</button><div id="formMsg" class="hint" style="margin-top:6px"></div></div>
-      </div></form>
+      <button id="authSignupBtn" class="btn primary full big" type="button">CREA ACCOUNT CLIENTE</button>
+      <button id="authHideSignupBtn" class="btn ghost full" type="button">HO GIÀ UN ACCOUNT</button>
+      <div id="signupStatus" class="status-line"></div>
     </section>
-    <section class="card section"><div class="title">Consegne attive</div><div id="activeOrders"></div></section>
-    <section class="card section"><div class="title">Incassi locali</div><div id="restaurants"></div></section>
+  </main>
+
+  <main id="clientHub" class="app-shell hidden" aria-label="Richiedi una consegna">
+    <header class="app-topbar">
+      <button class="icon-btn" data-back-home type="button" aria-label="Torna alla home">‹</button>
+      <div class="compact-brand">
+        <img src="logo-sos-rider.png" alt="SOS Rider">
+        <div><b>RICHIEDI UNA CONSEGNA</b><small>SOS Rider Carpi-Soliera</small></div>
+      </div>
+      <div class="top-actions"><button class="icon-btn" data-theme-toggle type="button" title="Tema giorno/notte">◐</button><button id="clientInstallBtn" class="icon-btn hidden" type="button" title="Installa app">＋</button></div>
+    </header>
+
+    <section id="clientAvailability" class="availability-card loading">
+      <span class="availability-dot"></span>
+      <div><b>Controllo disponibilità rider…</b><small>Lo stato viene aggiornato automaticamente</small></div>
+    </section>
+
+    <section id="clientAccountCard" class="card account-strip hidden">
+      <div><div class="eyebrow">PROFILO CLIENTE</div><b id="clientAccountName">—</b><small id="clientAccountEmail">—</small></div>
+      <div class="account-actions"><button id="clientRegisterPasskey" class="btn ghost small" type="button">🔑 PASSKEY <span class="beta-tag">BETA</span></button><button id="clientLogoutBtn" class="btn ghost small" type="button">ESCI</button></div>
+    </section>
+    <section id="clientGuestCard" class="card account-strip">
+      <div><div class="eyebrow">MODALITÀ OSPITE</div><b>Puoi richiedere senza registrarti</b><small>Con un account salvi profilo e storico online.</small></div>
+      <button id="guestLoginBtn" class="btn ghost small" type="button">ACCEDI</button>
+    </section>
+
+    <section class="card intro-card">
+      <div class="eyebrow">RICHIESTA GUIDATA · CONSIGLIATA</div>
+      <h2>Compila, vedi subito la tariffa e poi invia.</h2>
+      <p>Gli indirizzi vanno selezionati dai suggerimenti reali. La richiesta arriva direttamente nell'Area Rider.</p>
+      <a id="directWhatsapp" class="btn whatsapp-btn full" href="#" target="_blank" rel="noopener">💬 Scrivi direttamente su WhatsApp</a>
+    </section>
+
+    <section class="notice blue commercial-note">🏪 <b>Per locali e ristoratori:</b> la quota consegna SOS può essere addebitata totalmente o in parte al cliente finale, oppure gestita con un ordine minimo. Il costo mostrato qui è la tariffa SOS Rider.</section>
+
+    <section id="clientRecentSection" class="card section hidden">
+      <div class="section-head"><div><div class="eyebrow">RIPETI IN UN TAP</div><h2>Ultime richieste</h2></div></div>
+      <div id="clientRecentList"></div>
+    </section>
+
+    <section id="clientFormCard" class="card section">
+      <div class="section-head">
+        <div><div class="eyebrow">NUOVA CONSEGNA</div><h2>Dati essenziali</h2></div>
+        <span id="clientDraftPill" class="pill yellow hidden">BOZZA SALVATA</span>
+      </div>
+
+      <form id="clientRequestForm" novalidate>
+        <div class="form-grid">
+          <label>Nome locale / richiedente
+            <input id="cRequester" autocomplete="organization" required placeholder="Es. Pizzeria Vesuvio">
+          </label>
+          <label>Telefono referente
+            <input id="cRequesterPhone" inputmode="tel" autocomplete="tel" required placeholder="Es. 349 1234567">
+          </label>
+
+          <div class="address-field full">
+            <label>Indirizzo di ritiro
+              <input id="cPickup" autocomplete="off" required placeholder="Via, civico, località">
+            </label>
+            <div id="cPickupSuggestions" class="suggestions hidden"></div>
+            <div class="field-meta"><span id="cPickupStatus">Scrivi almeno 3 caratteri e seleziona un risultato.</span><button id="cPickupMaps" type="button" class="mini-btn">MAPS</button></div>
+          </div>
+
+          <label>Ordine pronto alle
+            <input id="cReadyTime" type="time" required>
+            <small id="cLateHint" class="field-help">Il supplemento serale si applica automaticamente dopo le 22:30.</small>
+          </label>
+          <label>Destinatario
+            <input id="cRecipient" autocomplete="name" required placeholder="Nome cliente">
+          </label>
+          <label>Telefono destinatario
+            <input id="cRecipientPhone" inputmode="tel" autocomplete="tel" required placeholder="Es. 349 1234567">
+          </label>
+
+          <div class="address-field full">
+            <label>Indirizzo di consegna
+              <input id="cDelivery" autocomplete="off" required placeholder="Via, civico, località">
+            </label>
+            <div id="cDeliverySuggestions" class="suggestions hidden"></div>
+            <div class="field-meta"><span id="cDeliveryStatus">Scrivi almeno 3 caratteri e seleziona un risultato.</span><button id="cDeliveryMaps" type="button" class="mini-btn">MAPS</button></div>
+          </div>
+
+          <div class="full">
+            <label>Servizio</label>
+            <div class="vehicle-grid" id="clientVehicles">
+              <button type="button" class="vehicle-card active" data-client-vehicle="ebike"><span>🚲</span><b>ECONOMY</b><small>E-bike · <strong>MICRO €2,50 ≤1 km</strong></small></button>
+              <button type="button" class="vehicle-card" data-client-vehicle="moto"><span>🏍️</span><b>EXPRESS</b><small>Moto</small></button>
+              <button type="button" class="vehicle-card" data-client-vehicle="auto"><span>🚗</span><b>CARGO</b><small>Auto</small></button>
+            </div>
+            <div id="serviceSuggestion" class="service-suggestion hidden"></div>
+          </div>
+
+          <label>Pagamento ordine
+            <select id="cPayment">
+              <option value="paid">Ordine già pagato</option>
+              <option value="cash">Contanti da incassare</option>
+              <option value="pos">POS del locale</option>
+            </select>
+          </label>
+          <label id="cOrderTotalWrap" class="hidden">Importo ordine da incassare
+            <input id="cOrderTotal" type="number" inputmode="decimal" min="0" step="0.01" placeholder="0,00">
+          </label>
+          <label class="full">Note facoltative
+            <textarea id="cNotes" rows="2" placeholder="Citofono, piano, indicazioni utili..."></textarea>
+          </label>
+          <label class="check-row full"><input id="cRemember" type="checkbox" checked><span>Ricorda questo locale/richiedente su questo dispositivo.</span></label>
+        </div>
+
+        <button id="clientCalcQuote" type="button" class="btn primary full big">🧮 CALCOLA TARIFFA</button>
+        <div id="clientFormStatus" class="status-line"></div>
+      </form>
+    </section>
+
+    <section id="clientQuoteSection" class="card section hidden">
+      <div class="section-head">
+        <div><div class="eyebrow">PREVENTIVO</div><h2>Tariffa calcolata</h2></div>
+        <span id="clientQuoteRouteBadge" class="pill green">INDIRIZZI VERIFICATI</span>
+      </div>
+      <div class="quote-summary">
+        <div><small>SERVIZIO</small><b id="cqService">—</b></div>
+        <div class="quote-total"><small>TOTALE CONSEGNA</small><b id="cqTotal">€0,00</b></div>
+      </div>
+      <div class="quote-details">
+        <div><span>Distanza</span><b id="cqDistance">—</b></div>
+        <div><span>Tariffa base</span><b id="cqBase">—</b></div><div id="cqMicroRow" class="hidden"><span>Microconsegna E-bike entro 1 km</span><b>€2,50</b></div>
+        <div id="cqLateRow" class="hidden"><span>Supplemento serale dopo 22:30</span><b>+ €2,00</b></div>
+      </div>
+      <div id="cqLateNotice" class="notice yellow hidden">⚡ Supplemento serale +2,00 € applicato automaticamente in base all'orario “ordine pronto”.</div>
+      <div class="quote-image-wrap"><img id="clientQuoteImage" alt="Preventivo SOS Rider"></div>
+      <div class="dual-actions">
+        <button id="clientEditQuote" type="button" class="btn ghost">← MODIFICA</button>
+        <button id="clientSendRequest" type="button" class="btn primary">⚡ INVIA RICHIESTA</button>
+      </div>
+      <div id="clientSendStatus" class="status-line"></div>
+    </section>
+
+    <section id="clientRequestStatus" class="card section hidden">
+      <div class="status-hero">
+        <span id="clientStatusIcon" class="status-icon">✓</span>
+        <div><div class="eyebrow">RICHIESTA</div><h2 id="clientRequestCode">—</h2></div>
+      </div>
+      <div id="clientStatusBadge" class="request-state waiting">IN ATTESA DEL RIDER</div>
+      <p id="clientStatusText">La richiesta è arrivata nell'Area Rider. Attendi la conferma di disponibilità.</p>
+      <div id="clientConfirmedPrice" class="confirmed-price"></div>
+      <div class="dual-actions">
+        <button id="clientNewRequest" type="button" class="btn ghost">NUOVA RICHIESTA</button>
+        <a id="clientStatusWhatsapp" class="btn whatsapp-btn" href="#" target="_blank" rel="noopener">WHATSAPP</a>
+      </div>
+    </section>
+  </main>
+
+  <main id="riderLogin" class="app-shell narrow hidden">
+    <header class="app-topbar"><button class="icon-btn" data-back-home type="button">‹</button><div class="compact-brand"><img src="logo-sos-rider.png" alt="SOS Rider"><div><b>AREA RIDER</b><small>Accesso riservato</small></div></div><button class="icon-btn" data-theme-toggle type="button">◐</button></header>
+    <section class="card login-card"><div class="eyebrow">ACCESSO PROTETTO</div><h2>Devi accedere con l'account Rider.</h2><p>Email, password o passkey. Il ruolo Rider viene verificato dal backend.</p><button id="riderGoLoginBtn" class="btn primary full big" type="button">VAI AL LOGIN</button><div id="riderLoginStatus" class="status-line"></div></section>
+  </main>
+
+  <main id="riderHub" class="rider-shell hidden">
+    <header class="rider-topbar">
+      <div class="compact-brand"><img src="logo-sos-rider.png" alt="SOS Rider"><div><b>AREA RIDER</b><small id="riderSyncSmall">SOS Rider Carpi-Soliera</small></div></div>
+      <div class="top-actions"><button class="icon-btn" data-theme-toggle type="button" title="Tema giorno/notte">◐</button><button id="riderRefresh" class="icon-btn" type="button" title="Aggiorna">↻</button><button id="openSettings" class="icon-btn" type="button" title="Impostazioni">⚙</button></div>
+    </header>
+
+    <section id="riderAvailabilityControl" class="card rider-availability-control">
+      <div class="availability-main"><span id="riderAvailabilityDot" class="availability-dot"></span><div><div class="eyebrow">STATO PUBBLICO</div><b id="riderAvailabilityTitle">Controllo…</b><small id="riderAvailabilityText">I locali vedono questo stato prima di inviare.</small></div></div>
+      <div class="availability-actions"><button id="riderAvailableBtn" class="btn primary small" type="button">🟢 DISPONIBILE</button><button id="riderOfflineBtn" class="btn ghost small" type="button">🔴 NON DISPONIBILE</button><select id="riderEtaSelect" title="Attesa media per richiesta"><option value="15">15 min</option><option value="20">20 min</option><option value="25" selected>25 min</option><option value="30">30 min</option><option value="40">40 min</option></select></div>
+    </section>
+    <section id="riderAlarmCard" class="card alarm-card">
+      <div><div class="eyebrow">ALLARME NUOVI ORDINI</div><b id="riderAlarmState">Da attivare su questo dispositivo</b><small>Con Area Rider aperta: suono in loop + vibrazione finché gestisci la richiesta.</small></div>
+      <button id="enableRiderAlarm" class="btn ghost small" type="button">🔔 ATTIVA</button>
+    </section>
+
+    <section id="riderPageRequests" class="rider-page active">
+      <div class="page-title-row"><div><div class="eyebrow">IN ARRIVO</div><h1>Richieste</h1></div><span id="newRequestCount" class="count-badge">0</span></div>
+      <section class="card sync-card"><span id="syncDot" class="sync-dot"></span><div><b id="syncTitle">Connessione richieste</b><small id="syncText">Controllo server…</small></div></section>
+      <section id="remoteRequestsList" class="section"></section>
+      <section class="card section">
+        <div class="section-head"><div><div class="eyebrow">FALLBACK</div><h2>Ordine arrivato su WhatsApp?</h2></div></div>
+        <p class="muted">Il flusso guidato non usa più il parser. Questa funzione resta solo per messaggi ricevuti fuori dal sistema.</p>
+        <button id="openWaImporter" class="btn ghost full" type="button">📲 INCOLLA MESSAGGIO WHATSAPP</button>
+      </section>
+    </section>
+
+    <section id="riderPageDeliveries" class="rider-page">
+      <div class="page-title-row"><div><div class="eyebrow">OPERATIVITÀ</div><h1>Consegne</h1></div><button id="newManualOrder" class="btn primary small" type="button">＋ MANUALE</button></div>
+      <section id="noShiftCard" class="card hidden"><h2>Nessun turno aperto</h2><p class="muted">Apri un turno per iniziare a gestire consegne e incassi.</p><button id="startShiftBtn" class="btn primary full">⚡ INIZIA TURNO</button></section>
+      <div id="shiftWork">
+        <section class="stats-grid">
+          <div class="stat-card"><small>Fondo iniziale</small><b id="statFund">€0</b></div>
+          <div class="stat-card hot"><small>Fondo disponibile</small><b id="statAvailable">€0</b></div>
+          <div class="stat-card"><small>Da sistemare</small><b id="statUnsorted">€0</b></div>
+          <div class="stat-card"><small>Da rendere locali</small><b id="statDue">€0</b></div>
+          <div class="stat-card hot"><small>Guadagno SOS</small><b id="statFees">€0</b></div>
+        </section>
+        <section class="card section"><div class="section-head"><div><div class="eyebrow">TURNO ATTUALE</div><h2 id="shiftName">—</h2></div><button id="closeShiftBtn" class="btn ghost small" type="button">CHIUDI</button></div><p id="shiftMeta" class="muted"></p></section>
+        <section class="card section"><div class="section-head"><h2>Consegne attive</h2><span id="activeCount" class="pill yellow">0</span></div><div id="activeOrders"></div></section>
+        <section class="card section"><h2>Incassi locali</h2><div id="restaurantCash"></div></section>
+      </div>
+    </section>
+
+    <section id="riderPageHistory" class="rider-page">
+      <div class="page-title-row"><div><div class="eyebrow">ARCHIVIO</div><h1>Storico</h1></div><button id="exportHistory" class="btn ghost small" type="button">CSV</button></div>
+      <section class="card"><input id="historySearch" placeholder="Cerca cliente, locale, indirizzo, codice…"></section>
+      <section id="historyList" class="section"></section>
+    </section>
+
+    <section id="riderPageAnalytics" class="rider-page">
+      <div class="page-title-row"><div><div class="eyebrow">NUMERI</div><h1>Analytics</h1></div></div>
+      <div class="period-tabs"><button class="chip active" data-period="today">OGGI</button><button class="chip" data-period="7d">7 GIORNI</button><button class="chip" data-period="30d">30 GIORNI</button><button class="chip" data-period="all">TUTTO</button></div>
+      <section class="stats-grid analytics-grid section">
+        <div class="stat-card hot"><small>Guadagno SOS</small><b id="aRevenue">€0</b></div>
+        <div class="stat-card"><small>Consegne</small><b id="aOrders">0</b></div>
+        <div class="stat-card"><small>Media consegna</small><b id="aAvg">€0</b></div>
+        <div class="stat-card"><small>Valore ordini</small><b id="aOrderValue">€0</b></div>
+      </section>
+      <section class="card section"><h2>Andamento guadagni</h2><div id="dailyChart" class="chart"></div></section>
+      <section class="card section"><h2>Locali migliori</h2><div id="restaurantRank"></div></section>
+    </section>
+
+    <nav class="bottom-nav">
+      <button class="nav-btn active" data-rider-page="requests"><span>🔔</span><small>RICHIESTE</small></button>
+      <button class="nav-btn" data-rider-page="deliveries"><span>⚡</span><small>CONSEGNE</small></button>
+      <button class="nav-btn" data-rider-page="history"><span>📋</span><small>STORICO</small></button>
+      <button class="nav-btn" data-rider-page="analytics"><span>📊</span><small>ANALYTICS</small></button>
+    </nav>
+  </main>
+
+  <div id="modalBackdrop" class="modal-backdrop hidden" role="dialog" aria-modal="true">
+    <div class="modal">
+      <div class="modal-header"><h2 id="modalTitle">—</h2><button id="modalClose" class="icon-btn" type="button">×</button></div>
+      <div id="modalBody"></div>
+      <div id="modalActions" class="modal-actions"></div>
+    </div>
   </div>
-</main>
 
-<main id="page-history" class="page">
-  <section class="card"><div class="title">Storico consegne</div><input id="historySearch" placeholder="Cerca cliente, locale, indirizzo, codice..."><div class="filters" style="margin-top:9px"><button class="chip active" data-hfilter="all">TUTTE</button><button class="chip" data-hfilter="success">✓ CONSEGNATE</button><button class="chip" data-hfilter="problem">⚠ PROBLEMI</button><button class="chip" data-hfilter="cancelled">✕ ANNULLATE</button></div><button id="exportHistory" style="margin-top:9px">ESPORTA TUTTO CSV</button></section>
-  <section id="historyList" class="section"></section>
-</main>
-
-<main id="page-analytics" class="page">
-  <section class="card"><div class="title">Analytics SOS Rider</div><div class="hint">Guadagno SOS separato dal valore degli ordini dei locali.</div><div class="filters" style="margin-top:9px"><button class="chip active" data-period="today">OGGI</button><button class="chip" data-period="yesterday">IERI</button><button class="chip" data-period="7d">7 GIORNI</button><button class="chip" data-period="30d">30 GIORNI</button><button class="chip" data-period="all">TUTTO</button></div></section>
-  <section class="grid analytics-kpis section">
-    <div class="kpi hot"><small>GUADAGNO SOS</small><b id="aRevenue">€0</b></div><div class="kpi"><small>CONSEGNE</small><b id="aOrders">0</b></div><div class="kpi"><small>TEMPO OPERATIVO</small><b id="aTime">0m</b></div><div class="kpi"><small>RESA ORARIA</small><b id="aHourly">€0/h</b></div>
-    <div class="kpi"><small>MEDIA / CONSEGNA</small><b id="aAvgFee">€0</b></div><div class="kpi"><small>TEMPO MEDIO</small><b id="aAvgTime">0m</b></div><div class="kpi"><small>VALORE ORDINI</small><b id="aOrderValue">€0</b></div><div class="kpi"><small>CONTANTI MOVIMENTATI</small><b id="aCash">€0</b></div>
-  </section>
-  <section class="card section"><div class="title">Andamento guadagni</div><div id="dailyChart" class="chart"></div></section>
-  <section class="card section"><div class="title">Fasce orarie</div><div class="hint">Per ora di ritiro.</div><div id="hourChart"></div></section>
-  <section class="card section"><div class="title">Locali migliori</div><div id="restaurantRank"></div></section>
-  <section class="card section"><div class="title">Sintesi</div><div id="analyticsSummary" class="notice green"></div><button id="exportPeriod" style="margin-top:9px">ESPORTA PERIODO CSV</button></section>
-</main>
-
-<main id="page-more" class="page">
-  <section class="card"><div class="title">Turni archiviati</div><div id="shiftsList"></div></section>
-  <section class="card section"><div class="title">Autocomplete indirizzi</div><div class="notice blue">Worker Cloudflare gratuito: completa e verifica sia l’indirizzo del locale sia quello del cliente. Nessuna chiave Google, nessun billing.</div><label style="margin-top:9px">URL Worker<input id="proxyUrl" placeholder="https://...workers.dev"></label><div class="actions" style="margin-top:8px"><button id="saveProxy">SALVA URL</button><button id="testProxy" class="ghost">TEST CONNESSIONE</button></div><div id="proxyStatus" class="hint" style="margin-top:8px">Worker preconfigurato: <b>https://sosrider.sales-3c8.workers.dev</b>. Tariffa = stima tra indirizzi verificati. Google Maps resta solo per navigare quando premi MAPS/NAVIGA.</div></section>
-  <section class="card section"><div class="title">Backup dati</div><div class="toolbar"><button id="exportJson">BACKUP JSON COMPLETO</button><button id="importJson">IMPORTA BACKUP</button><input id="importFile" class="hidden" type="file" accept=".json,application/json"></div></section>
-  <section class="card section"><div class="title">App</div><div class="hint">iPhone: Safari → Condividi → Aggiungi alla schermata Home.</div><button id="installBtn" class="primary hidden" style="margin-top:8px">INSTALLA APP</button></section>
-  <section class="card section"><div class="title">Zona pericolosa</div><button id="wipeData" class="danger">CANCELLA TUTTI I DATI</button></section>
-</main>
-</div>
-
-<nav class="bottom-nav">
-  <button class="navbtn active" data-page="work"><span>⚡</span><span>LAVORO</span></button>
-  <button class="navbtn" data-page="history"><span>📋</span><span>STORICO</span></button>
-  <button class="navbtn" data-page="analytics"><span>📊</span><span>ANALYTICS</span></button>
-  <button class="navbtn" data-page="more"><span>⚙️</span><span>ALTRO</span></button>
-</nav>
-
-<div id="modalBackdrop" class="modal-backdrop hidden"><div class="modal"><h2 id="modalTitle"></h2><div id="modalBody"></div><div id="modalActions" class="modal-actions"></div></div></div>
-
-<script>
-(() => {
-const KEY='sosRiderGestV7',OLDKEY='sosRiderGestV6',DRAFTKEY='sosRiderDraftV7';
-const DEFAULT_PROXY='https://sosrider.sales-3c8.workers.dev';
-const $=id=>document.getElementById(id);
-const money=n=>new Intl.NumberFormat('it-IT',{style:'currency',currency:'EUR'}).format(Number(n)||0);
-const num=v=>{const x=parseFloat(v);return Number.isFinite(x)&&x>=0?x:0};
-const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-const digits=s=>String(s||'').replace(/\D/g,'');
-const fmt=iso=>iso?new Date(iso).toLocaleString('it-IT',{dateStyle:'short',timeStyle:'short'}):'—';
-const mins=(a,b)=>a&&b?Math.max(0,Math.round((new Date(b)-new Date(a))/60000)):0;
-const fmtM=m=>{m=Math.max(0,Math.round(m||0));const h=Math.floor(m/60),r=m%60;return h?`${h}h ${r}m`:`${r}m`};
-const now=()=>new Date().toISOString();
-const uid=p=>p+'-'+Date.now().toString(36)+'-'+Math.random().toString(36).slice(2,7);
-let state={version:7,settings:{proxyUrl:DEFAULT_PROXY,restaurantAddresses:{}},currentShiftId:null,shifts:[],orders:[]};
-let selectedVehicle='ebike',lastQuote=null,cashStacks={};
-let historyFilter='all',analyticsPeriod='today',selectedAddress=null,selectedPickupAddress=null;
-const addressSearchState={pickup:{timer:null,controller:null},delivery:{timer:null,controller:null}};
-
-function save(){localStorage.setItem(KEY,JSON.stringify(state))}
-function migrate(){if(localStorage.getItem(KEY))return;const raw=localStorage.getItem(OLDKEY);if(!raw)return;try{const x=JSON.parse(raw);if(x&&Array.isArray(x.orders)&&Array.isArray(x.shifts)){x.version=7;x.settings=x.settings||{};x.settings.proxyUrl=x.settings.proxyUrl||DEFAULT_PROXY;x.settings.restaurantAddresses=x.settings.restaurantAddresses||{};localStorage.setItem(KEY,JSON.stringify(x))}}catch(e){}}
-function load(){migrate();try{const raw=localStorage.getItem(KEY);if(raw){const x=JSON.parse(raw);if(x&&Array.isArray(x.orders)&&Array.isArray(x.shifts))state={version:7,settings:{proxyUrl:x.settings?.proxyUrl||DEFAULT_PROXY,restaurantAddresses:x.settings?.restaurantAddresses||{}},currentShiftId:x.currentShiftId||null,shifts:x.shifts,orders:x.orders}}}catch(e){}state.settings.proxyUrl=state.settings.proxyUrl||DEFAULT_PROXY;$('proxyUrl').value=state.settings.proxyUrl;renderAll();restoreDraft()}
-function currentShift(){return state.shifts.find(s=>s.id===state.currentShiftId)||null}
-function prefix(name){const generic=new Set(['pizzeria','pizza','ristorante','sushi','bar','trattoria','osteria','locale','kebab','gastronomia']);const w=String(name).normalize('NFD').replace(/[\u0300-\u036f]/g,'').toUpperCase().replace(/[^A-Z0-9 ]/g,' ').split(/\s+/).filter(Boolean);const m=w.filter(x=>!generic.has(x.toLowerCase()));return((m[0]||w[0]||'SOS').slice(0,3)).padEnd(3,'X')}
-function nextCode(r){return prefix(r)+'-'+String(state.orders.filter(o=>o.restaurant===r).length+1).padStart(2,'0')}
-function paymentLabel(p){return p==='cash'?'Contanti':p==='paid'?'Già pagato':'POS locale'}
-function statusLabel(o){if(o.outcome==='cancelled')return'ANNULLATO';if(o.outcome==='problem')return o.status==='delivered'?'CONSEGNATO / PROBLEMA':'PROBLEMA';return o.status==='to_pickup'?'DA RITIRARE':o.status==='picked'?'IN CONSEGNA':o.status==='arrived'?'ARRIVATO':'CONSEGNATO'}
-function badge(o){if(o.outcome==='cancelled')return'<span class="badge red">ANNULLATO</span>';if(o.outcome==='problem')return'<span class="badge yellow">PROBLEMA</span>';if(o.status==='delivered')return'<span class="badge green">CONSEGNATO</span>';if(o.status==='picked')return'<span class="badge blue">IN CONSEGNA</span>';return'<span class="badge yellow">'+statusLabel(o)+'</span>'}
-function mapsPoint(o){return typeof o==='string'?o:(o?.lat!=null&&o?.lon!=null?o.lat+','+o.lon:o?.address||'')}
-function mapsTravelMode(v){return v==='ebike'?'bicycling':'driving'}
-function mapsPreviewUrl(origin,destination,vehicle){return'https://www.google.com/maps/dir/?api=1&origin='+encodeURIComponent(mapsPoint(origin))+'&destination='+encodeURIComponent(mapsPoint(destination))+'&travelmode='+encodeURIComponent(mapsTravelMode(vehicle))}
-function mapsNavigateUrl(destination,vehicle){return'https://www.google.com/maps/dir/?api=1&destination='+encodeURIComponent(mapsPoint(destination))+'&travelmode='+encodeURIComponent(mapsTravelMode(vehicle))+'&dir_action=navigate'}
-function callUrl(p){return'tel:'+digits(p)}function waUrl(p){let d=digits(p);if(d&&!d.startsWith('39'))d='39'+d;return'https://wa.me/'+d}
-
-function modal(title,body,actions){$('modalTitle').textContent=title;$('modalBody').innerHTML=body;$('modalActions').innerHTML='';actions.forEach(a=>{const b=document.createElement('button');b.className=a.cls||'';b.textContent=a.label;b.onclick=()=>{if(a.close!==false)$('modalBackdrop').classList.add('hidden');a.fn?.()};$('modalActions').appendChild(b)});$('modalBackdrop').classList.remove('hidden')}
-$('modalBackdrop').addEventListener('click',e=>{if(e.target===$('modalBackdrop'))$('modalBackdrop').classList.add('hidden')})
-
-function openShift(){modal('Inizia nuovo turno','<label>Nome turno<input id="mShiftName" value="'+new Date().toLocaleDateString('it-IT',{weekday:'long',day:'2-digit',month:'2-digit'})+' sera"></label><label style="margin-top:8px">Fondo resto<input id="mFund" type="number" value="100"></label>',[{label:'ANNULLA'},{label:'INIZIA',cls:'primary',close:false,fn:()=>{const s={id:uid('SHIFT'),name:$('mShiftName').value.trim()||'Turno',startAt:now(),endAt:null,fundStart:num($('mFund').value),status:'open'};state.shifts.push(s);state.currentShiftId=s.id;save();$('modalBackdrop').classList.add('hidden');renderAll()}}])}
-function cashTotals(sid){const arr=state.orders.filter(o=>o.shiftId===sid&&o.status==='delivered'&&o.payment==='cash'&&o.outcome!=='cancelled');const uns=arr.filter(o=>!o.cashSorted),unsettled=arr.filter(o=>!o.restaurantSettled);return{change:uns.reduce((a,o)=>a+num(o.change),0),unsorted:uns.reduce((a,o)=>a+num(o.received),0),due:unsettled.reduce((a,o)=>a+num(o.total),0)}}
-function shiftStats(s){const arr=state.orders.filter(o=>o.shiftId===s.id&&o.status==='delivered'&&o.outcome!=='cancelled');return{orders:arr.length,revenue:arr.reduce((a,o)=>a+num(o.fee),0),mins:arr.reduce((a,o)=>a+mins(o.pickedAt,o.deliveredAt),0),value:arr.reduce((a,o)=>a+num(o.total),0)}}
-
-
-function normLabel(s){return String(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().trim()}
-function parseMoneyText(s){const vals=[...String(s||'').matchAll(/(\d{1,4}(?:[.,]\d{1,2})?)\s*(?:€|euro|eur)?/gi)].map(m=>Number(m[1].replace(',','.'))).filter(Number.isFinite);return vals.length?vals[vals.length-1]:null}
-function detectVehicle(s){const t=normLabel(s);if(/\b(express|moto|rapida|rapido|urgente|urgenza|veloce|prioritaria|prioritario)\b/.test(t))return'moto';if(/\b(cargo|auto|macchina|carico|voluminos)\w*\b/.test(t))return'auto';if(/\b(standard|economy|e[- ]?bike|ebike|bici|bicicletta|normale)\b/.test(t))return'ebike';return null}
-function detectPayment(s){const t=normLabel(s);if(/\b(contant|cash|da incassare|incassare|alla consegna)\w*\b/.test(t))return'cash';if(/\b(pos|carta|bancomat)\b/.test(t))return'pos';if(/\b(gia pagat|pagato|prepagat|saldat)\w*\b/.test(t))return'paid';return null}
-function cleanPhone(s){const d=String(s||'').replace(/[^\d+]/g,'');const n=d.replace(/^\+?39/,'');return /^3\d{8,9}$/.test(n)?n:''}
-function looksLikeAddress(s){const t=normLabel(s);return /\b(via|viale|piazza|corso|strada|vicolo|largo|localita|frazione|ss|sp)\b/.test(t)&&/\d/.test(t)}
-function cleanCapturedText(s){return String(s||'').replace(/^[\s,:;=\-–—]+/,'').replace(/[\s,;:.\-–—]+$/,'').trim()}
-function cleanPersonName(s){let v=cleanCapturedText(s);v=v.replace(/\s+(?:consegna|indirizzo|destinazione|telefono|tel|cellulare|numero|totale|importo|pagamento|servizio|tipo|note|citofono)\b.*$/i,'').trim();v=v.replace(/\s{2,}/g,' ');return v.split(/\s+/).slice(0,4).join(' ')}
-function extractCustomer(text,lines,used){
-  const patterns=[
-    /\b(?:il\s+)?cliente\s*(?::|=|-)?\s*(?:(?:è|e'|e\s|si\s+chiama)\s*)?([A-Za-zÀ-ÖØ-öø-ÿ'’-]+(?:\s+[A-Za-zÀ-ÖØ-öø-ÿ'’-]+){0,3})(?=\s*[,;.\n]|\s+(?:consegna|indirizzo|destinazione|tel|telefono|numero|totale|sono|pagamento|servizio|citofono|note)\b|$)/i,
-    /\bdestinatario\s*(?::|=|-)?\s*([A-Za-zÀ-ÖØ-öø-ÿ'’-]+(?:\s+[A-Za-zÀ-ÖØ-öø-ÿ'’-]+){0,3})(?=\s*[,;.\n]|$)/i,
-    /\bconsegna\s+per\s+([A-Za-zÀ-ÖØ-öø-ÿ'’-]+(?:\s+[A-Za-zÀ-ÖØ-öø-ÿ'’-]+){0,3})(?=\s*[,;.\n]|$)/i,
-    /\b(?:nome(?:\s+cliente)?)\s*(?::|=|-)\s*([A-Za-zÀ-ÖØ-öø-ÿ'’-]+(?:\s+[A-Za-zÀ-ÖØ-öø-ÿ'’-]+){0,3})/i,
-    /\bper\s+([A-Za-zÀ-ÖØ-öø-ÿ'’-]+(?:\s+[A-Za-zÀ-ÖØ-öø-ÿ'’-]+){0,2})\s*(?=,|;|\s+-\s+|\s+\b(?:via|viale|piazza|corso|strada|vicolo|largo|indirizzo|destinazione)\b)/i
-  ];
-  for(const re of patterns){const m=text.match(re);if(m){const v=cleanPersonName(m[1]);if(v&&v.length>=2)return v}}
-  const idx=lines.findIndex((l,i)=>!used.has(i)&&l.split(/\s+/).length<=4&&!/\d/.test(l)&&!detectVehicle(l)&&!detectPayment(l)&&!/\b(ciao|salve|buonasera|buongiorno|grazie|ordine|consegna)\b/i.test(l));
-  if(idx>=0){used.add(idx);return cleanPersonName(lines[idx])}
-  return'';
-}
-function extractAddress(text,lines,used){
-  const explicit=text.match(/\b(?:indirizzo(?:\s+(?:cliente|consegna))?|destinazione|localit[aà]\s+cliente)\s*(?::|=|-)\s*([^\n]+)/i);
-  if(explicit){let v=explicit[1];v=v.replace(/\s+(?:tel(?:efono)?|cell(?:ulare)?|numero(?:\s+cliente)?|totale|importo|pagamento|servizio|tipo|note|citofono)\b.*$/i,'');v=cleanCapturedText(v);if(v)return v}
-  const street=/\b(?:via|viale|piazza|corso|strada|vicolo|largo|localit[aà]|frazione)\b/i.exec(text);
-  if(street){let v=text.slice(street.index).split(/\n/)[0];v=v.replace(/\s*[-–—,]\s*(?=(?:\+?39[ .-]*)?3(?:[ .-]*\d){8,9})[\s\S]*$/i,'');v=v.replace(/\s+(?:tel(?:efono)?|cell(?:ulare)?|numero\s+cliente|totale|importo|pagamento|servizio|tipo|direi|note|citofono)\b.*$/i,'');v=v.replace(/\s*[-–—,]\s*\d{1,4}(?:[.,]\d{1,2})?\s*(?:€|euro|eur|contanti|cash)\b.*$/i,'');v=v.replace(/\s+(?:sono|da\s+incassare)\s+\d.*$/i,'');v=cleanCapturedText(v);if(v)return v}
-  const idx=lines.findIndex((l,i)=>!used.has(i)&&looksLikeAddress(l));if(idx>=0){used.add(idx);return cleanCapturedText(lines[idx])}
-  return'';
-}
-function extractTotal(text,lines){
-  const patterns=[
-    /\b(?:totale(?:\s+ordine)?|importo(?:\s+ordine)?|valore\s+ordine|sono|da\s+incassare|incasso)\s*(?::|=|-)?\s*(?:€\s*)?(\d{1,4}(?:[.,]\d{1,2})?)\s*(?:€|euro|eur)?\b/i,
-    /\b(\d{1,4}(?:[.,]\d{1,2})?)\s*(?:€|euro|eur)\b/i,
-    /\b(\d{1,4}(?:[.,]\d{1,2})?)\s+(?=contanti\b|cash\b|pagat[oa]\b|pos\b|carta\b|bancomat\b)/i
-  ];
-  for(const re of patterns){const m=text.match(re);if(m){const n=Number(m[1].replace(',','.'));if(Number.isFinite(n))return n}}
-  const cand=lines.find(l=>/(totale|importo|ordine|incass|€|euro)/i.test(l)&&parseMoneyText(l)!=null);return cand?parseMoneyText(cand):null;
-}
-function extractRestaurant(text,lines,used){
-  const explicit=text.match(/\b(?:locale|attivit[aà]|negozio)\s*(?::|=|-)\s*([^\n,;.]+)/i);if(explicit)return cleanCapturedText(explicit[1]);
-  const named=text.match(/(?:^|\n)\s*((?:pizzeria|ristorante|sushi|kebab|gastronomia|bar|rosticceria|pasticceria)\s+[A-Za-z0-9À-ÖØ-öø-ÿ'’ ._-]+?)(?=\s+per\b|[,;\n]|$)/i);if(named)return cleanCapturedText(named[1]);
-  const from=text.match(/\b(?:ritiro|ordine)\s+(?:da|presso)\s+((?:pizzeria|ristorante|sushi|kebab|gastronomia|bar|rosticceria|pasticceria)\s+[A-Za-z0-9À-ÖØ-öø-ÿ'’ ._-]+?)(?=\s+per\b|[,;\n]|$)/i);if(from)return cleanCapturedText(from[1]);
-  const shorthand=text.match(/(?:^|\n)\s*([^,\n]{2,40}),\s*per\s+[A-Za-zÀ-ÖØ-öø-ÿ'’-]+/i);if(shorthand&&!/\b(ciao|salve|buonasera|buongiorno|allora)\b/i.test(shorthand[1]))return cleanCapturedText(shorthand[1]);
-  const idx=lines.findIndex((l,i)=>!used.has(i)&&/\b(pizzeria|ristorante|sushi|kebab|gastronomia|bar|rosticceria|pasticceria)\b/i.test(l));if(idx>=0){used.add(idx);return cleanCapturedText(lines[idx].replace(/\s+per\s+.*$/i,''))}
-  return'';
-}
-function extractNotes(text){
-  const lines=String(text||'').split(/\n/).map(x=>x.trim()).filter(Boolean),out=[];
-  for(let i=0;i<lines.length;i++){
-    const l=lines[i];const m=l.match(/\b(?:note|indicazioni|citofono)\s*(?::|=|-)?\s*(.*)$/i);
-    if(m){const prefix=/citofono/i.test(l)?'Citofono ':'';let v=(prefix+m[1]).trim();if(i+1<lines.length&&!/\b(?:cliente|telefono|tel|indirizzo|totale|pagamento|servizio|tipo|locale|pizzeria|ristorante)\b/i.test(lines[i+1])&&!/\d{8,}/.test(lines[i+1]))v+=' · '+lines[i+1];out.push(v)}
-  }
-  return [...new Set(out)].join(' · ');
-}
-function parseWhatsAppOrder(raw){
-  const text=String(raw||'').replace(/\r/g,'').trim();if(!text)return null;
-  const lines=text.split('\n').map(x=>x.replace(/^[•*\-–—\s]+/,'').trim()).filter(Boolean);
-  const d={restaurant:'',customer:'',phone:'',address:'',service:'',total:null,payment:'',notes:'',found:[]};
-  const used=new Set();
-  const rules=[
-    ['restaurant',/^(?:locale|pizzeria|ristorante|attivita|attività|negozio)\s*[:=-]\s*(.+)$/i],
-    ['customer',/^(?:cliente|nome(?: cliente)?|destinatario)\s*[:=-]\s*(.+)$/i],
-    ['phone',/^(?:tel(?:efono)?|cell(?:ulare)?|numero(?: cliente)?|telefono cliente)\s*[:=-]\s*(.+)$/i],
-    ['address',/^(?:indirizzo(?: cliente| consegna)?|destinazione|consegna a|localita(?: cliente)?|località(?: cliente)?)\s*[:=-]\s*(.+)$/i],
-    ['service',/^(?:servizio|tipo(?: di consegna)?|mezzo|consegna)\s*[:=-]\s*(.+)$/i],
-    ['total',/^(?:totale(?: ordine)?|importo(?: ordine)?|valore ordine)\s*[:=-]\s*(.+)$/i],
-    ['payment',/^(?:pagamento|metodo(?: pagamento)?)\s*[:=-]\s*(.+)$/i],
-    ['notes',/^(?:note|indicazioni|citofono)\s*[:=-]\s*(.+)$/i]
-  ];
-  lines.forEach((line,i)=>{for(const [key,re] of rules){const m=line.match(re);if(!m)continue;used.add(i);let v=m[1].trim();if(key==='phone')d.phone=cleanPhone(v)||v.replace(/\D/g,'');else if(key==='service')d.service=detectVehicle(v)||v;else if(key==='total')d.total=parseMoneyText(v);else if(key==='payment')d.payment=detectPayment(v)||v;else d[key]=v;break}});
-  if(!d.phone){const m=text.match(/(?:\+?39[ .-]*)?(3(?:[ .-]*\d){8,9})/);if(m)d.phone=cleanPhone(m[0])}
-  if(!d.service)d.service=detectVehicle(text)||'';
-  if(!d.payment)d.payment=detectPayment(text)||'';
-  if(d.total==null)d.total=extractTotal(text,lines);
-  if(!d.address)d.address=extractAddress(text,lines,used);
-  if(!d.restaurant)d.restaurant=extractRestaurant(text,lines,used);
-  if(!d.customer)d.customer=extractCustomer(text,lines,used);
-  if(!d.notes)d.notes=extractNotes(text);
-  if(d.notes)d.notes=cleanCapturedText(d.notes);
-  return d;
-}
-function findSavedRestaurant(name){const all=state.settings.restaurantAddresses||{},target=normLabel(name);const k=Object.keys(all).find(x=>normLabel(x)===target);return k?{name:k,data:all[k]}:null}
-function setVehicleFromParser(v){if(!['ebike','moto','auto'].includes(v))return;selectedVehicle=v;document.querySelectorAll('[data-vehicle]').forEach(b=>b.classList.toggle('active',b.dataset.vehicle===v));lastQuote=null;updateQuoteUI(null)}
-function renderParsedSummary(d,warnings=[]){const rows=[];if(d.restaurant)rows.push(['Locale',d.restaurant]);if(d.customer)rows.push(['Cliente',d.customer]);if(d.phone)rows.push(['Telefono',d.phone]);if(d.address)rows.push(['Indirizzo',d.address]);if(['ebike','moto','auto'].includes(d.service))rows.push(['Servizio',vehicleLabel(d.service)]);if(d.total!=null)rows.push(['Totale',money(d.total)]);if(['cash','paid','pos'].includes(d.payment))rows.push(['Pagamento',paymentLabel(d.payment)]);const box=$('waParseResult');box.className='wa-result'+(warnings.length?' warn':'');box.innerHTML='<b>'+(warnings.length?'⚠ Compilazione eseguita · controlla i punti sotto':'✓ Campi riconosciuti e compilati')+'</b>'+(rows.length?'<div class="rows">'+rows.map(r=>'<span>'+esc(r[0])+'</span><span>'+esc(r[1])+'</span>').join('')+'</div>':'')+(warnings.length?'<div style="margin-top:7px">'+warnings.map(w=>'• '+esc(w)).join('<br>')+'</div>':'')+'<div style="margin-top:7px">Ora seleziona gli indirizzi dalla tendina per verificarli: <b>gli altri dati restano compilati</b>. Poi premi <b>CALCOLA TARIFFA</b>.</div>';box.classList.remove('hidden')}
-function applyWhatsAppOrder(d){
-  const warnings=[];
-  if(d.restaurant){if(!$('restaurant').value.trim())$('restaurant').value=d.restaurant;else if(normLabel($('restaurant').value)!==normLabel(d.restaurant))warnings.push('Il locale era già compilato: non l’ho sovrascritto.')}
-  const effectiveRestaurant=$('restaurant').value.trim();
-  const saved=effectiveRestaurant?findSavedRestaurant(effectiveRestaurant):null;
-  if(saved&&saved.data){const x=saved.data;if(!$('pickupAddress').value.trim())$('pickupAddress').value=typeof x==='string'?x:(x.label||'');if(typeof x==='object'&&x.lat!=null&&x.lon!=null){selectedPickupAddress={label:x.label||$('pickupAddress').value,lat:x.lat,lon:x.lon};$('pickupAddress').value=selectedPickupAddress.label;$('pickupState').textContent='✓ Indirizzo locale salvato e verificato'}}
-  if(d.customer)$('customer').value=d.customer;if(d.phone)$('phone').value=d.phone;
-  if(d.address){$('address').value=d.address;selectedAddress=null;$('addressState').textContent='Cerco destinazione cliente…';$('address').dispatchEvent(new Event('input',{bubbles:true}))}
-  if(d.service){const v=['ebike','moto','auto'].includes(d.service)?d.service:detectVehicle(d.service);if(v)setVehicleFromParser(v);else warnings.push('Tipo di consegna non riconosciuto.')}else warnings.push('Tipo di consegna non trovato.');
-  if(d.total!=null)$('orderTotal').value=Number(d.total).toFixed(2);else warnings.push('Totale ordine non trovato.');
-  if(d.payment){const p=['cash','paid','pos'].includes(d.payment)?d.payment:detectPayment(d.payment);if(p)$('payment').value=p}
-  if(d.notes){const old=$('notes').value.trim();$('notes').value=old?(old+' · '+d.notes):d.notes}
-  if(!d.customer)warnings.push('Nome cliente non trovato.');if(!d.address)warnings.push('Indirizzo cliente non trovato.');if(!d.phone)warnings.push('Telefono cliente non trovato (puoi comunque proseguire).');
-  saveDraft();renderParsedSummary(d,warnings);
-  if(effectiveRestaurant&&!saved&&!$('pickupAddress').value.trim())warnings.push('Inserisci una volta l’indirizzo del locale: poi verrà ricordato.');
-}
-
-function vehicleLabel(v){return v==='moto'?'Moto Express':v==='auto'?'Auto Cargo':'Economy E-Bike'}
-function vehicleIcon(v){return v==='moto'?'🏍️':v==='auto'?'🚗':'🚲'}
-function isLateNow(){const d=new Date(),m=d.getHours()*60+d.getMinutes();return m>=22*60+30}
-function roundHalf(n){return Math.round(n*2)/2}
-function tariffFor(km,vehicle,late=isLateNow()){km=Math.max(0,Number(km)||0);let base;if(vehicle==='moto'){base=km<=2?7:km<=4?7+(km-2)*.5:8+(km-4)*1}else if(vehicle==='auto'){base=km<=2?6.5:km<=4?6.5+(km-2)*.75:8+(km-4)*1.25}else{base=km<=2?4.5:km<=4?4.5+(km-2)*.75:6+(km-4)*1}base=roundHalf(base);const lateFee=late?2:0;return{base,lateFee,total:roundHalf(base+lateFee)}}
-function haversineKm(a,b){const R=6371,toRad=x=>x*Math.PI/180,lat1=toRad(Number(a.lat)),lat2=toRad(Number(b.lat)),dLat=lat2-lat1,dLon=toRad(Number(b.lon)-Number(a.lon));const h=Math.sin(dLat/2)**2+Math.cos(lat1)*Math.cos(lat2)*Math.sin(dLon/2)**2;return 2*R*Math.asin(Math.sqrt(h))}
-function estimateRoute(vehicle){if(!selectedPickupAddress?.lat||!selectedPickupAddress?.lon)throw new Error('Seleziona l’indirizzo del locale dai suggerimenti.');if(!selectedAddress?.lat||!selectedAddress?.lon)throw new Error('Seleziona la destinazione dai suggerimenti.');const straight=haversineKm(selectedPickupAddress,selectedAddress);const factor=vehicle==='ebike'?1.20:1.24;const km=Math.max(.2,straight*factor);const speed=vehicle==='ebike'?18:vehicle==='moto'?30:25;const durationMin=Math.max(2,Math.round(km/speed*60+3));return{distanceKm:km,durationMin}}
-function updateQuoteUI(q){lastQuote=q;if(!q){$('quoteCard').classList.add('hidden');return}$('quoteCard').classList.remove('hidden');$('quoteLabel').textContent=vehicleLabel(q.vehicle);$('quotePrice').textContent=money(q.total);$('quoteDistance').textContent=q.distanceKm.toFixed(1)+' km';$('quoteDuration').textContent=q.durationMin+' min';$('quoteLate').textContent=q.lateFee?'Dopo 22:30 · +€2':'Standard';$('fee').value=q.total.toFixed(2);}
-function quoteText(){if(!lastQuote)return'';const r=$('restaurant').value.trim(),p=$('pickupAddress').value.trim(),c=$('customer').value.trim(),a=$('address').value.trim();return`SOS RIDER — PREVENTIVO CONSEGNA
-
-Locale: ${r||'—'}
-Ritiro: ${p||'—'}
-Cliente: ${c||'—'}
-Destinazione: ${a||'—'}
-Mezzo: ${vehicleLabel(lastQuote.vehicle)}
-Distanza: ${lastQuote.distanceKm.toFixed(1)} km
-Tempo stimato: ${lastQuote.durationMin} min
-Tariffa base: ${money(lastQuote.base)}${lastQuote.lateFee?`
-Supplemento dopo le 22:30: ${money(lastQuote.lateFee)}`:''}
-Totale confermato: ${money(lastQuote.total)}
-
-Distanza e tempi indicativi, stimati dagli indirizzi verificati.
-Prezzo sempre confermato prima della partenza.
-
-SOS Rider Carpi-Soliera · Il tuo rider di emergenza
-WhatsApp 349 515 3092`}
-function downloadQuoteImage(){if(!lastQuote)return;const c=document.createElement('canvas'),w=1080,h=1350;c.width=w;c.height=h;const x=c.getContext('2d');x.fillStyle='#070707';x.fillRect(0,0,w,h);x.fillStyle='#ffd000';x.fillRect(0,0,22,h);x.fillStyle='#151515';x.fillRect(70,70,940,1210);x.strokeStyle='#ffd000';x.lineWidth=4;x.strokeRect(70,70,940,1210);const logo=new Image();logo.onload=()=>{x.drawImage(logo,100,100,180,180);x.fillStyle='#fff';x.font='bold 52px Arial';x.fillText('PREVENTIVO CONSEGNA',315,155);x.fillStyle='#ffd000';x.font='bold 34px Arial';x.fillText('SOS RIDER CARPI-SOLIERA',315,210);x.fillStyle='#aaa';x.font='26px Arial';x.fillText('Il tuo rider di emergenza',315,252);x.strokeStyle='#ffd000';x.lineWidth=6;x.beginPath();x.moveTo(155,315);x.lineTo(925,315);x.stroke();x.fillStyle='#ffd000';x.beginPath();x.arc(155,315,15,0,Math.PI*2);x.fill();x.beginPath();x.arc(925,315,15,0,Math.PI*2);x.fill();x.fillStyle='#aaa';x.font='bold 20px Arial';x.fillText('RITIRO',110,345);x.fillText('CLIENTE',850,345);let y=390;const line=(label,val,big=false)=>{x.fillStyle='#aaa';x.font='24px Arial';x.fillText(label,110,y);x.fillStyle=big?'#ffd000':'#fff';x.font=(big?'bold 54px':'bold 31px')+' Arial';x.fillText(val,110,y+45);y+=big?96:78};line('LOCALE',$('restaurant').value.trim()||'—');line('RITIRO',$('pickupAddress').value.trim()||'—');line('DESTINAZIONE',$('address').value.trim()||'—');line('MEZZO',vehicleLabel(lastQuote.vehicle));line('STIMA LOCALE → CLIENTE',lastQuote.distanceKm.toFixed(1)+' km · circa '+lastQuote.durationMin+' min');line('TOTALE CONFERMATO',money(lastQuote.total),true);x.fillStyle='#211c00';x.fillRect(100,y,880,135);x.strokeStyle='#665700';x.strokeRect(100,y,880,135);x.fillStyle='#ffd000';x.font='bold 25px Arial';x.fillText('DISTANZA E TEMPI INDICATIVI · INDIRIZZI VERIFICATI',125,y+48);x.fillStyle='#fff';x.font='bold 26px Arial';x.fillText('PREZZO CONFERMATO PRIMA DELLA PARTENZA',125,y+92);x.fillStyle='#aaa';x.font='24px Arial';x.fillText('WhatsApp Marcello · 349 515 3092',110,1235);const a=document.createElement('a');a.href=c.toDataURL('image/png');a.download='SOS-Rider-preventivo.png';a.click()};logo.src=document.querySelector('.brand img').src}
-function saveDraft(){const ids=['restaurant','pickupAddress','customer','phone','address','orderTotal','fee','payment','notes'];const d={vehicle:selectedVehicle,pickupGeo:selectedPickupAddress,deliveryGeo:selectedAddress};ids.forEach(id=>{const el=$(id);if(el)d[id]=el.value});localStorage.setItem(DRAFTKEY,JSON.stringify(d));$('draftState')?.classList.remove('hidden')}
-function restoreDraft(){try{const d=JSON.parse(localStorage.getItem(DRAFTKEY)||'null');if(!d)return;selectedPickupAddress=d.pickupGeo||null;selectedAddress=d.deliveryGeo||null;Object.entries(d).forEach(([k,v])=>{if(k==='vehicle'){selectedVehicle=v||'ebike';return}if(k==='pickupGeo'||k==='deliveryGeo')return;const el=$(k);if(el)el.value=v});document.querySelectorAll('[data-vehicle]').forEach(b=>b.classList.toggle('active',b.dataset.vehicle===selectedVehicle));if(selectedPickupAddress)$('pickupState').textContent='✓ Indirizzo locale verificato';if(selectedAddress)$('addressState').textContent='✓ Indirizzo verificato';$('draftState')?.classList.remove('hidden')}catch(e){}}
-function clearDraft(){localStorage.removeItem(DRAFTKEY);$('draftState')?.classList.add('hidden')}
-function renderWork(){const s=currentShift(),has=!!s;$('noShift').classList.toggle('hidden',has);$('workContent').classList.toggle('hidden',!has);if(!has)return;const arr=state.orders.filter(o=>o.shiftId===s.id),cash=cashTotals(s.id),fees=arr.filter(o=>o.status==='delivered'&&o.outcome!=='cancelled').reduce((a,o)=>a+num(o.fee),0);$('statFund').textContent=money(s.fundStart);$('statAvailable').textContent=money(Math.max(0,s.fundStart-cash.change));$('statUnsorted').textContent=money(cash.unsorted);$('statDue').textContent=money(cash.due);$('statFees').textContent=money(fees);$('shiftInfo').innerHTML='<b>'+esc(s.name)+'</b><br>Iniziato '+fmt(s.startAt)+' · '+arr.length+' ordini';const rs=[...new Set([...state.orders.map(o=>o.restaurant),...Object.keys(state.settings.restaurantAddresses||{})])].sort();$('restaurantList').innerHTML=rs.map(r=>'<option value="'+esc(r)+'"></option>').join('');const active=arr.filter(o=>o.status!=='delivered'&&o.outcome!=='cancelled');$('activeOrders').innerHTML=active.length?active.slice().reverse().map(orderCard).join(''):'<div class="meta">Nessuna consegna attiva.</div>';$('restaurants').innerHTML=restaurantSummary(s.id)}
-
-function route(o){const goingPickup=o.status==='to_pickup';const dest=goingPickup?{address:o.pickupAddress,lat:o.pickupLat,lon:o.pickupLon}:{address:o.address,lat:o.lat,lon:o.lon};const verified=goingPickup?o.pickupVerified:o.addressVerified;const title=goingPickup?'RITIRO PRESSO IL LOCALE':'DESTINAZIONE CLIENTE';const btn=goingPickup?'🧭 VAI AL RITIRO':'🧭 VAI AL CLIENTE';const quoteInfo=(!goingPickup&&(o.distanceKm||o.durationMin))?'<div class="meta" style="margin-top:4px">Preventivo locale → cliente · '+vehicleIcon(o.vehicle)+' '+vehicleLabel(o.vehicle)+' · '+(o.distanceKm?o.distanceKm.toFixed(1)+' km':'')+(o.durationMin?' · '+o.durationMin+' min':'')+'</div>':'';const next=goingPickup?'<div class="meta" style="margin-top:6px">Poi consegna a: '+esc(o.address)+'</div>':'';return'<div class="route"><b>'+title+'</b> '+(verified?'<span class="badge green">VERIFICATO</span>':'<span class="badge yellow">MANUALE</span>')+'<br><span class="meta">'+esc(dest.address)+'</span>'+next+quoteInfo+'<div class="actions"><a class="action primary" target="_blank" href="'+mapsNavigateUrl(dest,o.vehicle)+'">'+btn+'</a>'+(o.phone?'<a class="action bluebtn" href="'+callUrl(o.phone)+'">📞 CHIAMA CLIENTE</a><a class="action ghost" target="_blank" href="'+waUrl(o.phone)+'">💬 WA CLIENTE</a>':'')+'</div><div class="route-warning">MAPS operativo usa la tua posizione attuale. Il preventivo tariffario resta calcolato dal locale al cliente.</div></div>'}
-function cashPanel(o){const rec=num(o.received),ch=rec>=o.total?rec-o.total:0,stack=cashStacks[o.id]||[];const comp=stack.length?stack.reduce((m,v)=>(m[v]=(m[v]||0)+1,m),{}):{};const compText=Object.entries(comp).map(([v,n])=>'€'+v+' × '+n).join('  ·  ');return'<div class="cashbox"><div class="notice"><b>Sei alla porta.</b> Tocca le banconote che ricevi: il totale si somma automaticamente.</div><div class="cash-total"><small>CLIENTE TI DÀ</small><b>'+money(rec)+'</b><div class="cash-stack">'+(compText||'Nessun taglio inserito')+'</div></div><div class="changebox" style="width:100%;margin-top:8px"><small>RESTO</small><b>'+money(ch)+'</b></div><div class="quickcash"><button class="exact" data-action="quickexact" data-id="'+o.id+'">PRECISO</button><button data-action="quickadd" data-id="'+o.id+'" data-value="5">+ €5</button><button data-action="quickadd" data-id="'+o.id+'" data-value="10">+ €10</button><button data-action="quickadd" data-id="'+o.id+'" data-value="20">+ €20</button><button data-action="quickadd" data-id="'+o.id+'" data-value="50">+ €50</button><button data-action="quickadd" data-id="'+o.id+'" data-value="100">+ €100</button><button class="utility" data-action="quickundo" data-id="'+o.id+'">↶ ULTIMA</button><button class="utility" data-action="quickreset" data-id="'+o.id+'">AZZERA</button><button class="success" data-action="deliver" data-id="'+o.id+'">✓ CONSEGNATO</button></div><label style="margin-top:8px">Oppure modifica manualmente<input data-received="'+o.id+'" type="number" inputmode="decimal" value="'+(rec||'')+'" placeholder="Importo ricevuto"></label></div>'}
-function orderCard(o){let flow='';if(o.status==='to_pickup')flow='<div class="actions" style="margin-top:8px"><button class="primary" data-action="picked" data-id="'+o.id+'">✓ RITIRATO</button><button data-action="problem" data-id="'+o.id+'">⚠ PROBLEMA</button><button class="danger" data-action="cancel" data-id="'+o.id+'">ANNULLA</button></div>';else if(o.status==='picked')flow='<div class="actions" style="margin-top:8px"><button class="primary" data-action="arrived" data-id="'+o.id+'">📍 SONO ARRIVATO</button><button data-action="problem" data-id="'+o.id+'">⚠ PROBLEMA</button></div>';else if(o.status==='arrived')flow=o.payment==='cash'?cashPanel(o):'<div class="actions" style="margin-top:8px"><button class="success" data-action="deliver" data-id="'+o.id+'">✓ CONSEGNATO</button></div>';return'<article class="order active"><div class="order-head"><div><div class="order-code">'+esc(o.code)+' · '+esc(o.restaurant)+'</div><div class="meta">'+statusLabel(o)+' · '+fmt(o.createdAt)+'</div></div>'+badge(o)+'</div><div class="order-body"><b>'+esc(o.customer)+'</b>'+(o.phone?' · '+esc(o.phone):'')+'<br>Ordine <b>'+money(o.total)+'</b> · '+paymentLabel(o.payment)+' · Compenso SOS <b>'+money(o.fee)+'</b>'+(o.notes?'<br><span class="meta">Note: '+esc(o.notes)+'</span>':'')+'</div>'+route(o)+flow+'</article>'}
-
-function restaurantSummary(sid){
-  const names=[...new Set(state.orders.filter(o=>o.shiftId===sid).map(o=>o.restaurant))].sort();
-  if(!names.length)return'<div class="meta">Nessun incasso da gestire.</div>';
-  return names.map(name=>{
-    const done=state.orders.filter(o=>o.shiftId===sid&&o.restaurant===name&&o.status==='delivered'&&o.payment==='cash'&&o.outcome!=='cancelled');
-    if(!done.length)return'';
-    const uns=done.filter(o=>!o.cashSorted),unsettled=done.filter(o=>!o.restaurantSettled),sorted=done.filter(o=>o.cashSorted&&!o.restaurantSettled);
-    const due=unsettled.reduce((a,o)=>a+o.total,0),pocket=sorted.reduce((a,o)=>a+o.total,0),raw=uns.reduce((a,o)=>a+o.received,0),rest=uns.reduce((a,o)=>a+o.change,0);
-    const readyToReturn=due>0&&uns.length===0;
-    const navOrder=[...sorted].reverse().find(o=>o.pickupAddress)||[...unsettled].reverse().find(o=>o.pickupAddress)||[...done].reverse().find(o=>o.pickupAddress);
-    const returnBtn=readyToReturn&&navOrder?'<a class="action bluebtn" target="_blank" href="'+mapsNavigateUrl({address:navOrder.pickupAddress,lat:navOrder.pickupLat,lon:navOrder.pickupLon},navOrder.vehicle)+'">🧭 TORNA AL LOCALE</a>':'';
-    return'<div class="restaurant"><div class="rhead"><div><b>'+esc(name)+'</b><div class="meta">'+done.length+' consegne contanti</div></div>'+(due?'<span class="badge yellow">DA SALDARE</span>':'<span class="badge green">SALDATO</span>')+'</div><div class="rmoney"><div class="rbox"><small>Da rendere</small><b>'+money(due)+'</b></div><div class="rbox"><small>Scomparto locale</small><b>'+money(pocket)+'</b></div><div class="rbox"><small>Da sistemare</small><b>'+money(raw)+'</b></div><div class="rbox"><small>Resto da recuperare</small><b>'+money(rest)+'</b></div></div><div class="actions" style="margin-top:8px">'+uns.map(o=>'<button class="primary" data-action="sortcash" data-id="'+o.id+'">SISTEMA '+esc(o.code)+'</button>').join('')+returnBtn+'<button class="'+(readyToReturn?'success':'')+'" '+(readyToReturn?'':'disabled')+' data-action="settle" data-restaurant="'+esc(name)+'">✓ SALDA LOCALE</button></div></div>'
-  }).join('')||'<div class="meta">Nessun incasso contanti.</div>'
-}
-function renderHistory(){const arr=historyOrders();if(!arr.length){$('historyList').innerHTML='<div class="card"><div class="meta">Nessun ordine trovato.</div></div>';return}const g={};arr.forEach(o=>(g[dayKey(o)]??=[]).push(o));$('historyList').innerHTML=Object.entries(g).map(([k,os])=>'<div class="history-date">'+new Date(k+'T12:00:00').toLocaleDateString('it-IT',{weekday:'long',day:'2-digit',month:'long',year:'numeric'})+'</div>'+os.map(historyCard).join('')).join('')}
-
-function bounds(p){const t=new Date();t.setHours(0,0,0,0);if(p==='today')return[t,new Date(t.getTime()+86400000)];if(p==='yesterday')return[new Date(t.getTime()-86400000),t];if(p==='7d')return[new Date(t.getTime()-6*86400000),new Date(t.getTime()+86400000)];if(p==='30d')return[new Date(t.getTime()-29*86400000),new Date(t.getTime()+86400000)];return[new Date(0),new Date(8640000000000000)]}
-function analyticsOrders(){const[a,b]=bounds(analyticsPeriod);return state.orders.filter(o=>o.status==='delivered'&&o.outcome!=='cancelled'&&new Date(o.deliveredAt||o.createdAt)>=a&&new Date(o.deliveredAt||o.createdAt)<b)}
-function renderAnalytics(){const arr=analyticsOrders(),rev=arr.reduce((a,o)=>a+num(o.fee),0),m=arr.reduce((a,o)=>a+mins(o.pickedAt,o.deliveredAt),0),val=arr.reduce((a,o)=>a+num(o.total),0),cash=arr.filter(o=>o.payment==='cash').reduce((a,o)=>a+num(o.total),0);$('aRevenue').textContent=money(rev);$('aOrders').textContent=arr.length;$('aTime').textContent=fmtM(m);$('aHourly').textContent=money(m?rev/(m/60):0)+'/h';$('aAvgFee').textContent=money(arr.length?rev/arr.length:0);$('aAvgTime').textContent=fmtM(arr.length?m/arr.length:0);$('aOrderValue').textContent=money(val);$('aCash').textContent=money(cash);
-const d={};arr.forEach(o=>d[dayKey(o)]=(d[dayKey(o)]||0)+num(o.fee));const days=Object.entries(d).sort((a,b)=>a[0].localeCompare(b[0])).slice(-30),max=Math.max(1,...days.map(x=>x[1]));$('dailyChart').innerHTML=days.length?days.map(([k,v])=>'<div class="barwrap"><div class="barval">'+money(v).replace(',00','')+'</div><div class="bar" style="height:'+Math.max(3,Math.round(v/max*130))+'px"></div><div class="barlab">'+new Date(k+'T12:00:00').toLocaleDateString('it-IT',{day:'2-digit',month:'2-digit'})+'</div></div>').join(''):'<div class="meta">Nessun dato.</div>';
-const h={};arr.forEach(o=>{const x=new Date(o.pickedAt||o.createdAt).getHours();h[x]??={count:0,rev:0};h[x].count++;h[x].rev+=num(o.fee)});const hs=Object.entries(h).sort((a,b)=>Number(a[0])-Number(b[0])),mc=Math.max(1,...hs.map(x=>x[1].count));$('hourChart').innerHTML=hs.length?hs.map(([x,v])=>'<div class="hour-row"><div>'+String(x).padStart(2,'0')+':00</div><div class="hour-track"><div class="hour-fill" style="width:'+Math.max(4,v.count/mc*100)+'%"></div></div><div class="hour-val">'+v.count+' · '+money(v.rev)+'</div></div>').join(''):'<div class="meta">Nessun dato.</div>';
-const r={};arr.forEach(o=>{r[o.restaurant]??={orders:0,rev:0};r[o.restaurant].orders++;r[o.restaurant].rev+=num(o.fee)});const ranks=Object.entries(r).sort((a,b)=>b[1].rev-a[1].rev).slice(0,8);$('restaurantRank').innerHTML=ranks.length?ranks.map(([n,v],i)=>'<div class="rank"><div class="ranknum">'+(i+1)+'</div><div><b>'+esc(n)+'</b><div class="meta">'+v.orders+' consegne</div></div><b>'+money(v.rev)+'</b></div>').join(''):'<div class="meta">Nessun dato.</div>';const bh=hs.slice().sort((a,b)=>b[1].rev-a[1].rev)[0],br=ranks[0];$('analyticsSummary').innerHTML=arr.length?'Hai completato <b>'+arr.length+' consegne</b> e registrato <b>'+money(rev)+'</b> di compensi SOS. '+(bh?'Fascia più redditizia: <b>'+String(bh[0]).padStart(2,'0')+':00</b>. ':'')+(br?'Locale migliore: <b>'+esc(br[0])+'</b> con '+money(br[1].rev)+'.':''):'Non ci sono ancora consegne concluse nel periodo.'}
-function renderShifts(){const a=[...state.shifts].sort((x,y)=>new Date(y.startAt)-new Date(x.startAt));$('shiftsList').innerHTML=a.length?a.map(s=>{const st=shiftStats(s);return'<div class="turn"><div class="turn-top"><div><b>'+esc(s.name)+'</b><div class="meta">'+fmt(s.startAt)+(s.endAt?' → '+fmt(s.endAt):' · IN CORSO')+'</div></div><span class="badge '+(s.status==='closed'?'green':'yellow')+'">'+(s.status==='closed'?'ARCHIVIATO':'APERTO')+'</span></div><div class="turn-stats"><div class="hm"><small>ORDINI</small><b>'+st.orders+'</b></div><div class="hm"><small>GUADAGNO</small><b>'+money(st.revenue)+'</b></div><div class="hm"><small>TEMPO</small><b>'+fmtM(st.mins)+'</b></div><div class="hm"><small>VALORE ORDINI</small><b>'+money(st.value)+'</b></div></div></div>'}).join(''):'<div class="meta">Nessun turno.</div>'}
-function renderAll(){renderWork();renderHistory();renderAnalytics();renderShifts()}
-
-$('startShift').onclick=openShift;
-$('closeShift').onclick=()=>{const s=currentShift();if(!s)return;const active=state.orders.filter(o=>o.shiftId===s.id&&o.status!=='delivered'&&o.outcome!=='cancelled');const st=shiftStats(s),c=cashTotals(s.id);if(active.length){modal('Turno ancora attivo','<div class="notice">Hai ancora <b>'+active.length+' consegne attive</b>. Concludile o annullale prima di archiviare il turno.</div>',[{label:'OK',cls:'primary'}]);return}if(c.unsorted||c.due){modal('Cassa da chiudere','<div class="notice">Prima di archiviare sistema gli incassi e salda i locali.<br><br>Da sistemare: <b>'+money(c.unsorted)+'</b><br>Da rendere ai locali: <b>'+money(c.due)+'</b></div>',[{label:'OK',cls:'primary'}]);return}modal('Chiudi e archivia turno','<div class="moneybig">'+money(st.revenue)+'</div><div class="meta">guadagno SOS turno</div><div style="margin-top:8px"><div class="mrow"><span>Consegne</span><b>'+st.orders+'</b></div><div class="mrow"><span>Tempo operativo</span><b>'+fmtM(st.mins)+'</b></div><div class="mrow"><span>Valore ordini</span><b>'+money(st.value)+'</b></div><div class="mrow"><span>Da sistemare</span><b>'+money(c.unsorted)+'</b></div><div class="mrow"><span>Da rendere locali</span><b>'+money(c.due)+'</b></div></div>'+((c.unsorted||c.due)?'<div class="notice" style="margin-top:9px">Hai ancora movimenti di cassa aperti. Restano nello storico anche se archivi.</div>':''),[{label:'CONTINUA'},{label:'ARCHIVIA TURNO',cls:'primary',fn:()=>{s.status='closed';s.endAt=now();state.currentShiftId=null;save();renderAll()}}])}
-
-$('orderForm').onsubmit=e=>{e.preventDefault();const s=currentShift();if(!s)return;const restaurant=$('restaurant').value.trim(),pickupAddress=$('pickupAddress').value.trim(),customer=$('customer').value.trim(),address=$('address').value.trim(),total=num($('orderTotal').value);if(!restaurant||!pickupAddress||!customer||!address||total<=0){$('formMsg').textContent='Completa locale, indirizzo ritiro, cliente, destinazione e totale.';return}const q=lastQuote;const o={id:uid('ORD'),shiftId:s.id,code:nextCode(restaurant),restaurant,pickupAddress,customer,phone:$('phone').value.trim(),address,total,fee:num($('fee').value),payment:$('payment').value,vehicle:q?.vehicle||selectedVehicle,distanceKm:q?.distanceKm||0,durationMin:q?.durationMin||0,baseFee:q?.base||num($('fee').value),lateFee:q?.lateFee||0,pickupLat:selectedPickupAddress?.lat??null,pickupLon:selectedPickupAddress?.lon??null,pickupVerified:!!selectedPickupAddress,lat:selectedAddress?.lat??null,lon:selectedAddress?.lon??null,addressVerified:!!selectedAddress,received:0,change:0,status:'to_pickup',outcome:null,problemNote:'',cashSorted:false,restaurantSettled:false,createdAt:now(),pickedAt:null,arrivedAt:null,deliveredAt:null,notes:$('notes').value.trim()};state.orders.push(o);state.settings.restaurantAddresses=state.settings.restaurantAddresses||{};state.settings.restaurantAddresses[restaurant]={label:pickupAddress,lat:selectedPickupAddress?.lat??null,lon:selectedPickupAddress?.lon??null};save();renderAll();const keep=restaurant,keepAddr=pickupAddress,keepGeo=state.settings.restaurantAddresses[restaurant];$('orderForm').reset();$('restaurant').value=keep;$('pickupAddress').value=keepAddr;$('fee').value='0';selectedAddress=null;selectedPickupAddress=(keepGeo&&typeof keepGeo==='object'&&keepGeo.lat!=null&&keepGeo.lon!=null)?{label:keepGeo.label,lat:keepGeo.lat,lon:keepGeo.lon}:null;lastQuote=null;updateQuoteUI(null);$('addressState').textContent='Scrivi almeno 3 caratteri.';$('pickupState').textContent=selectedPickupAddress?'✓ Indirizzo locale salvato e verificato':'Indirizzo locale salvato · seleziona un suggerimento per verificarlo';$('formMsg').textContent='Registrata '+o.code;clearDraft()}
-
-function handle(e){const b=e.target.closest('[data-action]');if(!b)return;const action=b.dataset.action;if(action==='settle'){const s=currentShift(),name=b.dataset.restaurant;if(!s)return;const rel=state.orders.filter(o=>o.shiftId===s.id&&o.restaurant===name&&o.status==='delivered'&&o.payment==='cash'&&!o.restaurantSettled&&o.outcome!=='cancelled'),uns=rel.filter(o=>!o.cashSorted);if(uns.length)return;const due=rel.reduce((a,o)=>a+o.total,0);modal('Salda '+name,'<div class="meta">Consegna al locale</div><div class="moneybig">'+money(due)+'</div><div class="notice green" style="margin-top:8px">Dopo la conferma questi ordini risultano saldati.</div>',[{label:'ANNULLA'},{label:'✓ HO CONSEGNATO I SOLDI',cls:'success',fn:()=>{rel.forEach(o=>o.restaurantSettled=true);save();renderAll()}}]);return}
-const o=state.orders.find(x=>x.id===b.dataset.id);if(!o)return;if(action==='picked'){o.status='picked';o.pickedAt=now()}else if(action==='arrived'){o.status='arrived';o.arrivedAt=now()}else if(action==='quickexact'){cashStacks[o.id]=[];o.received=o.total;o.change=0}else if(action==='quickadd'){cashStacks[o.id]=cashStacks[o.id]||[];cashStacks[o.id].push(num(b.dataset.value));o.received=cashStacks[o.id].reduce((a,v)=>a+v,0);o.change=Math.max(0,o.received-o.total)}else if(action==='quickundo'){cashStacks[o.id]=cashStacks[o.id]||[];cashStacks[o.id].pop();o.received=cashStacks[o.id].reduce((a,v)=>a+v,0);o.change=Math.max(0,o.received-o.total)}else if(action==='quickreset'){cashStacks[o.id]=[];o.received=0;o.change=0}else if(action==='deliver'){if(o.payment==='cash'){const i=document.querySelector('[data-received="'+o.id+'"]');if(i)o.received=num(i.value);if(o.received<o.total)return alert('Il cliente deve consegnarti almeno '+money(o.total)+'.');o.change=o.received-o.total}o.status='delivered';o.deliveredAt=now();if(!o.outcome)o.outcome='success'}else if(action==='sortcash'){modal('Sistema incasso '+o.code,'<div class="meta">Cliente ha consegnato</div><div class="moneybig">'+money(o.received)+'</div><div><div class="mrow"><span>Resto anticipato</span><b>'+money(o.change)+'</b></div><div class="mrow"><span>Metti nello scomparto '+esc(o.restaurant)+'</span><b>'+money(o.total)+'</b></div><div class="mrow"><span>Rimetti nel fondo resto</span><b>'+money(o.change)+'</b></div></div><div class="notice green" style="margin-top:9px">Dopo la conferma il fondo disponibile considera il resto recuperato.</div>',[{label:'NON ANCORA'},{label:'✓ SOLDI SISTEMATI',cls:'primary',fn:()=>{o.cashSorted=true;save();renderAll()}}]);return}else if(action==='problem'){modal('Segna problema','<label>Cosa è successo?<textarea id="problemText" rows="3" placeholder="Cliente assente, indirizzo errato, ritardo..."></textarea></label>',[{label:'ANNULLA'},{label:'SALVA PROBLEMA',cls:'primary',close:false,fn:()=>{o.outcome='problem';o.problemNote=$('problemText').value.trim()||'Problema non specificato';save();$('modalBackdrop').classList.add('hidden');renderAll()}}]);return}else if(action==='cancel'){modal('Annulla '+o.code,'<div class="notice">La consegna non viene cancellata: resterà nello storico come annullata.</div>',[{label:'TORNA INDIETRO'},{label:'ANNULLA CONSEGNA',cls:'danger',fn:()=>{o.outcome='cancelled';o.status='cancelled';o.cancelledAt=now();save();renderAll()}}]);return}save();renderAll()}
-$('activeOrders').onclick=handle;$('restaurants').onclick=handle;
-document.addEventListener('input',e=>{const i=e.target.closest('[data-received]');if(!i)return;const o=state.orders.find(x=>x.id===i.dataset.received);if(!o)return;cashStacks[o.id]=[];o.received=num(i.value);o.change=o.received>=o.total?o.received-o.total:0;save();const b=i.closest('.cashbox')?.querySelector('.changebox b');if(b)b.textContent=money(o.change)})
-
-
-
-$('toggleWaImport').onclick=()=>{$('waImportPanel').classList.toggle('hidden');if(!$('waImportPanel').classList.contains('hidden'))setTimeout(()=>$('waOrderText').focus(),80)};
-$('parseWaOrder').onclick=()=>{const d=parseWhatsAppOrder($('waOrderText').value);if(!d){$('waParseResult').className='wa-result warn';$('waParseResult').textContent='Incolla prima il messaggio ricevuto dal locale.';$('waParseResult').classList.remove('hidden');return}applyWhatsAppOrder(d)};
-$('clearWaOrder').onclick=()=>{$('waOrderText').value='';$('waParseResult').classList.add('hidden');$('waOrderText').focus()};
-$('copyWaTemplate').onclick=async()=>{const t=`SOS RIDER — DATI CONSEGNA\nLocale (opzionale):\nCliente:\nTelefono:\nIndirizzo:\nServizio: Economy / Express / Cargo\nTotale ordine:\nPagamento: Contanti / Già pagato / POS\nNote:`;try{await navigator.clipboard.writeText(t);$('waParseResult').className='wa-result';$('waParseResult').innerHTML='<b>✓ Formato copiato.</b> Incollalo nella chat del locale o pinnalo su WhatsApp.';$('waParseResult').classList.remove('hidden')}catch(e){prompt('Copia questo formato:',t)}};
-
-document.querySelectorAll('[data-vehicle]').forEach(b=>b.onclick=()=>{selectedVehicle=b.dataset.vehicle;document.querySelectorAll('[data-vehicle]').forEach(x=>x.classList.toggle('active',x===b));lastQuote=null;updateQuoteUI(null);saveDraft()});
-$('restaurant').addEventListener('change',()=>{const a=state.settings.restaurantAddresses?.[$('restaurant').value.trim()];if(a&&!$('pickupAddress').value.trim()){if(typeof a==='string'){$('pickupAddress').value=a;selectedPickupAddress=null;$('pickupState').textContent='Cerco il vecchio indirizzo salvato…';setTimeout(()=>$('pickupAddress').dispatchEvent(new Event('input',{bubbles:true})),0);}else{$('pickupAddress').value=a.label||'';selectedPickupAddress=(a.lat!=null&&a.lon!=null)?{label:a.label,lat:a.lat,lon:a.lon}:null;$('pickupState').textContent=selectedPickupAddress?'✓ Indirizzo locale salvato e verificato':'Indirizzo salvato · verifica';}}saveDraft()});
-$('orderForm').addEventListener('input',e=>{if(e.target.id!=='addressSuggestions')saveDraft()});
-$('calcQuote').onclick=()=>{const origin=$('pickupAddress').value.trim(),destination=$('address').value.trim();if(!origin||!destination){$('calcStatus').textContent='Inserisci indirizzo di ritiro e destinazione.';return}$('calcStatus').textContent='Calcolo stima…';try{const r=estimateRoute(selectedVehicle),t=tariffFor(r.distanceKm,selectedVehicle);updateQuoteUI({vehicle:selectedVehicle,distanceKm:r.distanceKm,durationMin:r.durationMin,...t});$('calcStatus').textContent='✓ Stima pronta. Puoi confermare o modificare il compenso prima della partenza.';saveDraft()}catch(err){$('calcStatus').textContent='⚠ '+err.message}};
-$('quoteCopy').onclick=async()=>{if(!lastQuote)return;try{await navigator.clipboard.writeText(quoteText());$('calcStatus').textContent='✓ Riepilogo copiato.'}catch{alert(quoteText())}};
-$('quoteWhatsApp').onclick=()=>{if(lastQuote)window.open('https://wa.me/?text='+encodeURIComponent(quoteText()),'_blank')};
-$('quoteMaps').onclick=()=>{if(!lastQuote)return;const origin=selectedPickupAddress||$('pickupAddress').value.trim(),destination=selectedAddress||$('address').value.trim();window.open(mapsPreviewUrl(origin,destination,lastQuote.vehicle),'_blank')};
-$('quoteImage').onclick=downloadQuoteImage;
-$('refreshApp').onclick=()=>modal('Ricarica SOS Rider','<div class="notice blue">Ricarico la pagina. Turni, ordini e dati salvati restano intatti; anche la bozza del nuovo ordine viene mantenuta.</div>',[{label:'ANNULLA'},{label:'↻ RICARICA',cls:'primary',fn:()=>location.reload()}]);
-
-document.querySelectorAll('.navbtn').forEach(b=>b.onclick=()=>{document.querySelectorAll('.navbtn').forEach(x=>x.classList.toggle('active',x===b));document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));$('page-'+b.dataset.page).classList.add('active');if(b.dataset.page==='history')renderHistory();if(b.dataset.page==='analytics')renderAnalytics();if(b.dataset.page==='more')renderShifts();window.scrollTo({top:0,behavior:'smooth'})})
-$('historySearch').oninput=renderHistory;document.querySelectorAll('[data-hfilter]').forEach(b=>b.onclick=()=>{historyFilter=b.dataset.hfilter;document.querySelectorAll('[data-hfilter]').forEach(x=>x.classList.toggle('active',x===b));renderHistory()});document.querySelectorAll('[data-period]').forEach(b=>b.onclick=()=>{analyticsPeriod=b.dataset.period;document.querySelectorAll('[data-period]').forEach(x=>x.classList.toggle('active',x===b));renderAnalytics()})
-
-function formatPhoton(f){const p=f.properties||{},street=p.street||(p.osm_key==='highway'?p.name:''),house=p.housenumber||'',town=p.city||p.locality||p.district||p.county||'',parts=[];if(street)parts.push(street+(house?' '+house:''));else if(p.name)parts.push(p.name);if(town&&!parts.includes(town))parts.push(town);if(p.postcode)parts.push(p.postcode);if(p.state&&p.state!==town)parts.push(p.state);return parts.filter(Boolean).join(', ')}
-async function searchAddresses(q,kind){const base=(state.settings.proxyUrl||DEFAULT_PROXY).replace(/\/+$/,'');const slot=addressSearchState[kind];slot.controller?.abort();slot.controller=new AbortController();const u=new URL(base+'/api/address');u.searchParams.set('q',q);const r=await fetch(u,{signal:slot.controller.signal,cache:'no-store',headers:{Accept:'application/json'}});if(!r.ok)throw new Error('search');return(await r.json()).features||[]}
-function renderSuggestions(fs,boxId){const box=$(boxId);if(!fs.length){box.innerHTML='<div class="suggestion"><strong>Nessun risultato</strong><span>Usa Maps per verificare.</span></div>';box.classList.remove('hidden');return}box._features=fs;box.innerHTML=fs.map((f,i)=>'<button type="button" class="suggestion" data-sidx="'+i+'"><strong>'+esc(formatPhoton(f)||f.properties?.name||'Indirizzo')+'</strong><span>'+esc([f.properties?.postcode,f.properties?.city||f.properties?.locality||f.properties?.district,f.properties?.state].filter(Boolean).join(' · '))+'</span></button>').join('');box.classList.remove('hidden')}
-function wireAddressAutocomplete({inputId,boxId,stateId,mapsId,kind,onSelect}){const input=$(inputId),box=$(boxId),status=$(stateId),slot=addressSearchState[kind];input.oninput=()=>{onSelect(null);clearTimeout(slot.timer);const q=input.value.trim();if(q.length<3){box.classList.add('hidden');status.textContent='Scrivi almeno 3 caratteri.';return}if(!state.settings.proxyUrl)state.settings.proxyUrl=DEFAULT_PROXY;status.textContent=kind==='pickup'?'Cerco indirizzo del locale…':'Cerco destinazione cliente…';slot.timer=setTimeout(async()=>{try{renderSuggestions(await searchAddresses(q,kind),boxId);status.textContent='Scegli un risultato.'}catch(e){if(e.name!=='AbortError'){box.classList.add('hidden');status.textContent='Autocomplete non disponibile · usa MAPS.'}}},300)};box.onclick=e=>{const b=e.target.closest('[data-sidx]');if(!b)return;e.preventDefault();e.stopPropagation();const f=box._features[Number(b.dataset.sidx)],c=f.geometry?.coordinates||[],label=formatPhoton(f);const chosen={label:label||input.value.trim(),lon:c[0]??null,lat:c[1]??null};onSelect(chosen);input.value=chosen.label;box.classList.add('hidden');status.textContent=kind==='pickup'?'✓ Indirizzo locale verificato':'✓ Indirizzo cliente verificato';saveDraft()};$(mapsId).onclick=()=>{const selected=kind==='pickup'?selectedPickupAddress:selectedAddress;const a=input.value.trim();if(a)window.open('https://www.google.com/maps/search/?api=1&query='+encodeURIComponent(mapsPoint(selected||a)),'_blank')}}
-wireAddressAutocomplete({inputId:'pickupAddress',boxId:'pickupSuggestions',stateId:'pickupState',mapsId:'verifyPickupMaps',kind:'pickup',onSelect:v=>{selectedPickupAddress=v;lastQuote=null;updateQuoteUI(null)}});
-wireAddressAutocomplete({inputId:'address',boxId:'addressSuggestions',stateId:'addressState',mapsId:'verifyMaps',kind:'delivery',onSelect:v=>{selectedAddress=v;lastQuote=null;updateQuoteUI(null)}});
-
-function csv(arr){const rows=[['Codice','Esito','Turno','Locale','Cliente','Telefono','Indirizzo','Totale','Pagamento','Ricevuti','Resto','Compenso SOS','Ritiro','Consegna','Durata min','Problema','Note']];arr.forEach(o=>{const s=state.shifts.find(x=>x.id===o.shiftId);rows.push([o.code,o.outcome||statusLabel(o),s?.name||'',o.restaurant,o.customer,o.phone,o.address,num(o.total).toFixed(2),paymentLabel(o.payment),num(o.received).toFixed(2),num(o.change).toFixed(2),num(o.fee).toFixed(2),fmt(o.pickedAt),fmt(o.deliveredAt),mins(o.pickedAt,o.deliveredAt),o.problemNote||'',o.notes||''])});return rows.map(r=>r.map(v=>'"'+String(v??'').replace(/"/g,'""')+'"').join(';')).join('\n')}
-function download(name,text,type){const blob=new Blob([text],{type}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(url),700)}
-$('exportHistory').onclick=()=>download('sos-rider-storico-'+new Date().toISOString().slice(0,10)+'.csv',csv(state.orders.filter(o=>o.status==='delivered'||o.outcome==='cancelled')),'text/csv;charset=utf-8');$('exportPeriod').onclick=()=>download('sos-rider-'+analyticsPeriod+'.csv',csv(analyticsOrders()),'text/csv;charset=utf-8');$('exportJson').onclick=()=>download('sos-rider-backup-completo.json',JSON.stringify(state,null,2),'application/json');$('importJson').onclick=()=>$('importFile').click();$('importFile').onchange=async e=>{const f=e.target.files[0];if(!f)return;try{const x=JSON.parse(await f.text());if(!x||!Array.isArray(x.orders)||!Array.isArray(x.shifts))throw 0;state=x;save();$('proxyUrl').value=state.settings?.proxyUrl||'';renderAll()}catch{alert('Backup non valido.')}e.target.value=''}
-$('saveProxy').onclick=()=>{state.settings.proxyUrl=($('proxyUrl').value.trim()||DEFAULT_PROXY).replace(/\/+$/,'');$('proxyUrl').value=state.settings.proxyUrl;save();modal('Autocomplete','<div class="notice green">'+(state.settings.proxyUrl?'URL salvato. Ora prova a scrivere un indirizzo.':'URL rimosso.')+'</div>',[{label:'OK',cls:'primary'}])}
-$('testProxy').onclick=async()=>{const base=($('proxyUrl').value.trim()||state.settings.proxyUrl||DEFAULT_PROXY).replace(/\/+$/,'');$('proxyUrl').value=base;state.settings.proxyUrl=base;save();$('proxyStatus').textContent='Test connessione…';try{const r=await fetch(base+'/api/status',{cache:'no-store',headers:{Accept:'application/json'}});const d=await r.json();if(!r.ok)throw new Error(d.error||'HTTP '+r.status);$('proxyStatus').innerHTML='✓ Worker '+esc(d.version||'')+' online · <b>Autocomplete ritiro + consegna OK</b> · nessuna chiave Google necessaria.'}catch(e){$('proxyStatus').textContent='⚠ Worker V7.3 non rilevato: '+e.message}}
-$('wipeData').onclick=()=>modal('Cancella tutti i dati','<div class="notice">Fai prima un backup JSON. Questa operazione elimina storico e turni dal dispositivo.</div>',[{label:'ANNULLA'},{label:'CANCELLA TUTTO',cls:'danger',fn:()=>{localStorage.removeItem(KEY);state={version:7,settings:{proxyUrl:DEFAULT_PROXY,restaurantAddresses:{}},currentShiftId:null,shifts:[],orders:[]};clearDraft();$('proxyUrl').value=DEFAULT_PROXY;renderAll()}}])
-let deferred=null;window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();deferred=e;$('installBtn').classList.remove('hidden')});$('installBtn').onclick=async()=>{if(!deferred)return;deferred.prompt();await deferred.userChoice;deferred=null;$('installBtn').classList.add('hidden')}
-if('serviceWorker'in navigator)navigator.serviceWorker.register('sw.js').catch(()=>{});
-load();
-})();
-</script>
+  <script src="config.js"></script>
+  <script type="module" src="app.js"></script>
 </body>
 </html>
