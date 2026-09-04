@@ -1,7 +1,7 @@
 (() => {
 'use strict';
 
-const APP_VERSION = '10.0.2';
+const APP_VERSION = '10.0.3';
 const KEY = 'sosRiderUnifiedV10';
 const V9_KEY = 'sosRiderUnifiedV9';
 const OLD_KEY = 'sosRiderGestV7';
@@ -594,6 +594,21 @@ function cashTotals(shiftId){
   const unsorted=arr.filter(o=>!o.cashSorted), unsettled=arr.filter(o=>!o.restaurantSettled);
   return {change:unsorted.reduce((a,o)=>a+num(o.change),0),unsorted:unsorted.reduce((a,o)=>a+num(o.received),0),due:unsettled.reduce((a,o)=>a+num(o.total),0)};
 }
+function currentFundAvailable(){
+  const s=currentShift();
+  if(!s)return 0;
+  const cash=cashTotals(s.id);
+  return Math.max(0,num(s.fundStart)-num(cash.change));
+}
+function editCurrentFund(){
+  const s=currentShift();if(!s)return;
+  const cash=cashTotals(s.id);
+  const available=currentFundAvailable();
+  openModal('Modifica fondo resto',`<p class="muted">Imposta quanto contante hai davvero disponibile adesso per dare il resto.</p><label>Fondo resto disponibile<input id="mAvailableFund" type="number" min="0" step="0.01" value="${available.toFixed(2)}"></label><div class="notice yellow" style="margin-top:8px">Il sistema aggiornerà il fondo iniziale in modo da mantenere corretti i resti già anticipati nel turno.</div>`,[
+    {label:'ANNULLA',cls:'ghost'},
+    {label:'SALVA FONDO',cls:'primary',keep:true,fn:()=>{const desired=num($('mAvailableFund').value);s.fundStart=roundHalf(desired+num(cash.change));saveState();closeModal();renderDeliveries();}}
+  ]);
+}
 function renderDeliveries(){
   const s=currentShift(), has=!!s;$('noShiftCard').classList.toggle('hidden',has);$('shiftWork').classList.toggle('hidden',!has);if(!has)return;
   const orders=state.orders.filter(o=>o.shiftId===s.id), cash=cashTotals(s.id), delivered=orders.filter(o=>o.status==='delivered'&&o.outcome!=='cancelled');
@@ -601,13 +616,34 @@ function renderDeliveries(){
   const active=orders.filter(o=>!['delivered','cancelled'].includes(o.status)&&o.outcome!=='cancelled');$('activeCount').textContent=active.length;$('activeOrders').innerHTML=active.length?active.slice().reverse().map(orderCard).join(''):'<p class="muted">Nessuna consegna attiva.</p>';renderRestaurantCash(s.id);
 }
 function cashPanel(o){
-  const rec=num(o.received), change=rec>=o.total?roundHalf(rec-o.total):0, stack=cashStacks[o.id]||[];
+  const rec=num(o.received);
+  const missing=Math.max(0,roundHalf(num(o.total)-rec));
+  const change=rec>=o.total?roundHalf(rec-o.total):0;
+  const fund=currentFundAvailable();
+  const fundAfter=Math.max(0,roundHalf(fund-change));
+  const stack=cashStacks[o.id]||[];
   const counts={}; stack.forEach(v=>counts[v]=(counts[v]||0)+1);
   const stackText=Object.entries(counts).map(([v,n])=>`€${v} × ${n}`).join(' · ');
+  const deltaBox=missing>0
+    ? `<div class="change-box cash-change missing"><small>MANCANO AL PAGAMENTO</small><b>${money(missing)}</b></div>`
+    : `<div class="change-box cash-change"><small>RESTO DA DARE</small><b>${money(change)}</b></div>`;
+  const fundWarning=change>fund
+    ? `<div class="cash-warning">⚠ Fondo resto insufficiente di <b>${money(change-fund)}</b></div>`
+    : change>0
+      ? `<div class="cash-after">Dopo il resto ti rimangono <b>${money(fundAfter)}</b> nel fondo.</div>`
+      : `<div class="cash-after">Fondo disponibile per eventuale resto.</div>`;
   return `<div class="cash-panel">
     <div class="cash-note"><b>💶 CASSA ALLA PORTA</b><br>Tocca le banconote che il cliente ti dà oppure inserisci l'importo manualmente.</div>
+
+    <button type="button" class="fund-rest-box" data-cash-action="editfund" data-order-id="${o.id}">
+      <small>FONDO RESTO DISPONIBILE · TOCCA PER MODIFICARE</small>
+      <b>${money(fund)}</b>
+      ${fundWarning}
+    </button>
+
     <div class="cash-total-box"><small>CLIENTE TI DÀ</small><b>${money(rec)}</b><div class="cash-stack">${stackText||'Nessuna banconota selezionata'}</div></div>
-    <div class="change-box cash-change"><small>RESTO DA DARE</small><b>${money(change)}</b></div>
+    ${deltaBox}
+
     <div class="quick-cash">
       <button class="btn ghost cash-exact" data-cash-action="exact" data-order-id="${o.id}">PRECISO ${money(o.total)}</button>
       <button class="btn ghost" data-cash-action="add" data-value="5" data-order-id="${o.id}">+ €5</button>
@@ -618,6 +654,7 @@ function cashPanel(o){
       <button class="btn ghost" data-cash-action="undo" data-order-id="${o.id}">↶ ULTIMA</button>
       <button class="btn ghost" data-cash-action="reset" data-order-id="${o.id}">AZZERA</button>
     </div>
+
     <label class="cash-manual">Oppure importo ricevuto manuale
       <input data-received="${o.id}" type="number" inputmode="decimal" min="0" step="0.01" value="${rec||''}" placeholder="Importo ricevuto">
     </label>
@@ -759,11 +796,13 @@ function bindEvents(){
   $('openWaImporter').onclick=openWhatsAppImporter;$('newManualOrder').onclick=openWhatsAppImporter;
   $('startShiftBtn').onclick=()=>openModal('Inizia turno',`<label>Nome turno<input id="mShiftName" value="${esc(new Date().toLocaleDateString('it-IT',{weekday:'long',day:'2-digit',month:'2-digit'})+' sera')}"></label><label style="margin-top:8px">Fondo resto<input id="mFund" type="number" min="0" value="100"></label>`,[{label:'ANNULLA',cls:'ghost'},{label:'INIZIA',cls:'primary',keep:true,fn:()=>{startShift($('mShiftName').value.trim(),num($('mFund').value));closeModal()}}]);
   $('closeShiftBtn').onclick=closeCurrentShift;
+  $('statAvailable')?.closest('.stat-card')?.addEventListener('click',editCurrentFund);
   $('activeOrders').addEventListener('click',e=>{
     const cashBtn=e.target.closest('[data-cash-action]');
     if(cashBtn){
       const o=state.orders.find(x=>x.id===cashBtn.dataset.orderId);if(!o)return;
       const action=cashBtn.dataset.cashAction;
+      if(action==='editfund'){editCurrentFund();return;}
       if(action==='exact'){cashStacks[o.id]=[];o.received=num(o.total);o.change=0;}
       else if(action==='add'){cashStacks[o.id]=cashStacks[o.id]||[];cashStacks[o.id].push(num(cashBtn.dataset.value));o.received=cashStacks[o.id].reduce((a,v)=>a+v,0);o.change=o.received>=o.total?roundHalf(o.received-o.total):0;}
       else if(action==='undo'){cashStacks[o.id]=cashStacks[o.id]||[];cashStacks[o.id].pop();o.received=cashStacks[o.id].reduce((a,v)=>a+v,0);o.change=o.received>=o.total?roundHalf(o.received-o.total):0;}
