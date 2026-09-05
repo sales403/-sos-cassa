@@ -1,7 +1,7 @@
 (() => {
 'use strict';
 
-const APP_VERSION = '10.0.8';
+const APP_VERSION = '10.0.9';
 const KEY = 'sosRiderUnifiedV10';
 const V9_KEY = 'sosRiderUnifiedV9';
 const OLD_KEY = 'sosRiderGestV7';
@@ -47,6 +47,7 @@ let alarmAudioCtx = null;
 let alarmTimer = null;
 let alarmActiveCode = null;
 let alarmEnabled = localStorage.getItem('sosRiderAlarmEnabledV10') === '1';
+let alarmUiText = '';
 let lastRemoteNewCodes = new Set();
 let cashStacks = {};
 const searchSlots = new Map();
@@ -295,10 +296,10 @@ function tone(ctx,freq,duration=.14,volume=.18,delay=0){if(!ctx)return;const o=c
 function playDing(){const c=getAudioCtx('client');if(!c)return;c.resume?.();tone(c,880,.12,.13);tone(c,1320,.16,.10,.11)}
 function alarmBurst(){const c=getAudioCtx('alarm');if(c){c.resume?.();tone(c,740,.22,.38);tone(c,980,.22,.38,.28);tone(c,740,.22,.38,.56)}if(navigator.vibrate)navigator.vibrate([420,140,420,140,650]);}
 function updateAlarmUI(pushText=''){
-  if(!$('riderAlarmCard'))return;
-  $('riderAlarmCard').classList.toggle('active',alarmEnabled);
-  $('riderAlarmState').textContent=pushText || (alarmEnabled?'Attivo su questo dispositivo':'Da attivare su questo dispositivo');
-  $('enableRiderAlarm').textContent=alarmEnabled?'🔔 ATTIVO':'🔔 ATTIVA';
+  if(pushText) alarmUiText=pushText;
+  const label=alarmUiText || (alarmEnabled?'Push attive su questo dispositivo':'Notifiche da attivare');
+  if($('mRiderAlarmState')) $('mRiderAlarmState').textContent=label;
+  if($('mEnableRiderAlarm')) $('mEnableRiderAlarm').textContent=alarmEnabled?'🔔 ATTIVO':'🔔 ATTIVA NOTIFICHE';
 }
 function base64UrlToUint8Array(v){
   const s=String(v||'').replace(/-/g,'+').replace(/_/g,'/');
@@ -347,13 +348,13 @@ async function enableAlarm(){
   }
 }
 async function testRiderPush(){
-  const b=$('testRiderPush');
+  const b=$('mTestPush');
   if(b){b.disabled=true;b.textContent='TEST…';}
   try{
     const d=await fetchJson(apiBase()+'/api/rider/push/test',{method:'POST',headers:riderHeaders(),body:'{}'},10000);
     updateAlarmUI(`Test push inviato · ${d.sent||0} dispositivo/i`);
   }catch(e){
-    updateAlarmUI('Test push fallito · '+(e.message||e));
+    updateAlarmUI('Test push non disponibile · '+(e.message||e));
   }finally{
     if(b){b.disabled=false;b.textContent='TEST PUSH';}
   }
@@ -773,6 +774,18 @@ function editCurrentFund(){
     {label:'SALVA FONDO',cls:'primary',keep:true,fn:()=>{const desired=num($('mAvailableFund').value);s.fundStart=roundHalf(desired+num(cash.change));saveState();closeModal();renderDeliveries();}}
   ]);
 }
+function editInitialFund(){
+  const s=currentShift();if(!s)return;
+  openModal('Modificare il fondo iniziale?',`<div class="fund-confirm"><div class="fund-confirm-icon">!</div><div><b>Sei sicuro di voler modificare l’importo?</b><p>Stai modificando il contante con cui hai iniziato il turno. Questa modifica può cambiare i calcoli della cassa e del fondo disponibile.</p></div></div>`,[
+    {label:'ANNULLA',cls:'ghost'},
+    {label:'CONFERMA E MODIFICA',cls:'primary',keep:true,fn:()=>{
+      openModal('Nuovo fondo iniziale',`<p class="muted">Inserisci il nuovo importo iniziale del turno.</p><label>Fondo iniziale<input id="mInitialFund" type="number" min="0" step="0.01" value="${num(s.fundStart).toFixed(2)}"></label>`,[
+        {label:'ANNULLA',cls:'ghost'},
+        {label:'SALVA IMPORTO',cls:'primary',keep:true,fn:()=>{s.fundStart=roundHalf(num($('mInitialFund').value));saveState();closeModal();renderDeliveries();}}
+      ]);
+    }}
+  ]);
+}
 function renderDeliveries(){
   const s=currentShift(), has=!!s;$('noShiftCard').classList.toggle('hidden',has);$('shiftWork').classList.toggle('hidden',!has);if(!has)return;
   const orders=state.orders.filter(o=>o.shiftId===s.id), cash=cashTotals(s.id), delivered=orders.filter(o=>o.status==='delivered'&&o.outcome!=='cancelled');
@@ -936,11 +949,14 @@ function download(name,text,type='text/plain;charset=utf-8'){const a=document.cr
 function openModal(title,html,actions=[]){$('modalTitle').textContent=title;$('modalBody').innerHTML=html;$('modalActions').innerHTML='';for(const a of actions){const b=document.createElement('button');b.className='btn '+(a.cls||'ghost');b.textContent=a.label;b.onclick=()=>{if(a.fn)a.fn();if(!a.keep && a.label!=='ANNULLA' && !a.fn)closeModal();else if(!a.keep && a.label==='ANNULLA')closeModal()};$('modalActions').appendChild(b)}$('modalBackdrop').classList.remove('hidden')}
 function closeModal(){$('modalBackdrop').classList.add('hidden');$('modalBody').innerHTML='';$('modalActions').innerHTML=''}
 function openSettings(){
-  openModal('Impostazioni',`<div class="eyebrow">SOS RIDER V${APP_VERSION}</div><label style="margin-top:10px">URL Worker/API<input id="mApiBase" value="${esc(apiBase())}"></label><button id="mTestApi" class="btn ghost full" style="margin-top:8px">TEST SERVER</button><div id="mApiStatus" class="status-line"></div><div class="notice green">Accesso Rider: ${esc(authUser?.email||'—')} · ruolo verificato dal backend.</div><div class="notice yellow">Tema automatico: giorno 07:00-18:29, notte 18:30-06:59. Il selettore ◐ può forzare Day/Night.</div><div class="dual-actions"><button id="mBackup" class="btn ghost">BACKUP JSON</button><button id="mImport" class="btn ghost">IMPORTA JSON</button></div><div class="dual-actions"><button id="mLogout" class="btn ghost">ESCI ACCOUNT</button><a class="btn ghost" href="legacy-v8.3.html">APRI V8.3 BACKUP</a></div><button id="mPasskey" class="btn ghost full" style="margin-top:8px">🔑 REGISTRA PASSKEY <span class="beta-tag">BETA</span></button><button id="mInstall" class="btn primary full" style="margin-top:8px">INSTALLA APP</button>`,[
+  openModal('Impostazioni',`<div class="eyebrow">SOS RIDER V${APP_VERSION}</div><section class="settings-notify"><div class="eyebrow">NOTIFICHE RIDER</div><b id="mRiderAlarmState">${esc(alarmUiText || (alarmEnabled?'Push attive su questo dispositivo':'Notifiche da attivare'))}</b><small>Push di sistema ad app chiusa. Con Area Rider aperta: allarme e vibrazione quando consentiti dal dispositivo.</small><div class="dual-actions"><button id="mTestPush" class="btn ghost">TEST PUSH</button><button id="mEnableRiderAlarm" class="btn primary">${alarmEnabled?'🔔 ATTIVO':'🔔 ATTIVA NOTIFICHE'}</button></div></section><label style="margin-top:10px">URL Worker/API<input id="mApiBase" value="${esc(apiBase())}"></label><button id="mTestApi" class="btn ghost full" style="margin-top:8px">TEST SERVER</button><div id="mApiStatus" class="status-line"></div><div class="notice green">Accesso Rider: ${esc(authUser?.email||'—')} · ruolo verificato dal backend.</div><div class="notice yellow">Tema automatico: giorno 07:00-18:29, notte 18:30-06:59. Il selettore ◐ può forzare Day/Night.</div><div class="dual-actions"><button id="mBackup" class="btn ghost">BACKUP JSON</button><button id="mImport" class="btn ghost">IMPORTA JSON</button></div><div class="dual-actions"><button id="mLogout" class="btn ghost">ESCI ACCOUNT</button><a class="btn ghost" href="legacy-v8.3.html">APRI V8.3 BACKUP</a></div><button id="mPasskey" class="btn ghost full" style="margin-top:8px">🔑 REGISTRA PASSKEY <span class="beta-tag">BETA</span></button><button id="mInstall" class="btn primary full" style="margin-top:8px">INSTALLA APP</button>`,[
     {label:'CHIUDI',cls:'ghost',fn:closeModal,keep:true},
     {label:'SALVA',cls:'primary',keep:true,fn:()=>{state.settings.apiBase=($('mApiBase').value.trim()||DEFAULT_API).replace(/\/+$/,'');saveState();$('mApiStatus').className='status-line ok';$('mApiStatus').textContent='✓ URL salvato.';}}
   ]);
   $('mTestApi').onclick=async()=>{const el=$('mApiStatus');el.className='status-line';el.textContent='Test…';try{const base=($('mApiBase').value.trim()||DEFAULT_API).replace(/\/+$/,'');const d=await fetchJson(base+'/api/status',{headers:{Accept:'application/json'}},7000);el.className='status-line ok';el.textContent=`✓ ${d.version||'Server'} online · autocomplete ${d.capabilities?.address?'OK':'?'} · auth ${d.capabilities?.auth?'OK':'da configurare'} · Telegram ${d.capabilities?.telegram?'OK':'da configurare'}`;}catch(e){el.className='status-line error';el.textContent='⚠ '+e.message}};
+  if($('mEnableRiderAlarm')) $('mEnableRiderAlarm').onclick=enableAlarm;
+  if($('mTestPush')) $('mTestPush').onclick=testRiderPush;
+  updateAlarmUI();
   $('mBackup').onclick=()=>download(`sos-rider-v10-backup-${new Date().toISOString().slice(0,10)}.json`,JSON.stringify(state,null,2),'application/json');
   $('mImport').onclick=()=>{const input=document.createElement('input');input.type='file';input.accept='.json,application/json';input.onchange=async()=>{try{const d=JSON.parse(await input.files[0].text());if(!Array.isArray(d.orders)||!Array.isArray(d.shifts))throw 0;state={...defaultState(),...d,settings:{...defaultState().settings,...(d.settings||{})}};saveState();closeModal();renderRiderAll();alert('Backup importato.')}catch{alert('Backup non valido.')}};input.click()};
   $('mLogout').onclick=()=>{closeModal();logoutAccount()};$('mPasskey').onclick=registerPasskey;$('mInstall').onclick=installApp;
@@ -956,7 +972,7 @@ function switchRiderPage(name){
 
 // ---------- Events ----------
 function bindEvents(){
-  $('openClientHub').onclick=openClient;$('openLoginHub').onclick=openLogin;$('riderGoLoginBtn').onclick=openLogin;$('guestLoginBtn').onclick=openLogin;document.querySelectorAll('[data-back-home]').forEach(b=>b.onclick=openHome);document.querySelectorAll('[data-theme-toggle]').forEach(b=>b.onclick=cycleTheme);
+  $('openClientHub').onclick=openClient;$('openLoginHub').onclick=openLogin;if($('openRiderHome'))$('openRiderHome').onclick=openRider;$('riderGoLoginBtn').onclick=openLogin;$('guestLoginBtn').onclick=openLogin;document.querySelectorAll('[data-back-home]').forEach(b=>b.onclick=openHome);document.querySelectorAll('[data-theme-toggle]').forEach(b=>b.onclick=cycleTheme);
   $('authLoginBtn').onclick=loginEmail;$('authPassword').addEventListener('keydown',e=>{if(e.key==='Enter')loginEmail()});$('authPasskeyLoginBtn').onclick=loginPasskey;$('authForgotBtn').onclick=forgotPassword;$('authShowSignupBtn').onclick=()=>{$('signupCard').classList.remove('hidden');$('signupCard').scrollIntoView({behavior:'smooth'})};$('authHideSignupBtn').onclick=()=>$('signupCard').classList.add('hidden');$('authSignupBtn').onclick=signupClient;
   $('clientLogoutBtn').onclick=logoutAccount;$('clientRegisterPasskey').onclick=registerPasskey;
   $('directWhatsapp').href=waLink('Ciao Marcello, avrei bisogno di una consegna SOS.');$('clientStatusWhatsapp').href=waLink('Ciao Marcello, avrei bisogno di informazioni sulla mia richiesta SOS Rider.');
@@ -966,12 +982,13 @@ function bindEvents(){
   $('clientCalcQuote').onclick=calculateClientQuote;$('clientEditQuote').onclick=()=>{$('clientQuoteSection').classList.add('hidden');$('clientFormCard').scrollIntoView({behavior:'smooth',block:'start'})};$('clientSendRequest').onclick=submitClientRequest;
   $('clientNewRequest').onclick=()=>{localStorage.removeItem(CLIENT_ACTIVE_KEY);stopClientPolling();lastClientStatus=null;$('clientRequestStatus').classList.add('hidden');$('clientFormCard').classList.remove('hidden');clearClientDeliveryFields();$('clientFormCard').scrollIntoView({behavior:'smooth'})};
   $('clientRecentList').addEventListener('click',e=>{const b=e.target.closest('[data-repeat-client]');if(b)repeatClientRequest(b.dataset.repeatClient)});
-  $('riderRefresh').onclick=manualRiderRefresh;$('openSettings').onclick=openSettings;$('riderAvailableBtn').onclick=()=>setRiderAvailability(true);$('riderOfflineBtn').onclick=()=>setRiderAvailability(false);$('riderEtaSelect').onchange=()=>{if(currentAvailability)setRiderAvailability(!!currentAvailability.enabled)};$('enableRiderAlarm').onclick=enableAlarm;if($('testRiderPush'))$('testRiderPush').onclick=testRiderPush;
+  $('riderRefresh').onclick=manualRiderRefresh;$('openSettings').onclick=openSettings;$('riderAvailableBtn').onclick=()=>setRiderAvailability(true);$('riderOfflineBtn').onclick=()=>setRiderAvailability(false);$('riderEtaSelect').onchange=()=>{if(currentAvailability)setRiderAvailability(!!currentAvailability.enabled)};
   document.querySelectorAll('[data-rider-page]').forEach(b=>b.onclick=()=>switchRiderPage(b.dataset.riderPage));
   $('remoteRequestsList').addEventListener('click',e=>{const a=e.target.closest('[data-accept]');if(a)return acceptRemote(a.dataset.accept);const r=e.target.closest('[data-reject]');if(r)return rejectRemote(r.dataset.reject);const m=e.target.closest('[data-map-remote]');if(m){const x=normalizeRemote(findRemote(m.dataset.mapRemote));window.open(mapsRoute({label:x.pickupAddress,lat:x.pickupLat,lon:x.pickupLon},{label:x.deliveryAddress,lat:x.deliveryLat,lon:x.deliveryLon},x.service),'_blank','noopener');return}const o=e.target.closest('[data-open-delivery]');if(o){const rr=findRemote(o.dataset.openDelivery);if(rr&&!state.orders.some(x=>x.remoteCode===rr.code))ensureShiftThen(()=>createLocalOrderFromRemote(rr));switchRiderPage('deliveries')}});
   $('openWaImporter').onclick=openWhatsAppImporter;$('newManualOrder').onclick=openWhatsAppImporter;
   $('startShiftBtn').onclick=()=>openModal('Inizia turno',`<label>Nome turno<input id="mShiftName" value="${esc(new Date().toLocaleDateString('it-IT',{weekday:'long',day:'2-digit',month:'2-digit'})+' sera')}"></label><label style="margin-top:8px">Fondo resto<input id="mFund" type="number" min="0" value="100"></label>`,[{label:'ANNULLA',cls:'ghost'},{label:'INIZIA',cls:'primary',keep:true,fn:()=>{startShift($('mShiftName').value.trim(),num($('mFund').value));closeModal()}}]);
   $('closeShiftBtn').onclick=closeCurrentShift;
+  $('statFund')?.closest('.stat-card')?.addEventListener('click',editInitialFund);
   $('statAvailable')?.closest('.stat-card')?.addEventListener('click',editCurrentFund);
   $('activeOrders').addEventListener('click',e=>{
     const cashBtn=e.target.closest('[data-cash-action]');
