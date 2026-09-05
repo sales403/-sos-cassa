@@ -1,4 +1,4 @@
-const VERSION = 'SOS Rider API 10.0.8';
+const VERSION = 'SOS Rider API 10.0.9';
 
 const DEFAULT_ORIGINS = [
   'https://sales403.github.io',
@@ -681,7 +681,7 @@ async function computeAvailability(env) {
   const load = pending + active;
 
   const etaPerJob = Math.max(
-    10,
+    5,
     Math.min(
       60,
       Number(p.eta_per_job) || 25
@@ -698,8 +698,8 @@ async function computeAvailability(env) {
       active,
       etaPerJob,
       etaMin: null,
-      availableEtaMin: 10,
-      availableEtaMax: 15,
+      availableEtaMin: 5,
+      availableEtaMax: 10,
       updatedAt: p.updated_at
     };
   }
@@ -718,8 +718,8 @@ async function computeAvailability(env) {
           load * etaPerJob
         )
       ),
-      availableEtaMin: 10,
-      availableEtaMax: 15,
+      availableEtaMin: 5,
+      availableEtaMax: 10,
       updatedAt: p.updated_at
     };
   }
@@ -731,8 +731,8 @@ async function computeAvailability(env) {
     active,
     etaPerJob,
     etaMin: 0,
-    availableEtaMin: 10,
-    availableEtaMax: 15,
+    availableEtaMin: 5,
+    availableEtaMax: 10,
     updatedAt: p.updated_at
   };
 }
@@ -743,7 +743,7 @@ async function updateAvailability(request, env, cors) {
   const enabled = !!p.enabled;
 
   const eta = Math.max(
-    10,
+    5,
     Math.min(
       60,
       Number(p.etaPerJob) || 25
