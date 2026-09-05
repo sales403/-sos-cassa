@@ -1,4 +1,4 @@
-const CACHE='sos-rider-v10-unified-20260905-ui110';
+const CACHE='sos-rider-v10-unified-20260905-ui111';
 const ASSETS=['./','./index.html','./styles.css','./app.js','./config.js','./manifest.webmanifest','./icon-192.png','./icon-512.png','./logo-sos-rider.png','./rider-banner-v2.webp','./icons.svg'];
 
 self.addEventListener('install',e=>{
