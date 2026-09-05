@@ -1,5 +1,5 @@
-const CACHE='sos-rider-v10-unified-20260905-ui111';
-const ASSETS=['./','./index.html','./styles.css','./app.js','./config.js','./manifest.webmanifest','./icon-192.png','./icon-512.png','./logo-sos-rider.png','./rider-banner-v2.webp','./icons.svg'];
+const CACHE='sos-rider-v10-unified-20260905-ui112';
+const ASSETS=['./','./index.html','./styles.css','./app.js','./config.js','./manifest.webmanifest','./icon-192.png','./icon-512.png','./logo-sos-rider.png','./rider-banner-v2-live.webp','./icons.svg'];
 
 self.addEventListener('install',e=>{
   self.skipWaiting();
