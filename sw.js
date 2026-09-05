@@ -1,4 +1,4 @@
-const CACHE='sos-rider-v10-unified-20260905-ui114-pngfix';
+const CACHE='sos-rider-v10-unified-20260905-ui115-bannerhardfix';
 const ASSETS=['./','./index.html','./styles.css','./app.js','./config.js','./manifest.webmanifest','./icon-192.png','./icon-512.png','./logo-sos-rider.png','./rider-banner-v2-live.png','./icons.svg'];
 
 self.addEventListener('install',e=>{

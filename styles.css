@@ -332,3 +332,45 @@ html[data-theme="day"] .bottom-nav-v2 .nav-btn.active{background:#fff3b1;color:#
   }
   .rider-hero-v2 .rider-hero-art{width:100%!important}
 }
+
+/* V10.0.11 · RIDER BANNER HARD FIX */
+.rider-hero-v2{
+  display:block!important;
+  position:relative!important;
+  width:100%!important;
+  max-width:860px!important;
+  aspect-ratio:3/1!important;
+  height:auto!important;
+  min-height:0!important;
+  max-height:none!important;
+  margin:0 auto 12px!important;
+  padding:0!important;
+  border:0!important;
+  border-radius:0!important;
+  overflow:hidden!important;
+  background:transparent!important;
+  box-shadow:none!important;
+}
+.rider-hero-v2::after{display:none!important}
+.rider-hero-v2 .rider-hero-art{
+  position:absolute!important;
+  inset:0!important;
+  display:block!important;
+  width:100%!important;
+  height:100%!important;
+  max-width:none!important;
+  max-height:none!important;
+  aspect-ratio:auto!important;
+  object-fit:contain!important;
+  object-position:center center!important;
+  filter:drop-shadow(0 7px 12px rgba(0,0,0,.16))!important;
+  transform:none!important;
+}
+@media(max-width:520px){
+  .rider-hero-v2{
+    width:100%!important;
+    max-width:none!important;
+    aspect-ratio:3/1!important;
+    margin:0 auto 10px!important;
+  }
+}
