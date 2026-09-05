@@ -102,3 +102,70 @@ html[data-theme="day"] .status-line.error{color:#a62f2f}
 html[data-theme="day"] .status-line.ok{color:#17663a}
 html[data-theme="day"] .quote-summary small,html[data-theme="day"] .quote-details span{color:#70757c}
 html[data-theme="day"] .request-state{box-shadow:none}
+
+
+/* =========================
+   V10.0.9 · HOME + RIDER UX
+   ========================= */
+.home-motto{margin:14px auto 0;display:flex;align-items:center;justify-content:center;gap:7px;flex-wrap:wrap;color:var(--text);font-size:10px;font-weight:900;letter-spacing:.015em}
+.home-motto span{white-space:nowrap}.home-motto i{font-style:normal;color:var(--yellow);font-weight:1000}
+.home-route-card{background:linear-gradient(180deg,var(--surface),var(--surface2));border:1px solid var(--line);border-radius:20px;padding:16px;box-shadow:var(--shadow)}
+.home-route-card.customer-route{border-color:color-mix(in srgb,var(--yellow) 36%,var(--line))}
+.home-route-card.rider-route{border-color:color-mix(in srgb,var(--blue) 28%,var(--line))}
+.home-route-head{display:grid;grid-template-columns:auto 1fr;gap:12px;align-items:start}
+.home-route-icon{font-size:31px;line-height:1}
+.home-route-head h2{margin:3px 0 4px;font-size:20px}.home-route-head p{margin:0;color:var(--muted);font-size:11px;line-height:1.45}
+.home-route-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:13px}
+.home-route-card.rider-route>.btn{margin-top:12px}
+
+.rider-hero-strip{position:relative;min-height:126px;margin:0 0 10px;border:1px solid #343434;border-radius:20px;overflow:hidden;background:radial-gradient(circle at 76% 45%,rgba(255,208,0,.16),transparent 36%),linear-gradient(135deg,#17191b,#090a0b);box-shadow:var(--shadow)}
+.rider-hero-strip::after{content:'';position:absolute;inset:0;background:linear-gradient(90deg,rgba(8,9,10,.96) 0%,rgba(8,9,10,.72) 38%,rgba(8,9,10,.08) 72%,rgba(8,9,10,0) 100%);pointer-events:none}
+.rider-hero-copy{position:absolute;z-index:2;left:16px;top:50%;transform:translateY(-50%);max-width:46%;color:#fff}
+.rider-hero-copy b{display:block;font-size:15px;line-height:1.2;margin-top:4px}.rider-hero-copy small{display:block;color:#b6b8bb;font-size:9px;margin-top:6px}
+.rider-hero-strip img{position:absolute;z-index:1;right:-4px;bottom:-4px;width:min(60%,430px);height:118%;object-fit:contain;object-position:right bottom;filter:drop-shadow(0 10px 18px rgba(0,0,0,.38))}
+
+.operator-status-card{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:12px;margin-bottom:10px;padding:11px 13px;border:1px solid #3b454d;border-radius:17px;background:linear-gradient(135deg,#141719,#0d0f10);color:#fff;box-shadow:0 12px 28px rgba(0,0,0,.18)}
+.operator-status-main{min-width:0}.operator-state-line{display:flex;align-items:center;gap:8px;margin-top:2px}.operator-state-line b{font-size:14px;white-space:nowrap}.operator-status-main small{display:block;color:#aab0b5;font-size:9px;margin-top:3px}
+.operator-status-actions{display:flex;align-items:center;justify-content:flex-end;gap:7px;flex-wrap:nowrap}
+.operator-status-actions .btn{min-height:39px;padding:8px 10px;white-space:nowrap;font-size:10px}
+.operator-status-actions .btn.ghost{background:#16191b;color:#f5f5f5;border-color:#4a4f54}
+.eta-inline{display:flex;align-items:center;gap:6px;color:#ffd000;font-size:9px;font-weight:1000;letter-spacing:.1em}
+.eta-inline select{width:auto;min-width:82px;min-height:39px;margin:0;padding:7px 27px 7px 10px;border-radius:11px;background:#16191b;color:#fff;border-color:#555b61;font-size:13px}
+
+.fund-initial-clickable{cursor:pointer}.fund-initial-clickable:active{transform:scale(.99)}
+.fund-confirm{display:grid;grid-template-columns:44px 1fr;gap:12px;align-items:start;padding:4px 0}
+.fund-confirm-icon{width:42px;height:42px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:var(--yellow);color:#111;font-size:24px;font-weight:1000}
+.fund-confirm b{display:block;font-size:16px;line-height:1.25}.fund-confirm p{margin:6px 0 0;color:var(--muted);font-size:12px;line-height:1.45}
+
+.settings-notify{margin-top:10px;padding:12px;border:1px solid #655800;border-radius:14px;background:linear-gradient(135deg,var(--accent-soft),var(--surface))}
+.settings-notify>b{display:block;margin-top:3px}.settings-notify>small{display:block;color:var(--muted);font-size:10px;line-height:1.45;margin-top:4px}.settings-notify .dual-actions{margin-top:10px}
+
+html[data-theme="day"] .home-route-card{background:linear-gradient(180deg,#fff,#fafafa)}
+html[data-theme="day"] .rider-hero-strip{border-color:#cfd2d7}
+html[data-theme="day"] .operator-status-card{background:linear-gradient(135deg,#191c1f,#101214);border-color:#383d42;color:#fff;box-shadow:0 12px 28px rgba(25,31,40,.12)}
+html[data-theme="day"] .operator-status-card .eyebrow{color:#ffd000}
+html[data-theme="day"] .operator-status-main small{color:#b1b6bb}
+html[data-theme="day"] .operator-status-actions .btn.ghost{background:#171a1d;color:#fff;border-color:#555b61}
+html[data-theme="day"] .eta-inline select{background:#171a1d;color:#fff;border-color:#555b61}
+html[data-theme="day"] .settings-notify{background:linear-gradient(135deg,#fff7ca,#fff);border-color:#d4b120}
+
+@media(max-width:700px){
+  .home-route-actions{grid-template-columns:1fr}
+  .operator-status-card{grid-template-columns:1fr auto}
+  .operator-status-actions{gap:5px}
+  .operator-status-actions .btn{padding:8px 8px}
+  .rider-hero-strip{min-height:116px}
+}
+@media(max-width:520px){
+  .operator-status-card{grid-template-columns:minmax(0,1fr) auto;padding:10px}
+  .operator-status-main .eyebrow{font-size:8px}.operator-state-line b{font-size:12px}.operator-status-main small{font-size:8px}
+  .operator-status-actions{display:grid;grid-template-columns:auto auto;gap:5px}
+  .eta-inline{grid-column:1/-1;justify-content:flex-end}
+  .operator-status-actions .btn{font-size:9px;min-height:36px}
+  .eta-inline select{min-height:36px;min-width:76px;font-size:12px}
+  .rider-hero-copy{left:13px;max-width:48%}.rider-hero-copy b{font-size:13px}.rider-hero-strip img{width:64%;right:-16px}
+}
+@media(max-width:390px){
+  .operator-status-actions .btn{padding:7px 6px}
+  .home-motto{font-size:9px;gap:5px}
+}
