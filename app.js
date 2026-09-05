@@ -281,14 +281,14 @@ function updateClientAccountUI(){
 async function refreshAvailability(){
   try{const d=await fetchJson(apiBase()+'/api/availability',{headers:{Accept:'application/json'}},6000);currentAvailability=d.availability||d;renderAvailability();return currentAvailability}catch(e){currentAvailability=null;renderAvailability(e);return null}
 }
-function availabilityCopy(a){if(!a)return{mode:'loading',title:'Stato rider non disponibile',text:'Riprova tra poco o usa WhatsApp.'};if(a.mode==='available')return{mode:'available',title:'🟢 Rider disponibile',text:`Partenza indicativa ${a.availableEtaMin||10}-${a.availableEtaMax||15} min`};if(a.mode==='busy')return{mode:'busy',title:'🟡 Rider in consegna / richieste in coda',text:`Nuova partenza stimata ~${a.etaMin||25} min`};return{mode:'offline',title:'🔴 Rider non disponibile',text:'Puoi fare il preventivo, ma l’invio automatico è temporaneamente sospeso.'}}
+function availabilityCopy(a){if(!a)return{mode:'loading',title:'Stato rider non disponibile',text:'Riprova tra poco o usa WhatsApp.'};if(a.mode==='available')return{mode:'available',title:'🟢 Rider disponibile',text:`Partenza indicativa ${a.availableEtaMin||5}-${a.availableEtaMax||10} min`};if(a.mode==='busy')return{mode:'busy',title:'🟡 Rider in consegna / richieste in coda',text:`Nuova partenza stimata ~${a.etaMin||25} min`};return{mode:'offline',title:'🔴 Rider non disponibile',text:'Puoi fare il preventivo, ma l’invio automatico è temporaneamente sospeso.'}}
 function renderAvailability(){
   const c=availabilityCopy(currentAvailability);['homeAvailability','clientAvailability'].forEach(id=>{const el=$(id);if(!el)return;el.className='availability-card '+c.mode;el.querySelector('b').textContent=c.title;el.querySelector('small').textContent=c.text;});
   if($('riderAvailabilityTitle')){const dot=$('riderAvailabilityDot');dot.className='availability-dot '+c.mode;$('riderAvailabilityTitle').textContent=c.title;$('riderAvailabilityText').textContent=c.text;if(currentAvailability?.etaPerJob)$('riderEtaSelect').value=String(currentAvailability.etaPerJob);}
 }
 function startAvailabilityPolling(){stopAvailabilityPolling();availabilityPolling=setInterval(refreshAvailability,8000)}
 function stopAvailabilityPolling(){if(availabilityPolling){clearInterval(availabilityPolling);availabilityPolling=null}}
-async function setRiderAvailability(enabled){try{const eta=Number($('riderEtaSelect').value)||25;const d=await fetchJson(apiBase()+'/api/rider/availability',{method:'PATCH',headers:riderHeaders(),body:JSON.stringify({enabled,etaPerJob:eta})},8000);currentAvailability=d.availability;renderAvailability()}catch(e){alert('Stato rider non aggiornato: '+e.message)}}
+async function setRiderAvailability(enabled){try{const eta=Number($('riderEtaSelect').value)||15;const d=await fetchJson(apiBase()+'/api/rider/availability',{method:'PATCH',headers:riderHeaders(),body:JSON.stringify({enabled,etaPerJob:eta})},8000);currentAvailability=d.availability;renderAvailability()}catch(e){alert('Stato rider non aggiornato: '+e.message)}}
 
 // ---------- Audio / feedback ----------
 function getAudioCtx(kind='client'){const C=window.AudioContext||window.webkitAudioContext;if(!C)return null;if(kind==='alarm'){if(!alarmAudioCtx)alarmAudioCtx=new C();return alarmAudioCtx}if(!clientAudioCtx)clientAudioCtx=new C();return clientAudioCtx}
