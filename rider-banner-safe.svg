@@ -1,0 +1,91 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1500 460" role="img" aria-labelledby="t d">
+<title id="t">SOS Rider · Centro operativo</title>
+<desc id="d">Banner compatto SOS Rider con rider su e-bike, richieste, consegne e cassa.</desc>
+<defs>
+  <linearGradient id="panel" x1="0" x2="1"><stop stop-color="#090a0b"/><stop offset=".62" stop-color="#17191b"/><stop offset="1" stop-color="#0a0b0c"/></linearGradient>
+  <linearGradient id="gold" x1="0" x2="1"><stop stop-color="#ffe100"/><stop offset="1" stop-color="#f3b700"/></linearGradient>
+  <filter id="shadow" x="-20%" y="-30%" width="150%" height="170%"><feDropShadow dx="0" dy="14" stdDeviation="13" flood-color="#000" flood-opacity=".32"/></filter>
+</defs>
+<g filter="url(#shadow)">
+  <rect x="28" y="88" width="1408" height="292" rx="52" fill="url(#panel)" stroke="#ffd000" stroke-width="6"/>
+  <path d="M44 124H970" stroke="#ffd000" stroke-width="3" opacity=".58"/>
+  <path d="M44 344H1015" stroke="#ffd000" stroke-width="3" opacity=".42"/>
+</g>
+<g opacity=".9" fill="url(#gold)">
+  <path d="M718 132h330l-86 14H690z"/>
+  <path d="M742 163h358l-125 12H714z" opacity=".65"/>
+  <path d="M774 194h280l-116 10H749z" opacity=".5"/>
+</g>
+
+<!-- brand badge -->
+<g transform="translate(66 139)">
+  <path d="M28 18h184l36 46-29 121H29L0 104z" fill="#101214" stroke="#ffd000" stroke-width="6"/>
+  <path d="M194 0l-31 57h35l-49 76 16-52h-35z" fill="#ffd000" stroke="#111" stroke-width="3"/>
+  <text x="109" y="92" text-anchor="middle" font-family="Arial Black,Inter,Arial,sans-serif" font-size="74" font-style="italic" font-weight="900" fill="#fff">SOS</text>
+  <text x="111" y="146" text-anchor="middle" font-family="Arial Black,Inter,Arial,sans-serif" font-size="48" font-style="italic" font-weight="900" fill="#ffd000">RIDER</text>
+  <text x="110" y="174" text-anchor="middle" font-family="Arial,Inter,sans-serif" font-size="15" font-weight="800" letter-spacing="4" fill="#fff">CARPI-SOLIERA</text>
+</g>
+
+<!-- text -->
+<g transform="translate(340 126)">
+  <path d="M0 0h425l-34 62H0z" fill="url(#gold)"/>
+  <text x="28" y="43" font-family="Arial Black,Inter,Arial,sans-serif" font-size="37" font-style="italic" font-weight="900" fill="#0b0c0d" letter-spacing="2">CENTRO OPERATIVO</text>
+  <text x="5" y="126" font-family="Arial Black,Inter,Arial,sans-serif" font-size="61" font-style="italic" font-weight="900" fill="#fff">Gestione richieste,</text>
+  <text x="5" y="192" font-family="Arial Black,Inter,Arial,sans-serif" font-size="61" font-style="italic" font-weight="900" fill="#ffd000">consegne <tspan fill="#fff">e cassa.</tspan></text>
+  <text x="12" y="243" font-family="Inter,Arial,sans-serif" font-size="27" font-weight="500" letter-spacing="5" fill="#c8c9ca">Carpi · Limidi · Soliera</text>
+</g>
+
+<!-- embedded rider artwork, intentionally breaks above/below panel -->
+<svg x="820" y="2" width="690" height="452" viewBox="0 0 760 260" preserveAspectRatio="xMidYMid meet" overflow="visible">
+
+<title id="t">SOS Rider su e-bike</title><desc id="d">Rider con zaino SOS Rider su e-bike in movimento, grafica nero antracite giallo.</desc>
+<defs>
+  <linearGradient id="y" x1="0" x2="1"><stop stop-color="#ffd000"/><stop offset="1" stop-color="#ffb800"/></linearGradient>
+  <filter id="glow"><feGaussianBlur stdDeviation="3" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+</defs>
+<g fill="none" stroke-linecap="round" stroke-linejoin="round">
+  <g stroke="#ffd000" opacity=".9">
+    <path d="M12 74h182" stroke-width="7"/><path d="M46 101h166" stroke-width="4"/><path d="M0 132h178" stroke-width="8"/><path d="M61 158h126" stroke-width="4"/><path d="M20 188h118" stroke-width="6"/>
+  </g>
+  <circle cx="292" cy="196" r="56" stroke="#1d1f21" stroke-width="15"/><circle cx="292" cy="196" r="47" stroke="#ffd000" stroke-width="5"/>
+  <circle cx="592" cy="196" r="56" stroke="#1d1f21" stroke-width="15"/><circle cx="592" cy="196" r="47" stroke="#ffd000" stroke-width="5"/>
+  <g stroke="#8b8f94" stroke-width="3" opacity=".75">
+    <path d="M292 149v94M245 196h94M258 162l68 68M326 162l-68 68"/>
+    <path d="M592 149v94M545 196h94M558 162l68 68M626 162l-68 68"/>
+  </g>
+  <g stroke="#ffd000" stroke-width="11">
+    <path d="M292 196l98-58 63 58H292z"/>
+    <path d="M390 138l84-5 118 63"/>
+    <path d="M390 138l-29 58"/>
+  </g>
+  <g stroke="#16181a" stroke-width="17">
+    <path d="M390 138l61-79"/>
+    <path d="M451 59l54 32 42 50"/>
+    <path d="M500 91l-38 72"/>
+    <path d="M462 163l77 14"/>
+  </g>
+  <g stroke="#ffd000" stroke-width="6">
+    <path d="M390 138l61-79"/><path d="M451 59l54 32 42 50"/><path d="M500 91l-38 72"/>
+  </g>
+</g>
+<g>
+  <path d="M412 23c22-13 52-2 61 21 8 22-5 48-29 55-25 8-50-8-55-33-4-18 5-34 23-43z" fill="#17191b" stroke="#ffd000" stroke-width="6"/>
+  <path d="M418 37c15-7 33-3 42 9-17-1-32 3-45 11z" fill="#ffd000"/>
+  <path d="M461 57c14 3 21 9 25 17l-28 2z" fill="#f5f5f5" opacity=".82"/>
+  <rect x="350" y="61" width="82" height="91" rx="12" fill="#111315" stroke="#ffd000" stroke-width="6" transform="rotate(-9 391 106)"/>
+  <path d="M360 75h62v53h-62z" fill="#1e2022" opacity=".9" transform="rotate(-9 391 101)"/>
+  <text x="388" y="102" text-anchor="middle" font-family="Arial Black,Arial,sans-serif" font-size="22" font-weight="900" fill="#ffd000" transform="rotate(-9 388 102)">SOS</text>
+  <text x="389" y="121" text-anchor="middle" font-family="Arial Black,Arial,sans-serif" font-size="12" font-weight="900" fill="#fff" transform="rotate(-9 389 121)">RIDER</text>
+  <path d="M389 150l42-47 54 29-22 42-67-4z" fill="#1b1d1f" stroke="#ffd000" stroke-width="5"/>
+  <path d="M473 116l75 26" stroke="#1b1d1f" stroke-width="16" stroke-linecap="round"/>
+  <path d="M473 116l75 26" stroke="#ffd000" stroke-width="5" stroke-linecap="round"/>
+  <path d="M429 158l-18 38" stroke="#16181a" stroke-width="18" stroke-linecap="round"/>
+  <path d="M461 165l21 31" stroke="#16181a" stroke-width="18" stroke-linecap="round"/>
+  <path d="M409 196h-33M482 196h32" stroke="#ffd000" stroke-width="7" stroke-linecap="round"/>
+  <path d="M546 141l14-21 31 4" fill="none" stroke="#ffd000" stroke-width="7" stroke-linecap="round"/>
+  <path d="M362 136l-21-14" fill="none" stroke="#ffd000" stroke-width="6" stroke-linecap="round"/>
+  <path d="M671 66l-24 18 30 2-39 31" fill="none" stroke="url(#y)" stroke-width="11" filter="url(#glow)"/>
+</g>
+
+</svg>
+</svg>
