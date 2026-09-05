@@ -1,4 +1,4 @@
-const VERSION = 'SOS Rider API 10.0.7';
+const VERSION = 'SOS Rider API 10.0.8';
 
 const DEFAULT_ORIGINS = [
   'https://sales403.github.io',
@@ -104,6 +104,13 @@ export default {
         requireDb(env);
         const a = await requireRole(request, env, 'rider');
         return subscribePush(request, env, a, cors);
+      }
+
+      if (url.pathname === '/api/rider/push/test' && request.method === 'POST') {
+        requireDb(env);
+        await requireRole(request, env, 'rider');
+        const result = await sendPushToAll(env);
+        return json({ ok: true, ...result }, 200, cors);
       }
 
       const riderMatch = url.pathname.match(/^\/api\/rider\/requests\/([^/]+)$/);
