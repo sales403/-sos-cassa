@@ -246,52 +246,53 @@
   <main id="riderHub" class="rider-shell hidden">
     <header class="rider-topbar">
       <div class="compact-brand"><img src="logo-sos-rider.png" alt="SOS Rider"><div><b>AREA RIDER</b><small id="riderSyncSmall">SOS Rider Carpi-Soliera</small></div></div>
-      <div class="top-actions"><button class="icon-btn" data-theme-toggle type="button" title="Tema giorno/notte">◐</button><button id="riderRefresh" class="icon-btn" type="button" title="Aggiorna">↻</button><button id="openSettings" class="icon-btn" type="button" title="Impostazioni">⚙</button></div>
+      <div class="top-actions"><button class="icon-btn" data-theme-toggle type="button" title="Tema giorno/notte"><svg class="ui-icon" aria-hidden="true"><use href="icons.svg#icon-theme-auto"></use></svg></button><button id="riderRefresh" class="icon-btn" type="button" title="Aggiorna"><svg class="ui-icon" aria-hidden="true"><use href="icons.svg#icon-refresh"></use></svg></button><button id="openSettings" class="icon-btn" type="button" title="Impostazioni"><svg class="ui-icon" aria-hidden="true"><use href="icons.svg#icon-settings"></use></svg></button></div>
     </header>
 
-    <section class="rider-hero-strip" aria-label="SOS Rider operativo">
-      <div class="rider-hero-copy"><div class="eyebrow">CENTRO OPERATIVO</div><b>Gestione richieste, consegne e cassa.</b><small>Carpi · Limidi · Soliera</small></div>
-      <img src="rider-action.svg" alt="Rider SOS Rider su e-bike in movimento">
+    <section class="rider-hero-strip rider-hero-v2" aria-label="Centro operativo SOS Rider">
+      <img class="rider-hero-art" src="rider-banner-v2.webp" alt="SOS Rider · Centro operativo richieste, consegne e cassa">
     </section>
 
-    <section id="riderAvailabilityControl" class="operator-status-card">
+    <section id="riderAvailabilityControl" class="operator-status-card operator-status-v2">
       <div class="operator-status-main">
-        <div class="eyebrow">STATO OPERATORE</div>
+        <div class="operator-kicker"><svg class="operator-kicker-icon" aria-hidden="true"><use href="icons.svg#icon-radar"></use></svg><span>STATO OPERATORE</span></div>
         <div class="operator-state-line"><span id="riderAvailabilityDot" class="availability-dot"></span><b id="riderAvailabilityTitle">Controllo…</b></div>
         <small id="riderAvailabilityText">Stato visibile ai clienti</small>
       </div>
       <div class="operator-status-actions">
-        <label class="eta-inline"><span>ETA</span><select id="riderEtaSelect" title="Attesa media per richiesta"><option value="5">5 min</option><option value="10">10 min</option><option value="15" selected>15 min</option><option value="20">20 min</option><option value="25">25 min</option><option value="30">30 min</option><option value="45">45 min</option><option value="60">60 min</option></select></label>
-        <button id="riderAvailableBtn" class="btn primary small" type="button">🟢 DISPONIBILE</button>
-        <button id="riderOfflineBtn" class="btn ghost small" type="button">🔴 OFF</button>
+        <label class="eta-inline"><span>ETA</span><select id="riderEtaSelect" title="Attesa media per richiesta"><option value="5">5 min</option><option value="10">10 min</option><option value="15" selected>15 min</option><option value="20">20 min</option><option value="25">25 min</option><option value="30">30 min</option><option value="40">40 min</option><option value="50">50 min</option><option value="60">60 min</option></select></label>
+        <div class="operator-toggle">
+          <button id="riderAvailableBtn" class="btn status-on small" type="button"><span class="status-led green"></span>DISPONIBILE</button>
+          <button id="riderOfflineBtn" class="btn status-off small" type="button"><span class="status-led red"></span>OFF</button>
+        </div>
       </div>
     </section>
 
     <section id="riderPageRequests" class="rider-page active">
       <div class="page-title-row"><div><div class="eyebrow">IN ARRIVO</div><h1>Richieste</h1></div><span id="newRequestCount" class="count-badge">0</span></div>
-      <section class="card sync-card"><span id="syncDot" class="sync-dot"></span><div><b id="syncTitle">Connessione richieste</b><small id="syncText">Controllo server…</small></div></section>
+      <section class="card sync-card sync-card-v2"><span class="sync-icon-wrap"><svg class="ui-icon" aria-hidden="true"><use href="icons.svg#icon-radar"></use></svg></span><span id="syncDot" class="sync-dot"></span><div><b id="syncTitle">Connessione richieste</b><small id="syncText">Controllo server…</small></div></section>
       <section id="remoteRequestsList" class="section"></section>
-      <section class="card section">
-        <div class="section-head"><div><div class="eyebrow">FALLBACK</div><h2>Ordine arrivato su WhatsApp?</h2></div></div>
-        <p class="muted">Il flusso guidato non usa più il parser. Questa funzione resta solo per messaggi ricevuti fuori dal sistema.</p>
-        <button id="openWaImporter" class="btn ghost full" type="button">📲 INCOLLA MESSAGGIO WHATSAPP</button>
+      <section class="card section fallback-card">
+        <div class="section-head"><div class="section-title-with-icon"><span class="section-icon"><svg class="ui-icon" aria-hidden="true"><use href="icons.svg#icon-message"></use></svg></span><div><div class="eyebrow">FALLBACK</div><h2>Ordine arrivato su WhatsApp?</h2></div></div></div>
+        <p class="muted">Solo per richieste ricevute fuori dal flusso automatico.</p>
+        <button id="openWaImporter" class="btn ghost full" type="button"><svg class="btn-icon" aria-hidden="true"><use href="icons.svg#icon-message"></use></svg> INCOLLA MESSAGGIO</button>
       </section>
     </section>
 
     <section id="riderPageDeliveries" class="rider-page">
       <div class="page-title-row"><div><div class="eyebrow">OPERATIVITÀ</div><h1>Consegne</h1></div><button id="newManualOrder" class="btn primary small" type="button">＋ MANUALE</button></div>
-      <section id="noShiftCard" class="card hidden"><h2>Nessun turno aperto</h2><p class="muted">Apri un turno per iniziare a gestire consegne e incassi.</p><button id="startShiftBtn" class="btn primary full">⚡ INIZIA TURNO</button></section>
+      <section id="noShiftCard" class="card hidden empty-shift-card"><span class="empty-state-icon"><svg class="ui-icon" aria-hidden="true"><use href="icons.svg#icon-shift-clock"></use></svg></span><h2>Nessun turno aperto</h2><p class="muted">Apri un turno per iniziare a gestire consegne e incassi.</p><button id="startShiftBtn" class="btn primary full"><svg class="btn-icon" aria-hidden="true"><use href="icons.svg#icon-bolt"></use></svg> INIZIA TURNO</button></section>
       <div id="shiftWork">
-        <section class="stats-grid">
-          <div class="stat-card fund-initial-clickable" title="Tocca per modificare il fondo iniziale"><small>Fondo iniziale · tocca</small><b id="statFund">€0</b></div>
-          <div class="stat-card hot fund-clickable" title="Tocca per modificare il fondo resto"><small>Fondo disponibile · tocca</small><b id="statAvailable">€0</b></div>
-          <div class="stat-card"><small>Da sistemare</small><b id="statUnsorted">€0</b></div>
-          <div class="stat-card"><small>Da rendere locali</small><b id="statDue">€0</b></div>
-          <div class="stat-card hot"><small>Guadagno SOS</small><b id="statFees">€0</b></div>
+        <section class="stats-grid rider-stats-grid">
+          <div class="stat-card stat-fund fund-initial-clickable" title="Tocca per modificare il fondo iniziale"><div class="stat-card-head"><span class="stat-icon"><svg class="ui-icon" aria-hidden="true"><use href="icons.svg#icon-cash-start"></use></svg></span><small>Fondo iniziale · tocca</small></div><b id="statFund">€0</b></div>
+          <div class="stat-card stat-available hot fund-clickable" title="Tocca per modificare il fondo resto"><div class="stat-card-head"><span class="stat-icon"><svg class="ui-icon" aria-hidden="true"><use href="icons.svg#icon-wallet"></use></svg></span><small>Fondo disponibile · tocca</small></div><b id="statAvailable">€0</b></div>
+          <div class="stat-card stat-reconcile"><div class="stat-card-head"><span class="stat-icon"><svg class="ui-icon" aria-hidden="true"><use href="icons.svg#icon-reconcile"></use></svg></span><small>Da sistemare</small></div><b id="statUnsorted">€0</b></div>
+          <div class="stat-card stat-due"><div class="stat-card-head"><span class="stat-icon"><svg class="ui-icon" aria-hidden="true"><use href="icons.svg#icon-store-euro"></use></svg></span><small>Da rendere locali</small></div><b id="statDue">€0</b></div>
+          <div class="stat-card stat-profit hot"><div class="stat-card-head"><span class="stat-icon"><svg class="ui-icon" aria-hidden="true"><use href="icons.svg#icon-bolt-coin"></use></svg></span><small>Guadagno SOS</small></div><b id="statFees">€0</b></div>
         </section>
-        <section class="card section"><div class="section-head"><div><div class="eyebrow">TURNO ATTUALE</div><h2 id="shiftName">—</h2></div><button id="closeShiftBtn" class="btn ghost small" type="button">CHIUDI</button></div><p id="shiftMeta" class="muted"></p></section>
-        <section class="card section"><div class="section-head"><h2>Consegne attive</h2><span id="activeCount" class="pill yellow">0</span></div><div id="activeOrders"></div></section>
-        <section class="card section"><h2>Incassi locali</h2><div id="restaurantCash"></div></section>
+        <section class="card section operational-card"><div class="section-head"><div class="section-title-with-icon"><span class="section-icon"><svg class="ui-icon" aria-hidden="true"><use href="icons.svg#icon-shift-clock"></use></svg></span><div><div class="eyebrow">TURNO ATTUALE</div><h2 id="shiftName">—</h2></div></div><button id="closeShiftBtn" class="btn ghost small" type="button">CHIUDI</button></div><p id="shiftMeta" class="muted"></p></section>
+        <section class="card section operational-card"><div class="section-head"><div class="section-title-with-icon"><span class="section-icon"><svg class="ui-icon" aria-hidden="true"><use href="icons.svg#icon-delivery-box"></use></svg></span><h2>Consegne attive</h2></div><span id="activeCount" class="pill yellow">0</span></div><div id="activeOrders"></div></section>
+        <section class="card section operational-card"><div class="section-title-with-icon"><span class="section-icon"><svg class="ui-icon" aria-hidden="true"><use href="icons.svg#icon-store-euro"></use></svg></span><h2>Incassi locali</h2></div><div id="restaurantCash"></div></section>
       </div>
     </section>
 
@@ -303,22 +304,22 @@
 
     <section id="riderPageAnalytics" class="rider-page">
       <div class="page-title-row"><div><div class="eyebrow">NUMERI</div><h1>Analytics</h1></div></div>
-      <div class="period-tabs"><button class="chip active" data-period="today">OGGI</button><button class="chip" data-period="7d">7 GIORNI</button><button class="chip" data-period="30d">30 GIORNI</button><button class="chip" data-period="all">TUTTO</button></div>
+      <div class="period-tabs"><button class="chip active" data-period="7d">7 GIORNI</button><button class="chip" data-period="today">OGGI</button><button class="chip" data-period="yesterday">IERI</button><button class="chip" data-period="30d">30 GIORNI</button><button class="chip" data-period="lastMonth">MESE SCORSO</button><button class="chip" data-period="all">TUTTO</button></div>
       <section class="stats-grid analytics-grid section">
-        <div class="stat-card hot"><small>Guadagno SOS</small><b id="aRevenue">€0</b></div>
-        <div class="stat-card"><small>Consegne</small><b id="aOrders">0</b></div>
-        <div class="stat-card"><small>Media consegna</small><b id="aAvg">€0</b></div>
-        <div class="stat-card"><small>Valore ordini</small><b id="aOrderValue">€0</b></div>
+        <div class="stat-card hot"><div class="stat-card-head"><span class="stat-icon"><svg class="ui-icon" aria-hidden="true"><use href="icons.svg#icon-bolt-coin"></use></svg></span><small>Guadagno SOS</small></div><b id="aRevenue">€0</b></div>
+        <div class="stat-card"><div class="stat-card-head"><span class="stat-icon"><svg class="ui-icon" aria-hidden="true"><use href="icons.svg#icon-delivery-box"></use></svg></span><small>Consegne</small></div><b id="aOrders">0</b></div>
+        <div class="stat-card"><div class="stat-card-head"><span class="stat-icon"><svg class="ui-icon" aria-hidden="true"><use href="icons.svg#icon-average"></use></svg></span><small>Media consegna</small></div><b id="aAvg">€0</b></div>
+        <div class="stat-card"><div class="stat-card-head"><span class="stat-icon"><svg class="ui-icon" aria-hidden="true"><use href="icons.svg#icon-cash"></use></svg></span><small>Valore ordini</small></div><b id="aOrderValue">€0</b></div>
       </section>
-      <section class="card section"><h2>Andamento guadagni</h2><div id="dailyChart" class="chart"></div></section>
-      <section class="card section"><h2>Locali migliori</h2><div id="restaurantRank"></div></section>
+      <section class="card section analytics-chart-card"><div class="section-title-with-icon"><span class="section-icon"><svg class="ui-icon" aria-hidden="true"><use href="icons.svg#icon-analytics"></use></svg></span><div><h2>Incassi</h2><small id="analyticsRangeLabel" class="analytics-range-label">Ultimi 7 giorni</small></div></div><div id="dailyChart" class="chart"></div></section>
+      <section class="card section"><div class="section-title-with-icon"><span class="section-icon"><svg class="ui-icon" aria-hidden="true"><use href="icons.svg#icon-store"></use></svg></span><h2>Locali migliori</h2></div><div id="restaurantRank"></div></section>
     </section>
 
-    <nav class="bottom-nav">
-      <button class="nav-btn active" data-rider-page="requests"><span>🔔</span><small>RICHIESTE</small></button>
-      <button class="nav-btn" data-rider-page="deliveries"><span>⚡</span><small>CONSEGNE</small></button>
-      <button class="nav-btn" data-rider-page="history"><span>📋</span><small>STORICO</small></button>
-      <button class="nav-btn" data-rider-page="analytics"><span>📊</span><small>ANALYTICS</small></button>
+    <nav class="bottom-nav bottom-nav-v2">
+      <button class="nav-btn active" data-rider-page="requests"><svg class="nav-icon" aria-hidden="true"><use href="icons.svg#icon-bell"></use></svg><small>RICHIESTE</small></button>
+      <button class="nav-btn" data-rider-page="deliveries"><svg class="nav-icon" aria-hidden="true"><use href="icons.svg#icon-delivery-box"></use></svg><small>CONSEGNE</small></button>
+      <button class="nav-btn" data-rider-page="history"><svg class="nav-icon" aria-hidden="true"><use href="icons.svg#icon-history"></use></svg><small>STORICO</small></button>
+      <button class="nav-btn" data-rider-page="analytics"><svg class="nav-icon" aria-hidden="true"><use href="icons.svg#icon-analytics"></use></svg><small>ANALYTICS</small></button>
     </nav>
   </main>
 

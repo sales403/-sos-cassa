@@ -1,7 +1,7 @@
 (() => {
 'use strict';
 
-const APP_VERSION = '10.0.9';
+const APP_VERSION = '10.1.0';
 const KEY = 'sosRiderUnifiedV10';
 const V9_KEY = 'sosRiderUnifiedV9';
 const OLD_KEY = 'sosRiderGestV7';
@@ -16,6 +16,7 @@ const $ = id => document.getElementById(id);
 const money = n => new Intl.NumberFormat('it-IT', {style:'currency', currency:'EUR'}).format(Number(n)||0);
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const digits = s => String(s || '').replace(/\D/g, '');
+const icon = (name, cls='ui-icon') => `<svg class="${cls}" aria-hidden="true"><use href="icons.svg#icon-${name}"></use></svg>`;
 const num = v => { const n = Number(String(v ?? '').replace(',','.')); return Number.isFinite(n) && n >= 0 ? n : 0; };
 const nowIso = () => new Date().toISOString();
 const uid = p => `${p}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2,8)}`;
@@ -33,7 +34,7 @@ let clientSubmissionId = null;
 let clientPolling = null;
 let riderPolling = null;
 let remoteRequests = [];
-let analyticsPeriod = 'today';
+let analyticsPeriod = '7d';
 let supabaseClient = null;
 let authSession = null;
 let authUser = null;
@@ -116,7 +117,7 @@ async function fetchJson(url, options={}, timeoutMs=9000){
 }
 
 function vehicleLabel(v){ return v==='moto' ? 'Moto Express' : v==='auto' ? 'Auto Cargo' : 'Economy E-bike'; }
-function vehicleIcon(v){ return v==='moto' ? '🏍️' : v==='auto' ? '🚗' : '🚲'; }
+function vehicleIcon(v){ return icon(v==='moto' ? 'moto' : v==='auto' ? 'auto' : 'ebike','mini-inline-icon'); }
 function paymentLabel(v){ return v==='cash' ? 'Contanti da incassare' : v==='pos' ? 'POS del locale' : 'Ordine già pagato'; }
 function isLateTime(t){
   if(!/^\d{2}:\d{2}$/.test(String(t||''))) return false;
@@ -222,7 +223,7 @@ function applyTheme(){
   const mode=themeMode(),theme=mode==='auto'?autoTheme():mode;
   document.documentElement.dataset.theme=theme;
   const meta=$('themeColorMeta'); if(meta) meta.content=theme==='day'?'#f4f5f6':'#070707';
-  document.querySelectorAll('[data-theme-toggle]').forEach(b=>{b.textContent=mode==='auto'?'A◐':theme==='day'?'☀':'☾';b.title=`Tema: ${mode==='auto'?'automatico':theme}. Tocca per cambiare`;});
+  document.querySelectorAll('[data-theme-toggle]').forEach(b=>{const n=mode==='auto'?'theme-auto':theme==='day'?'sun':'moon';b.innerHTML=icon(n);b.title=`Tema: ${mode==='auto'?'automatico':theme}. Tocca per cambiare`;});
 }
 function cycleTheme(){const mode=themeMode(),next=mode==='auto'?'day':mode==='day'?'night':'auto';localStorage.setItem(THEME_KEY,next);applyTheme();if(clientQuote)generateClientQuoteImage();}
 
@@ -281,7 +282,7 @@ function updateClientAccountUI(){
 async function refreshAvailability(){
   try{const d=await fetchJson(apiBase()+'/api/availability',{headers:{Accept:'application/json'}},6000);currentAvailability=d.availability||d;renderAvailability();return currentAvailability}catch(e){currentAvailability=null;renderAvailability(e);return null}
 }
-function availabilityCopy(a){if(!a)return{mode:'loading',title:'Stato rider non disponibile',text:'Riprova tra poco o usa WhatsApp.'};if(a.mode==='available')return{mode:'available',title:'🟢 Rider disponibile',text:`Partenza indicativa ${a.availableEtaMin||5}-${a.availableEtaMax||10} min`};if(a.mode==='busy')return{mode:'busy',title:'🟡 Rider in consegna / richieste in coda',text:`Nuova partenza stimata ~${a.etaMin||25} min`};return{mode:'offline',title:'🔴 Rider non disponibile',text:'Puoi fare il preventivo, ma l’invio automatico è temporaneamente sospeso.'}}
+function availabilityCopy(a){if(!a)return{mode:'loading',title:'Stato rider non disponibile',text:'Riprova tra poco o usa WhatsApp.'};if(a.mode==='available')return{mode:'available',title:'Rider disponibile',text:`Partenza indicativa ${a.availableEtaMin||5}-${a.availableEtaMax||10} min`};if(a.mode==='busy')return{mode:'busy',title:'Rider occupato',text:`Nuova partenza stimata ~${a.etaMin||25} min`};return{mode:'offline',title:'Rider non disponibile',text:'Puoi fare il preventivo, ma l’invio automatico è temporaneamente sospeso.'}}
 function renderAvailability(){
   const c=availabilityCopy(currentAvailability);['homeAvailability','clientAvailability'].forEach(id=>{const el=$(id);if(!el)return;el.className='availability-card '+c.mode;el.querySelector('b').textContent=c.title;el.querySelector('small').textContent=c.text;});
   if($('riderAvailabilityTitle')){const dot=$('riderAvailabilityDot');dot.className='availability-dot '+c.mode;$('riderAvailabilityTitle').textContent=c.title;$('riderAvailabilityText').textContent=c.text;if(currentAvailability?.etaPerJob)$('riderEtaSelect').value=String(currentAvailability.etaPerJob);}
@@ -299,7 +300,7 @@ function updateAlarmUI(pushText=''){
   if(pushText) alarmUiText=pushText;
   const label=alarmUiText || (alarmEnabled?'Push attive su questo dispositivo':'Notifiche da attivare');
   if($('mRiderAlarmState')) $('mRiderAlarmState').textContent=label;
-  if($('mEnableRiderAlarm')) $('mEnableRiderAlarm').textContent=alarmEnabled?'🔔 ATTIVO':'🔔 ATTIVA NOTIFICHE';
+  if($('mEnableRiderAlarm')) $('mEnableRiderAlarm').innerHTML=icon('bell','btn-icon')+' '+(alarmEnabled?'ATTIVO':'ATTIVA NOTIFICHE');
 }
 function base64UrlToUint8Array(v){
   const s=String(v||'').replace(/-/g,'+').replace(/_/g,'/');
@@ -386,11 +387,11 @@ function startAlarm(code){
     ov=document.createElement('div');
     ov.id='alarmOverlay';
     ov.className='alarm-overlay';
-    ov.innerHTML='<div>⚡ NUOVA RICHIESTA SOS RIDER</div>';
+    ov.innerHTML='<div>'+icon('bell','alarm-icon')+' NUOVA RICHIESTA SOS RIDER</div>';
     document.body.appendChild(ov)
   }
   ov.classList.remove('hidden');
-  showRiderSystemNotification('⚡ SOS Rider · Nuova richiesta',code,code);
+  showRiderSystemNotification('SOS Rider · Nuova richiesta',code,code);
 }
 function stopAlarm(code){if(code&&alarmActiveCode&&code!==alarmActiveCode)return;if(alarmTimer)clearInterval(alarmTimer);alarmTimer=null;alarmActiveCode=null;navigator.vibrate?.(0);document.getElementById('alarmOverlay')?.classList.add('hidden')}
 
@@ -741,7 +742,7 @@ function remoteStatusLabel(s){return s==='new'?'NUOVA':s==='accepted'?'ACCETTATA
 function renderRemoteRequests(){
   const visible=remoteRequests.filter(r=>['new','accepted'].includes(r.status));const newOnes=visible.filter(r=>r.status==='new');$('newRequestCount').textContent=newOnes.length;
   if(!visible.length){$('remoteRequestsList').innerHTML='<section class="card"><div class="eyebrow">TUTTO TRANQUILLO</div><h2>Nessuna richiesta in attesa</h2><p class="muted">Le nuove richieste guidate compariranno qui automaticamente.</p></section>';return;}
-  $('remoteRequestsList').innerHTML=visible.map(r=>{const exists=state.orders.some(o=>o.remoteCode===r.code);return `<article class="request-card ${r.status==='new'?'new':'accepted'}" data-remote-code="${esc(r.code)}"><div class="request-top"><div><div class="code">${esc(r.code)}</div><div class="tiny">${fmtDateTime(r.createdAt||r.created_at)}</div></div><span class="pill ${r.status==='new'?'yellow':'green'}">${remoteStatusLabel(r.status)}</span></div><div class="request-grid"><div class="kv"><small>RICHIEDENTE</small><b>${esc(r.requesterName||r.requester_name)}</b></div><div class="kv"><small>PRONTO</small><b>${esc(r.readyTime||r.ready_time||'—')}</b></div><div class="kv"><small>SERVIZIO</small><b>${vehicleIcon(r.service)} ${esc(r.microDelivery?'Micro E-bike':vehicleLabel(r.service))}</b></div><div class="kv"><small>TARIFFA SOS</small><b>${money(r.totalFee||r.total_fee)}</b></div></div><div class="route-box"><b>📍 Ritiro</b> ${esc(r.pickupAddress||r.pickup_address)}<br><b>🏁 Consegna</b> ${esc(r.deliveryAddress||r.delivery_address)}<br><b>👤</b> ${esc(r.recipientName||r.recipient_name)} · ${esc(r.recipientPhone||r.recipient_phone)}</div><div class="request-actions">${r.status==='new'?`<button class="btn ghost" data-reject="${esc(r.code)}">RIFIUTA</button><button class="btn primary" data-accept="${esc(r.code)}">⚡ ACCETTA ORDINE</button>`:`<button class="btn ghost" data-map-remote="${esc(r.code)}">PERCORSO</button><button class="btn primary" data-open-delivery="${esc(r.code)}">${exists?'APRI CONSEGNA':'IMPORTA CONSEGNA'}</button>`}</div></article>`}).join('');
+  $('remoteRequestsList').innerHTML=visible.map(r=>{const exists=state.orders.some(o=>o.remoteCode===r.code);return `<article class="request-card ${r.status==='new'?'new':'accepted'}" data-remote-code="${esc(r.code)}"><div class="request-top"><div><div class="code">${esc(r.code)}</div><div class="tiny">${fmtDateTime(r.createdAt||r.created_at)}</div></div><span class="pill ${r.status==='new'?'yellow':'green'}">${remoteStatusLabel(r.status)}</span></div><div class="request-grid"><div class="kv"><small>RICHIEDENTE</small><b>${esc(r.requesterName||r.requester_name)}</b></div><div class="kv"><small>PRONTO</small><b>${esc(r.readyTime||r.ready_time||'—')}</b></div><div class="kv"><small>SERVIZIO</small><b>${vehicleIcon(r.service)} ${esc(r.microDelivery?'Micro E-bike':vehicleLabel(r.service))}</b></div><div class="kv"><small>TARIFFA SOS</small><b>${money(r.totalFee||r.total_fee)}</b></div></div><div class="route-box"><b>${icon('pin','mini-inline-icon')} Ritiro</b> ${esc(r.pickupAddress||r.pickup_address)}<br><b>${icon('navigation','mini-inline-icon')} Consegna</b> ${esc(r.deliveryAddress||r.delivery_address)}<br><b>${icon('customer','mini-inline-icon')}</b> ${esc(r.recipientName||r.recipient_name)} · ${esc(r.recipientPhone||r.recipient_phone)}</div><div class="request-actions">${r.status==='new'?`<button class="btn ghost" data-reject="${esc(r.code)}">RIFIUTA</button><button class="btn primary" data-accept="${esc(r.code)}">${icon('bolt','btn-icon')} ACCETTA ORDINE</button>`:`<button class="btn ghost" data-map-remote="${esc(r.code)}">PERCORSO</button><button class="btn primary" data-open-delivery="${esc(r.code)}">${exists?'APRI CONSEGNA':'IMPORTA CONSEGNA'}</button>`}</div></article>`}).join('');
 }
 async function patchRemote(code,body){return fetchJson(apiBase()+`/api/rider/requests/${encodeURIComponent(code)}`,{method:'PATCH',headers:riderHeaders(),body:JSON.stringify(body)},8000)}
 function findRemote(code){return remoteRequests.find(r=>r.code===code)}
@@ -805,12 +806,12 @@ function cashPanel(o){
     ? `<div class="change-box cash-change missing"><small>MANCANO AL PAGAMENTO</small><b>${money(missing)}</b></div>`
     : `<div class="change-box cash-change"><small>RESTO DA DARE</small><b>${money(change)}</b></div>`;
   const fundWarning=change>fund
-    ? `<div class="cash-warning">⚠ Fondo resto insufficiente di <b>${money(change-fund)}</b></div>`
+    ? `<div class="cash-warning">${icon('warning','mini-inline-icon')} Fondo resto insufficiente di <b>${money(change-fund)}</b></div>`
     : change>0
       ? `<div class="cash-after">Dopo il resto ti rimangono <b>${money(fundAfter)}</b> nel fondo.</div>`
       : `<div class="cash-after">Fondo disponibile per eventuale resto.</div>`;
   return `<div class="cash-panel">
-    <div class="cash-note"><b>💶 CASSA ALLA PORTA</b><br>Tocca le banconote che il cliente ti dà oppure inserisci l'importo manualmente.</div>
+    <div class="cash-note"><b>${icon('cash','mini-inline-icon')} CASSA ALLA PORTA</b><br>Tocca le banconote che il cliente ti dà oppure inserisci l'importo manualmente.</div>
 
     <button type="button" class="fund-rest-box" data-cash-action="editfund" data-order-id="${o.id}">
       <small>FONDO RESTO DISPONIBILE · TOCCA PER MODIFICARE</small>
@@ -840,11 +841,11 @@ function cashPanel(o){
 function orderCard(o){
   const pickup={label:o.pickupAddress,lat:o.pickupLat,lon:o.pickupLon},del={label:o.address,lat:o.lat,lon:o.lon};
   let actions='';
-  if(o.status==='to_pickup') actions=`<a class="btn ghost" href="${mapsNavigate(pickup,o.vehicle)}" target="_blank" rel="noopener">📍 VAI AL RITIRO</a><button class="btn primary" data-order-action="picked" data-order-id="${o.id}">✓ RITIRATO</button>`;
-  else if(o.status==='picked') actions=`<a class="btn ghost" href="${mapsNavigate(del,o.vehicle)}" target="_blank" rel="noopener">🏁 NAVIGA CLIENTE</a><button class="btn primary" data-order-action="arrived" data-order-id="${o.id}">📍 ARRIVATO</button>`;
-  else if(o.status==='arrived') actions=`<button class="btn ghost" data-order-action="cancel" data-order-id="${o.id}">ANNULLA</button><button class="btn primary" data-order-action="delivered" data-order-id="${o.id}">✓ CONSEGNATO</button>`;
+  if(o.status==='to_pickup') actions=`<a class="btn ghost" href="${mapsNavigate(pickup,o.vehicle)}" target="_blank" rel="noopener">${icon('pin','btn-icon')} VAI AL RITIRO</a><button class="btn primary" data-order-action="picked" data-order-id="${o.id}">${icon('check','btn-icon')} RITIRATO</button>`;
+  else if(o.status==='picked') actions=`<a class="btn ghost" href="${mapsNavigate(del,o.vehicle)}" target="_blank" rel="noopener">${icon('navigation','btn-icon')} NAVIGA CLIENTE</a><button class="btn primary" data-order-action="arrived" data-order-id="${o.id}">${icon('pin','btn-icon')} ARRIVATO</button>`;
+  else if(o.status==='arrived') actions=`<button class="btn ghost" data-order-action="cancel" data-order-id="${o.id}">ANNULLA</button><button class="btn primary" data-order-action="delivered" data-order-id="${o.id}">${icon('check','btn-icon')} CONSEGNATO</button>`;
   const cash=o.payment==='cash'&&o.status==='arrived'?cashPanel(o):'';
-  return `<article class="order-card" data-order-id="${o.id}"><div class="order-top"><div><div class="code">${esc(o.code)}</div><div class="tiny">${vehicleIcon(o.vehicle)} ${esc(vehicleLabel(o.vehicle))} · pronto ${esc(o.readyTime||'—')}</div></div><span class="pill yellow">${o.status==='to_pickup'?'DA RITIRARE':o.status==='picked'?'IN CONSEGNA':'ARRIVATO'}</span></div><div class="route-box"><b>🏪 ${esc(o.restaurant)}</b><br>${esc(o.pickupAddress)}<br><br><b>👤 ${esc(o.customer)}</b> · ${esc(o.phone||'—')}<br>${esc(o.address)}</div><div class="order-grid"><div class="kv"><small>TARIFFA SOS</small><b>${money(o.fee)}</b></div><div class="kv"><small>PAGAMENTO ORDINE</small><b>${esc(paymentLabel(o.payment))}</b></div>${o.payment==='cash'?`<div class="kv"><small>DA INCASSARE</small><b>${money(o.total)}</b></div>`:''}<div class="kv"><small>DISTANZA</small><b>${num(o.distanceKm).toFixed(1)} km</b></div></div>${cash}<div class="order-actions">${actions}</div></article>`;
+  return `<article class="order-card" data-order-id="${o.id}"><div class="order-top"><div><div class="code">${esc(o.code)}</div><div class="tiny">${vehicleIcon(o.vehicle)} ${esc(vehicleLabel(o.vehicle))} · pronto ${esc(o.readyTime||'—')}</div></div><span class="pill yellow">${o.status==='to_pickup'?'DA RITIRARE':o.status==='picked'?'IN CONSEGNA':'ARRIVATO'}</span></div><div class="route-box"><b>${icon('store','mini-inline-icon')} ${esc(o.restaurant)}</b><br>${esc(o.pickupAddress)}<br><br><b>${icon('customer','mini-inline-icon')} ${esc(o.customer)}</b> · ${esc(o.phone||'—')}<br>${esc(o.address)}</div><div class="order-grid"><div class="kv"><small>TARIFFA SOS</small><b>${money(o.fee)}</b></div><div class="kv"><small>PAGAMENTO ORDINE</small><b>${esc(paymentLabel(o.payment))}</b></div>${o.payment==='cash'?`<div class="kv"><small>DA INCASSARE</small><b>${money(o.total)}</b></div>`:''}<div class="kv"><small>DISTANZA</small><b>${num(o.distanceKm).toFixed(1)} km</b></div></div>${cash}<div class="order-actions">${actions}</div></article>`;
 }
 async function orderAction(id,action){
   const o=state.orders.find(x=>x.id===id);if(!o)return;
@@ -875,7 +876,7 @@ function renderRestaurantCash(shiftId){
     const vehicle=arr[arr.length-1]?.vehicle||'auto';
     const navHref=mapsNavigate(destination,vehicle);
     const baseLabel=destination.label||first.pickupAddress||name;
-    const returnMap=due.length?`<div class="restaurant-return"><div><small>BASE / LOCALE</small><b>📍 ${esc(baseLabel)}</b></div><a class="btn map-return-btn" href="${esc(navHref)}" target="_blank" rel="noopener">🗺️ TORNA AL LOCALE</a></div>`:'';
+    const returnMap=due.length?`<div class="restaurant-return"><div><small>BASE / LOCALE</small><b>${icon('pin','mini-inline-icon')} ${esc(baseLabel)}</b></div><a class="btn map-return-btn" href="${esc(navHref)}" target="_blank" rel="noopener">${icon('navigation','btn-icon')} TORNA AL LOCALE</a></div>`:'';
     return `<article class="restaurant-card"><div class="restaurant-top"><div><b>${esc(name)}</b><div class="tiny">${arr.length} ordini in contanti</div></div>${due.length?'<span class="pill yellow">DA SALDARE</span>':'<span class="pill green">SALDATO</span>'}</div><div class="restaurant-money"><div class="kv"><small>DA SISTEMARE</small><b>${money(uns.reduce((a,o)=>a+o.received,0))}</b></div><div class="kv"><small>DA RENDERE</small><b>${money(due.reduce((a,o)=>a+o.total,0))}</b></div><div class="kv"><small>CONSEGNE</small><b>${arr.length}</b></div></div>${returnMap}<div class="request-actions">${uns.length?`<button class="btn ghost" data-sort-cash="${esc(name)}">✓ SOLDI SISTEMATI</button>`:'<span></span>'}${due.length?`<button class="btn primary" data-settle="${esc(name)}">SALDA LOCALE</button>`:''}</div></article>`;
   }).join('');
 }
@@ -936,11 +937,47 @@ function createManualFromParsed(d){
 // ---------- Storico / analytics ----------
 function historyOrders(){const q=$('historySearch')?.value.trim().toLowerCase()||'';return state.orders.filter(o=>o.status==='delivered'||o.outcome==='cancelled').filter(o=>!q||[o.code,o.restaurant,o.customer,o.address,o.phone].join(' ').toLowerCase().includes(q)).sort((a,b)=>new Date(b.deliveredAt||b.createdAt)-new Date(a.deliveredAt||a.createdAt));}
 function renderHistory(){const arr=historyOrders();$('historyList').innerHTML=arr.length?arr.map(o=>`<article class="history-card ${o.outcome==='problem'?'problem':o.outcome==='cancelled'?'cancelled':''}"><div class="history-top"><div><div class="code">${esc(o.code)}</div><div class="tiny">${fmtDateTime(o.deliveredAt||o.createdAt)}</div></div><span class="pill ${o.outcome==='cancelled'?'':'green'}">${o.outcome==='cancelled'?'ANNULLATA':'CONSEGNATA'}</span></div><div class="request-grid"><div class="kv"><small>LOCALE</small><b>${esc(o.restaurant)}</b></div><div class="kv"><small>CLIENTE</small><b>${esc(o.customer)}</b></div><div class="kv"><small>TARIFFA SOS</small><b>${money(o.fee)}</b></div><div class="kv"><small>VALORE ORDINE</small><b>${money(o.total)}</b></div></div></article>`).join(''):'<section class="card"><p class="muted">Nessuna consegna nello storico.</p></section>'}
-function analyticsOrders(){const done=state.orders.filter(o=>o.status==='delivered'&&o.outcome!=='cancelled');if(analyticsPeriod==='all')return done;const now=new Date(),start=new Date(now);if(analyticsPeriod==='today')start.setHours(0,0,0,0);else if(analyticsPeriod==='7d'){start.setDate(now.getDate()-6);start.setHours(0,0,0,0)}else if(analyticsPeriod==='30d'){start.setDate(now.getDate()-29);start.setHours(0,0,0,0)}return done.filter(o=>new Date(o.deliveredAt||o.createdAt)>=start)}
+function analyticsBounds(period=analyticsPeriod){
+  const now=new Date();
+  const dayStart=d=>{const x=new Date(d);x.setHours(0,0,0,0);return x};
+  const nextDay=d=>{const x=dayStart(d);x.setDate(x.getDate()+1);return x};
+  let start=null,end=null,label='Tutto';
+  if(period==='today'){start=dayStart(now);end=nextDay(now);label='Oggi';}
+  else if(period==='yesterday'){end=dayStart(now);start=new Date(end);start.setDate(start.getDate()-1);label='Ieri';}
+  else if(period==='7d'){end=nextDay(now);start=dayStart(now);start.setDate(start.getDate()-6);label='Ultimi 7 giorni';}
+  else if(period==='30d'){end=nextDay(now);start=dayStart(now);start.setDate(start.getDate()-29);label='Ultimi 30 giorni';}
+  else if(period==='lastMonth'){end=new Date(now.getFullYear(),now.getMonth(),1);start=new Date(now.getFullYear(),now.getMonth()-1,1);label='Mese scorso';}
+  return {start,end,label};
+}
+function analyticsOrders(){
+  const done=state.orders.filter(o=>o.status==='delivered'&&o.outcome!=='cancelled');
+  const {start,end}=analyticsBounds();
+  if(!start)return done;
+  return done.filter(o=>{const d=new Date(o.deliveredAt||o.createdAt);return d>=start&&d<end});
+}
+function analyticsSeries(arr){
+  const byDay={};
+  arr.forEach(o=>{const d=new Date(o.deliveredAt||o.createdAt);const k=d.toISOString().slice(0,10);byDay[k]=(byDay[k]||0)+num(o.fee)});
+  const {start,end}=analyticsBounds();
+  if(start&&end){
+    const rows=[];
+    for(let d=new Date(start);d<end;d.setDate(d.getDate()+1)){
+      const key=d.toISOString().slice(0,10);
+      rows.push({key,label:d.toLocaleDateString('it-IT',{day:'2-digit',month:'2-digit'}),value:byDay[key]||0});
+    }
+    return rows;
+  }
+  return Object.entries(byDay).sort((a,b)=>a[0].localeCompare(b[0])).map(([key,value])=>({key,label:new Date(key+'T12:00:00').toLocaleDateString('it-IT',{day:'2-digit',month:'2-digit'}),value}));
+}
 function renderAnalytics(){
-  const arr=analyticsOrders(),rev=arr.reduce((a,o)=>a+num(o.fee),0),value=arr.reduce((a,o)=>a+num(o.total),0);$('aRevenue').textContent=money(rev);$('aOrders').textContent=arr.length;$('aAvg').textContent=money(arr.length?rev/arr.length:0);$('aOrderValue').textContent=money(value);
-  const byDay={};arr.forEach(o=>{const k=new Date(o.deliveredAt||o.createdAt).toLocaleDateString('it-IT',{day:'2-digit',month:'2-digit'});byDay[k]=(byDay[k]||0)+num(o.fee)});const days=Object.entries(byDay);const max=Math.max(1,...days.map(x=>x[1]));$('dailyChart').innerHTML=days.length?days.map(([d,v])=>`<div class="bar-wrap"><div class="bar-value">${money(v).replace(',00','')}</div><div class="bar" style="height:${Math.max(3,v/max*130)}px"></div><div class="bar-label">${d}</div></div>`).join(''):'<p class="muted">Nessun dato nel periodo.</p>';
-  const ranks={};arr.forEach(o=>{const k=o.restaurant||'Senza nome';ranks[k]=ranks[k]||{n:0,v:0};ranks[k].n++;ranks[k].v+=num(o.fee)});const list=Object.entries(ranks).sort((a,b)=>b[1].v-a[1].v).slice(0,8);$('restaurantRank').innerHTML=list.length?list.map(([name,x],i)=>`<div class="rank-row"><div class="rank-num">${i+1}</div><div><b>${esc(name)}</b><div class="tiny">${x.n} consegne</div></div><b>${money(x.v)}</b></div>`).join(''):'<p class="muted">Nessun dato.</p>';
+  const arr=analyticsOrders(),rev=arr.reduce((a,o)=>a+num(o.fee),0),value=arr.reduce((a,o)=>a+num(o.total),0);
+  $('aRevenue').textContent=money(rev);$('aOrders').textContent=arr.length;$('aAvg').textContent=money(arr.length?rev/arr.length:0);$('aOrderValue').textContent=money(value);
+  const bounds=analyticsBounds();if($('analyticsRangeLabel'))$('analyticsRangeLabel').textContent=bounds.label;
+  const days=analyticsSeries(arr),max=Math.max(1,...days.map(x=>x.value));
+  $('dailyChart').innerHTML=days.length?days.map(x=>`<div class="bar-wrap"><div class="bar-value">${money(x.value).replace(',00','')}</div><div class="bar ${x.value?'has-value':'zero'}" style="height:${x.value?Math.max(6,x.value/max*130):3}px"></div><div class="bar-label">${x.label}</div></div>`).join(''):'<p class="muted">Nessun dato nel periodo.</p>';
+  const ranks={};arr.forEach(o=>{const k=o.restaurant||'Senza nome';ranks[k]=ranks[k]||{n:0,v:0};ranks[k].n++;ranks[k].v+=num(o.fee)});
+  const list=Object.entries(ranks).sort((a,b)=>b[1].v-a[1].v).slice(0,8);
+  $('restaurantRank').innerHTML=list.length?list.map(([name,x],i)=>`<div class="rank-row"><div class="rank-num">${i+1}</div><div><b>${esc(name)}</b><div class="tiny">${x.n} consegne</div></div><b>${money(x.v)}</b></div>`).join(''):'<p class="muted">Nessun dato.</p>';
 }
 function csvExport(){const rows=[['Codice','Locale','Cliente','Telefono','Ritiro','Consegna','Pronto','Servizio','Pagamento','Valore ordine','Tariffa SOS','Stato','Creata','Consegnata']];state.orders.forEach(o=>rows.push([o.code,o.restaurant,o.customer,o.phone,o.pickupAddress,o.address,o.readyTime,vehicleLabel(o.vehicle),paymentLabel(o.payment),num(o.total).toFixed(2),num(o.fee).toFixed(2),o.status,o.createdAt,o.deliveredAt||'']));return rows.map(r=>r.map(v=>`"${String(v??'').replace(/"/g,'""')}"`).join(';')).join('\n')}
 function download(name,text,type='text/plain;charset=utf-8'){const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([text],{type}));a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),500)}
