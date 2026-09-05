@@ -28,6 +28,9 @@
       <div class="eyebrow">SOS RIDER CARPI-SOLIERA</div>
       <h1>Il tuo rider di emergenza.</h1>
       <p>Accedi al tuo profilo oppure richiedi una consegna subito, anche senza account.</p>
+      <div class="home-motto" aria-label="Vantaggi SOS Rider">
+        <span>Paghi solo quando serve</span><i>·</i><span>Contatto diretto</span><i>·</i><span>Servizio locale</span>
+      </div>
     </section>
 
     <section id="homeAvailability" class="availability-card loading">
@@ -35,23 +38,23 @@
       <div><b>Controllo disponibilità rider…</b><small>Stato aggiornato automaticamente</small></div>
     </section>
 
-    <section class="hub-choice-grid">
-      <button id="openLoginHub" class="hub-choice rider-choice" type="button">
-        <span class="choice-icon">🔐</span>
-        <span class="choice-copy"><b>ACCEDI</b><small>Profilo cliente / Area Rider</small></span>
-        <span class="choice-arrow">›</span>
-      </button>
-      <button id="openClientHub" class="hub-choice client-choice" type="button">
-        <span class="choice-icon">📦</span>
-        <span class="choice-copy"><b>RICHIEDI SENZA ACCOUNT</b><small>Preventivo e richiesta guidata</small></span>
-        <span class="choice-arrow">›</span>
-      </button>
+    <section class="home-route-card customer-route">
+      <div class="home-route-head">
+        <span class="home-route-icon">📦</span>
+        <div><div class="eyebrow">LOCALI · NEGOZI · PRIVATI</div><h2>Devi richiedere una consegna?</h2><p>Inserisci ritiro e destinazione, vedi il preventivo e invia la richiesta.</p></div>
+      </div>
+      <div class="home-route-actions">
+        <button id="openLoginHub" class="btn primary full big" type="button">RICHIEDI UNA CONSEGNA</button>
+        <button id="openClientHub" class="btn ghost full" type="button">CONTINUA SENZA ACCOUNT</button>
+      </div>
     </section>
 
-    <section class="hub-card mini-info">
-      <div><b>Nessun costo fisso</b><span>Paghi solo quando serve</span></div>
-      <div><b>Contatto diretto</b><span>Risponde Marcello</span></div>
-      <div><b>Zona locale</b><span>Carpi · Limidi · Soliera</span></div>
+    <section class="home-route-card rider-route">
+      <div class="home-route-head">
+        <span class="home-route-icon">🏍️</span>
+        <div><div class="eyebrow">AREA OPERATIVA</div><h2>Sei un rider?</h2><p>Gestisci richieste, consegne, incassi e disponibilità.</p></div>
+      </div>
+      <button id="openRiderHome" class="btn ghost full" type="button">ACCEDI ALL’AREA RIDER</button>
     </section>
   </main>
 
@@ -246,13 +249,22 @@
       <div class="top-actions"><button class="icon-btn" data-theme-toggle type="button" title="Tema giorno/notte">◐</button><button id="riderRefresh" class="icon-btn" type="button" title="Aggiorna">↻</button><button id="openSettings" class="icon-btn" type="button" title="Impostazioni">⚙</button></div>
     </header>
 
-    <section id="riderAvailabilityControl" class="card rider-availability-control">
-      <div class="availability-main"><span id="riderAvailabilityDot" class="availability-dot"></span><div><div class="eyebrow">STATO PUBBLICO</div><b id="riderAvailabilityTitle">Controllo…</b><small id="riderAvailabilityText">I locali vedono questo stato prima di inviare.</small></div></div>
-      <div class="availability-actions"><button id="riderAvailableBtn" class="btn primary small" type="button">🟢 DISPONIBILE</button><button id="riderOfflineBtn" class="btn ghost small" type="button">🔴 NON DISPONIBILE</button><select id="riderEtaSelect" title="Attesa media per richiesta"><option value="15">15 min</option><option value="20">20 min</option><option value="25" selected>25 min</option><option value="30">30 min</option><option value="40">40 min</option></select></div>
+    <section class="rider-hero-strip" aria-label="SOS Rider operativo">
+      <div class="rider-hero-copy"><div class="eyebrow">CENTRO OPERATIVO</div><b>Gestione richieste, consegne e cassa.</b><small>Carpi · Limidi · Soliera</small></div>
+      <img src="rider-action.svg" alt="Rider SOS Rider su e-bike in movimento">
     </section>
-    <section id="riderAlarmCard" class="card alarm-card">
-      <div><div class="eyebrow">ALLARME NUOVI ORDINI</div><b id="riderAlarmState">Da attivare su questo dispositivo</b><small>Push di sistema ad app chiusa. Con Area Rider aperta: allarme + vibrazione quando consentiti dal dispositivo.</small></div>
-      <div class="alarm-actions"><button id="testRiderPush" class="btn ghost small" type="button">TEST PUSH</button><button id="enableRiderAlarm" class="btn ghost small" type="button">🔔 ATTIVA</button></div>
+
+    <section id="riderAvailabilityControl" class="operator-status-card">
+      <div class="operator-status-main">
+        <div class="eyebrow">STATO OPERATORE</div>
+        <div class="operator-state-line"><span id="riderAvailabilityDot" class="availability-dot"></span><b id="riderAvailabilityTitle">Controllo…</b></div>
+        <small id="riderAvailabilityText">Stato visibile ai clienti</small>
+      </div>
+      <div class="operator-status-actions">
+        <label class="eta-inline"><span>ETA</span><select id="riderEtaSelect" title="Attesa media per richiesta"><option value="5">5 min</option><option value="10">10 min</option><option value="15" selected>15 min</option><option value="20">20 min</option><option value="25">25 min</option><option value="30">30 min</option><option value="45">45 min</option><option value="60">60 min</option></select></label>
+        <button id="riderAvailableBtn" class="btn primary small" type="button">🟢 DISPONIBILE</button>
+        <button id="riderOfflineBtn" class="btn ghost small" type="button">🔴 OFF</button>
+      </div>
     </section>
 
     <section id="riderPageRequests" class="rider-page active">
@@ -271,7 +283,7 @@
       <section id="noShiftCard" class="card hidden"><h2>Nessun turno aperto</h2><p class="muted">Apri un turno per iniziare a gestire consegne e incassi.</p><button id="startShiftBtn" class="btn primary full">⚡ INIZIA TURNO</button></section>
       <div id="shiftWork">
         <section class="stats-grid">
-          <div class="stat-card"><small>Fondo iniziale</small><b id="statFund">€0</b></div>
+          <div class="stat-card fund-initial-clickable" title="Tocca per modificare il fondo iniziale"><small>Fondo iniziale · tocca</small><b id="statFund">€0</b></div>
           <div class="stat-card hot fund-clickable" title="Tocca per modificare il fondo resto"><small>Fondo disponibile · tocca</small><b id="statAvailable">€0</b></div>
           <div class="stat-card"><small>Da sistemare</small><b id="statUnsorted">€0</b></div>
           <div class="stat-card"><small>Da rendere locali</small><b id="statDue">€0</b></div>
