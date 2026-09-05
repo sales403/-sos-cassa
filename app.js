@@ -1,7 +1,7 @@
 (() => {
 'use strict';
 
-const APP_VERSION = '10.0.6';
+const APP_VERSION = '10.0.8';
 const KEY = 'sosRiderUnifiedV10';
 const V9_KEY = 'sosRiderUnifiedV9';
 const OLD_KEY = 'sosRiderGestV7';
@@ -346,7 +346,51 @@ async function enableAlarm(){
     updateAlarmUI('Allarme app attivo · push da completare');
   }
 }
-function startAlarm(code){if(!alarmEnabled||alarmActiveCode===code||$('riderHub')?.classList.contains('hidden'))return;stopAlarm();alarmActiveCode=code;alarmBurst();alarmTimer=setInterval(alarmBurst,1400);let ov=document.getElementById('alarmOverlay');if(!ov){ov=document.createElement('div');ov.id='alarmOverlay';ov.className='alarm-overlay';ov.innerHTML='<div>⚡ NUOVA RICHIESTA SOS RIDER</div>';document.body.appendChild(ov)}ov.classList.remove('hidden');if('Notification'in window&&Notification.permission==='granted'){try{new Notification('SOS Rider · Nuova richiesta',{body:code,icon:'icon-192.png',tag:code})}catch{}}}
+async function testRiderPush(){
+  const b=$('testRiderPush');
+  if(b){b.disabled=true;b.textContent='TEST…';}
+  try{
+    const d=await fetchJson(apiBase()+'/api/rider/push/test',{method:'POST',headers:riderHeaders(),body:'{}'},10000);
+    updateAlarmUI(`Test push inviato · ${d.sent||0} dispositivo/i`);
+  }catch(e){
+    updateAlarmUI('Test push fallito · '+(e.message||e));
+  }finally{
+    if(b){b.disabled=false;b.textContent='TEST PUSH';}
+  }
+}
+async function showRiderSystemNotification(title,body,tag='sos-rider'){
+  try{
+    if(!('serviceWorker' in navigator) || Notification.permission!=='granted')return false;
+    const reg=await navigator.serviceWorker.ready;
+    await reg.showNotification(title,{
+      body,
+      icon:'./icon-192.png',
+      badge:'./icon-192.png',
+      tag,
+      renotify:true,
+      requireInteraction:true,
+      data:{url:'./?hub=rider'}
+    });
+    return true;
+  }catch(e){console.warn('Notifica sistema non disponibile',e);return false}
+}
+function startAlarm(code){
+  if(!alarmEnabled||alarmActiveCode===code||$('riderHub')?.classList.contains('hidden'))return;
+  stopAlarm();
+  alarmActiveCode=code;
+  alarmBurst();
+  alarmTimer=setInterval(alarmBurst,1400);
+  let ov=document.getElementById('alarmOverlay');
+  if(!ov){
+    ov=document.createElement('div');
+    ov.id='alarmOverlay';
+    ov.className='alarm-overlay';
+    ov.innerHTML='<div>⚡ NUOVA RICHIESTA SOS RIDER</div>';
+    document.body.appendChild(ov)
+  }
+  ov.classList.remove('hidden');
+  showRiderSystemNotification('⚡ SOS Rider · Nuova richiesta',code,code);
+}
 function stopAlarm(code){if(code&&alarmActiveCode&&code!==alarmActiveCode)return;if(alarmTimer)clearInterval(alarmTimer);alarmTimer=null;alarmActiveCode=null;navigator.vibrate?.(0);document.getElementById('alarmOverlay')?.classList.add('hidden')}
 
 // ---------- Autocomplete indirizzi ----------
@@ -922,7 +966,7 @@ function bindEvents(){
   $('clientCalcQuote').onclick=calculateClientQuote;$('clientEditQuote').onclick=()=>{$('clientQuoteSection').classList.add('hidden');$('clientFormCard').scrollIntoView({behavior:'smooth',block:'start'})};$('clientSendRequest').onclick=submitClientRequest;
   $('clientNewRequest').onclick=()=>{localStorage.removeItem(CLIENT_ACTIVE_KEY);stopClientPolling();lastClientStatus=null;$('clientRequestStatus').classList.add('hidden');$('clientFormCard').classList.remove('hidden');clearClientDeliveryFields();$('clientFormCard').scrollIntoView({behavior:'smooth'})};
   $('clientRecentList').addEventListener('click',e=>{const b=e.target.closest('[data-repeat-client]');if(b)repeatClientRequest(b.dataset.repeatClient)});
-  $('riderRefresh').onclick=manualRiderRefresh;$('openSettings').onclick=openSettings;$('riderAvailableBtn').onclick=()=>setRiderAvailability(true);$('riderOfflineBtn').onclick=()=>setRiderAvailability(false);$('riderEtaSelect').onchange=()=>{if(currentAvailability)setRiderAvailability(!!currentAvailability.enabled)};$('enableRiderAlarm').onclick=enableAlarm;
+  $('riderRefresh').onclick=manualRiderRefresh;$('openSettings').onclick=openSettings;$('riderAvailableBtn').onclick=()=>setRiderAvailability(true);$('riderOfflineBtn').onclick=()=>setRiderAvailability(false);$('riderEtaSelect').onchange=()=>{if(currentAvailability)setRiderAvailability(!!currentAvailability.enabled)};$('enableRiderAlarm').onclick=enableAlarm;if($('testRiderPush'))$('testRiderPush').onclick=testRiderPush;
   document.querySelectorAll('[data-rider-page]').forEach(b=>b.onclick=()=>switchRiderPage(b.dataset.riderPage));
   $('remoteRequestsList').addEventListener('click',e=>{const a=e.target.closest('[data-accept]');if(a)return acceptRemote(a.dataset.accept);const r=e.target.closest('[data-reject]');if(r)return rejectRemote(r.dataset.reject);const m=e.target.closest('[data-map-remote]');if(m){const x=normalizeRemote(findRemote(m.dataset.mapRemote));window.open(mapsRoute({label:x.pickupAddress,lat:x.pickupLat,lon:x.pickupLon},{label:x.deliveryAddress,lat:x.deliveryLat,lon:x.deliveryLon},x.service),'_blank','noopener');return}const o=e.target.closest('[data-open-delivery]');if(o){const rr=findRemote(o.dataset.openDelivery);if(rr&&!state.orders.some(x=>x.remoteCode===rr.code))ensureShiftThen(()=>createLocalOrderFromRemote(rr));switchRiderPage('deliveries')}});
   $('openWaImporter').onclick=openWhatsAppImporter;$('newManualOrder').onclick=openWhatsAppImporter;
