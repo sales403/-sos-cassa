@@ -230,6 +230,7 @@
       </div>
       <div id="clientStatusBadge" class="request-state waiting">IN ATTESA DEL RIDER</div>
       <p id="clientStatusText">La richiesta è arrivata nell'Area Rider. Attendi la conferma di disponibilità.</p>
+      <div id="clientEtaBox" class="live-eta-box hidden"></div>
       <div id="clientConfirmedPrice" class="confirmed-price"></div>
       <div class="dual-actions">
         <button id="clientNewRequest" type="button" class="btn ghost">NUOVA RICHIESTA</button>
@@ -265,7 +266,7 @@
         <small id="riderAvailabilityText">Stato visibile ai clienti</small>
       </div>
       <div class="operator-status-actions">
-        <label class="eta-inline"><span>ETA</span><select id="riderEtaSelect" title="Attesa media per richiesta"><option value="5">5 min</option><option value="10">10 min</option><option value="15" selected>15 min</option><option value="20">20 min</option><option value="25">25 min</option><option value="30">30 min</option><option value="40">40 min</option><option value="50">50 min</option><option value="60">60 min</option></select></label>
+        <label class="eta-inline"><span>1° RITIRO</span><select id="riderEtaSelect" title="Tempo stimato per raggiungere il primo locale quando non c'è una consegna già in corso"><option value="5">5 min</option><option value="10">10 min</option><option value="15" selected>15 min</option><option value="20">20 min</option><option value="25">25 min</option><option value="30">30 min</option><option value="40">40 min</option><option value="50">50 min</option><option value="60">60 min</option></select></label>
         <div class="operator-toggle">
           <button id="riderAvailableBtn" class="btn status-on small" type="button"><span class="status-led green"></span>DISPONIBILE</button>
           <button id="riderOfflineBtn" class="btn status-off small" type="button"><span class="status-led red"></span>OFF</button>

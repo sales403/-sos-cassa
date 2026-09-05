@@ -374,3 +374,74 @@ html[data-theme="day"] .bottom-nav-v2 .nav-btn.active{background:#fff3b1;color:#
     margin:0 auto 10px!important;
   }
 }
+
+/* V10.2.0 · LIVE ETA ENGINE UI */
+.live-eta-box,.rider-eta-panel{
+  margin:12px 0 10px;
+  padding:12px;
+  border:1px solid color-mix(in srgb,var(--yellow) 42%,var(--line));
+  border-radius:15px;
+  background:linear-gradient(135deg,color-mix(in srgb,var(--yellow) 10%,var(--surface)),var(--surface2));
+}
+.live-eta-title,.rider-eta-head{
+  color:var(--yellow2);
+  font-size:9px;
+  font-weight:1000;
+  letter-spacing:.09em;
+  text-transform:uppercase;
+  margin-bottom:8px;
+}
+.live-eta-grid,.rider-eta-grid{
+  display:grid;
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  gap:8px;
+}
+.live-eta-grid>div,.rider-eta-grid>div{
+  min-width:0;
+  padding:9px 10px;
+  border:1px solid var(--line);
+  border-radius:12px;
+  background:var(--surface);
+}
+.live-eta-grid small,.rider-eta-grid small{
+  display:block;
+  color:var(--muted);
+  font-size:8px;
+  font-weight:900;
+  letter-spacing:.07em;
+}
+.live-eta-grid b,.rider-eta-grid b{
+  display:block;
+  margin-top:3px;
+  font-size:15px;
+  line-height:1.15;
+}
+.live-eta-grid span,.rider-eta-grid span{
+  display:block;
+  margin-top:3px;
+  color:var(--muted);
+  font-size:9px;
+}
+.eta-queue-note{
+  margin-top:8px;
+  padding:7px 9px;
+  border-radius:10px;
+  background:color-mix(in srgb,var(--yellow) 14%,transparent);
+  font-size:10px;
+  font-weight:800;
+}
+.eta-model-note{
+  display:block;
+  margin-top:7px;
+  color:var(--muted);
+  font-size:8px;
+  line-height:1.35;
+}
+.rider-eta-panel{margin:10px 0}
+.rider-eta-panel.preview{opacity:.86;border-style:dashed}
+.rider-eta-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+@media(max-width:430px){
+  .live-eta-grid,.rider-eta-grid{grid-template-columns:1fr 1fr}
+  .live-eta-grid b,.rider-eta-grid b{font-size:13px}
+  .eta-inline span{font-size:7px}
+}
