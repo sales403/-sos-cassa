@@ -254,3 +254,38 @@ html[data-theme="day"] .bottom-nav-v2 .nav-btn.active{background:#fff3b1;color:#
   .page-title-row h1{font-size:29px}
   .bottom-nav-v2 .nav-btn{min-height:59px}
 }
+
+
+/* Area Rider 2.0 — compact hero banner */
+.rider-hero-v2{
+  position:relative!important;
+  min-height:0!important;
+  height:auto!important;
+  margin:2px 0 12px!important;
+  padding:0!important;
+  border:0!important;
+  border-radius:0!important;
+  overflow:visible!important;
+  background:transparent!important;
+  box-shadow:none!important;
+}
+.rider-hero-v2::after{display:none!important}
+.rider-hero-v2 .rider-hero-art{
+  position:relative!important;
+  inset:auto!important;
+  right:auto!important;
+  bottom:auto!important;
+  display:block!important;
+  width:100%!important;
+  max-width:100%!important;
+  height:auto!important;
+  max-height:none!important;
+  aspect-ratio:1500/460;
+  object-fit:contain!important;
+  object-position:center!important;
+  filter:drop-shadow(0 8px 14px rgba(0,0,0,.16))!important;
+}
+@media(max-width:520px){
+  .rider-hero-v2{margin:0 0 10px!important}
+  .rider-hero-v2 .rider-hero-art{width:100%!important}
+}
