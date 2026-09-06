@@ -169,6 +169,27 @@
     scrollBike.style.opacity = String(opacity);
   }
 
+
+  // ======================================================
+  // CHI SIAMO: leggero parallax verticale, mai laterale.
+  // ======================================================
+  const aboutStory = document.getElementById('chi-siamo');
+  const aboutPhotos = aboutStory ? [...aboutStory.querySelectorAll('[data-about-parallax]')] : [];
+  const reduceMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+
+  function updateAboutMotion() {
+    if (!aboutStory || reduceMotion || !aboutPhotos.length) return;
+    const vh = window.innerHeight || document.documentElement.clientHeight;
+    aboutPhotos.forEach(photo => {
+      const shell = photo.closest('.about-media-shell');
+      const rect = shell ? shell.getBoundingClientRect() : photo.getBoundingClientRect();
+      const center = rect.top + rect.height / 2;
+      const progress = clamp((vh / 2 - center) / vh, -1, 1);
+      const strength = Number(photo.dataset.aboutParallax || 12);
+      photo.style.setProperty('--about-y', (progress * strength).toFixed(1) + 'px');
+    });
+  }
+
   let scrollTicking = false;
   function onScroll() {
     if (scrollTicking) return;
@@ -180,11 +201,12 @@
         line.style.transform = 'translateX(' + ((i % 2 ? -1 : 1) * y * 0.022) + 'px) rotate(-9deg)';
       });
       updateBike();
+      updateAboutMotion();
       scrollTicking = false;
     });
   }
 
   window.addEventListener('scroll', onScroll, { passive:true });
-  window.addEventListener('resize', updateBike, { passive:true });
+  window.addEventListener('resize', () => { updateBike(); updateAboutMotion(); }, { passive:true });
   onScroll();
 })();
