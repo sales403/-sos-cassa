@@ -1011,3 +1011,254 @@ html[data-theme="day"] .quick-menu a{border-bottom-color:#e6e7e9!important}
     font-size:47px!important;
   }
 }
+
+
+/* =========================================================
+   2026-09-07 00:51 — FINAL MOBILE HERO COMPOSITION
+   Photo is the hero background: ALL copy/icons live on top of it.
+   ========================================================= */
+@media(max-width:700px){
+  /* Header stays the same height; logo uses almost all of it */
+  .topbar.topbar-centered{
+    height:88px!important;
+  }
+  .topbar-centered .brand-centered{
+    height:88px;
+    display:flex!important;
+    align-items:center;
+    justify-content:center;
+    overflow:visible;
+  }
+  .topbar-centered .brand-centered img{
+    width:158px!important;
+    height:86px!important;
+    max-width:none!important;
+    max-height:86px!important;
+    object-fit:contain!important;
+    transform:scale(1.03);
+    transform-origin:center;
+    filter:drop-shadow(0 8px 18px rgba(0,0,0,.30));
+  }
+
+  /* One single hero canvas. No black/text block detached from the image. */
+  .hero-banner.hero-dynamic{
+    padding-top:88px!important;
+    background:#02070c!important;
+  }
+  .hero-stage{
+    position:relative!important;
+    height:clamp(560px,133.333vw,760px)!important;
+    min-height:0!important;
+    overflow:hidden!important;
+    background:#02070c!important;
+  }
+  .hero-bg{
+    position:absolute!important;
+    inset:0!important;
+    width:100%!important;
+    height:100%!important;
+  }
+  .hero-bg img{
+    display:block!important;
+    width:100%!important;
+    height:100%!important;
+    object-fit:cover!important;
+    object-position:center center!important;
+  }
+
+  /* Dark only enough to read the UI: the photo stays visible from top to bottom. */
+  .hero-shade{
+    position:absolute!important;
+    inset:0!important;
+    background:
+      linear-gradient(180deg,
+        rgba(1,5,9,.82) 0%,
+        rgba(1,6,10,.70) 25%,
+        rgba(1,6,10,.46) 44%,
+        rgba(1,5,8,.16) 65%,
+        rgba(0,0,0,.08) 100%)!important;
+  }
+
+  .hero-content{
+    position:relative!important;
+    z-index:2!important;
+    min-height:0!important;
+    height:100%!important;
+    display:block!important;
+    padding:17px 14px 14px!important;
+  }
+  .hero-copy{
+    position:relative!important;
+    width:100%!important;
+    height:100%!important;
+    max-width:none!important;
+  }
+
+  /* Copy sits inside the dark sky, not above the image */
+  .hero-kicker{
+    margin:0 0 7px!important;
+    font-size:8.4px!important;
+    letter-spacing:.16em!important;
+    text-shadow:0 2px 10px rgba(0,0,0,.75);
+  }
+  .hero-kicker::before{
+    width:24px!important;
+  }
+  .hero-copy h1{
+    width:78%!important;
+    max-width:78%!important;
+    margin:0!important;
+    font-size:clamp(44px,12.7vw,58px)!important;
+    line-height:.88!important;
+    letter-spacing:-.06em!important;
+    text-shadow:0 5px 18px rgba(0,0,0,.72)!important;
+  }
+  .hero-copy>p{
+    width:82%!important;
+    max-width:82%!important;
+    margin:10px 0 0!important;
+    font-size:12px!important;
+    line-height:1.36!important;
+    color:#f1f1f1!important;
+    text-shadow:0 2px 10px rgba(0,0,0,.92)!important;
+  }
+
+  /* Bigger, more immediate service pills while staying compact */
+  .hero-feature-grid{
+    width:86%!important;
+    max-width:86%!important;
+    margin:12px 0 0!important;
+    display:grid!important;
+    grid-template-columns:1fr 1fr!important;
+    gap:6px!important;
+  }
+  .hero-feature-grid>div{
+    min-height:54px!important;
+    padding:5px 7px!important;
+    gap:8px!important;
+    border-radius:13px!important;
+    border:1px solid rgba(255,208,0,.38)!important;
+    background:rgba(5,7,9,.73)!important;
+    backdrop-filter:blur(7px)!important;
+    box-shadow:0 8px 20px rgba(0,0,0,.18), inset 0 0 20px rgba(255,208,0,.025)!important;
+  }
+  .hero-feature-grid img{
+    width:40px!important;
+    height:40px!important;
+    flex:0 0 40px!important;
+    object-fit:contain!important;
+    filter:drop-shadow(0 3px 8px rgba(0,0,0,.45))!important;
+  }
+  .hero-feature-grid span{
+    font-size:10.2px!important;
+    line-height:1.08!important;
+    font-weight:1000!important;
+    letter-spacing:-.01em!important;
+    color:#fff!important;
+  }
+
+  /* Vehicle pills: larger icon + readable label, one compact row */
+  .hero-vehicles{
+    width:100%!important;
+    max-width:100%!important;
+    display:grid!important;
+    grid-template-columns:repeat(3,1fr)!important;
+    gap:5px!important;
+    margin:7px 0 0!important;
+  }
+  .hero-vehicles>span{
+    min-width:0!important;
+    min-height:42px!important;
+    padding:3px 5px!important;
+    display:flex!important;
+    justify-content:center!important;
+    gap:5px!important;
+    border-radius:14px!important;
+    background:rgba(4,6,8,.66)!important;
+    border:1px solid rgba(255,255,255,.16)!important;
+    backdrop-filter:blur(6px)!important;
+    font-size:7.6px!important;
+    line-height:1!important;
+    letter-spacing:.07em!important;
+    text-align:center!important;
+  }
+  .hero-vehicles img{
+    width:42px!important;
+    height:28px!important;
+    flex:0 0 42px!important;
+    object-fit:contain!important;
+  }
+
+  /* The floating CTA already handles conversion on mobile */
+  .hero-actions{
+    display:none!important;
+  }
+
+  .hero-zones{
+    position:static!important;
+    width:max-content!important;
+    max-width:100%!important;
+    margin:7px auto 0!important;
+    padding:5px 8px!important;
+    border-radius:999px!important;
+    background:rgba(3,5,7,.55)!important;
+    border:1px solid rgba(255,255,255,.10)!important;
+    color:#fff!important;
+    text-align:center!important;
+    font-size:7.6px!important;
+    line-height:1!important;
+    letter-spacing:.07em!important;
+    text-shadow:0 2px 10px rgba(0,0,0,.9)!important;
+    backdrop-filter:blur(6px)!important;
+  }
+}
+
+@media(max-width:390px){
+  .topbar-centered .brand-centered img{
+    width:150px!important;
+    height:85px!important;
+  }
+  .hero-stage{
+    height:555px!important;
+  }
+  .hero-content{
+    padding:14px 12px 12px!important;
+  }
+  .hero-copy h1{
+    width:80%!important;
+    max-width:80%!important;
+    font-size:43px!important;
+  }
+  .hero-copy>p{
+    width:84%!important;
+    max-width:84%!important;
+    font-size:11.4px!important;
+  }
+  .hero-feature-grid{
+    width:88%!important;
+    max-width:88%!important;
+    gap:5px!important;
+  }
+  .hero-feature-grid>div{
+    min-height:51px!important;
+    padding:4px 6px!important;
+  }
+  .hero-feature-grid img{
+    width:37px!important;
+    height:37px!important;
+    flex-basis:37px!important;
+  }
+  .hero-feature-grid span{
+    font-size:9.6px!important;
+  }
+  .hero-vehicles>span{
+    min-height:39px!important;
+    font-size:7px!important;
+    gap:3px!important;
+  }
+  .hero-vehicles img{
+    width:36px!important;
+    height:25px!important;
+    flex-basis:36px!important;
+  }
+}
