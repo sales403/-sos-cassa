@@ -409,3 +409,7 @@ footer{padding:34px 0 100px;border-top:1px solid var(--line);margin-top:88px}.fo
   .app-phone-stage{height:400px}
   .flow-card{grid-template-columns:40px 78px 1fr}.flow-visual{width:78px;height:72px}.flow-visual svg{width:48px;height:48px}
 }
+
+.mini-os-icon svg{width:30px;height:30px;fill:none;stroke:currentColor;stroke-width:2.6;stroke-linecap:round;stroke-linejoin:round}
+.mini-os-icon.chrome svg,.mini-os-icon.safari svg,.install-os-icon.chrome svg{width:100%;height:100%;stroke:none}
+.install-os-icon.chrome{padding:8px;border:0;outline:0;background:#ffd000}
