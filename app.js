@@ -1,7 +1,7 @@
 (() => {
 'use strict';
 
-const APP_VERSION = '10.2.1';
+const APP_VERSION = '10.3.0';
 const KEY = 'sosRiderUnifiedV10';
 const V9_KEY = 'sosRiderUnifiedV9';
 const OLD_KEY = 'sosRiderGestV7';
@@ -126,11 +126,17 @@ function isLateTime(t){
 }
 function tariffFor(km, vehicle, readyTime){
   km = Math.max(0, Number(km)||0);
-  let base, micro=false;
-  if(vehicle==='moto') base = km<=5 ? 9 : 9 + (km-5)*1.20;
-  else if(vehicle==='auto') base = km<=5 ? 12 : 12 + (km-5)*1.50;
-  else if(km<=1){ base=2.50; micro=true; }
-  else base = km<=3 ? 6.50 : 6.50 + (km-3)*1.00;
+  const tables = {
+    ebike:[[1,2.50],[2,3.50],[3,4.00],[5,6.00],[8,8.50]],
+    moto:[[1,4.50],[2,5.50],[3,6.50],[5,8.50],[8,11.00]],
+    auto:[[1,5.50],[2,6.50],[3,7.50],[5,10.00],[8,13.00]]
+  };
+  const slopes = {ebike:1.00,moto:1.20,auto:1.50};
+  const table = tables[vehicle] || tables.ebike;
+  let base = table[table.length-1][1];
+  for(const [limit,price] of table){ if(km<=limit){ base=price; break; } }
+  if(km>8) base = table[table.length-1][1] + (km-8)*(slopes[vehicle] || 1.00);
+  const micro = vehicle==='ebike' && km<=1;
   base = roundHalf(base);
   const lateFee = isLateTime(readyTime) ? 2 : 0;
   return {base, lateFee, total:roundHalf(base+lateFee), micro};
@@ -566,7 +572,7 @@ async function calculateClientQuote(){
     currentAvailability=res.availability||currentAvailability;renderAvailability();renderClientQuote();await generateClientQuoteImage();
     $('clientQuoteSection').classList.remove('hidden');$('clientQuoteSection').scrollIntoView({behavior:'smooth',block:'start'});
     status.className='status-line ok';status.textContent='✓ Preventivo pronto e verificato dal server. Puoi modificarlo oppure inviare la richiesta.';
-    if(clientQuote.distanceKm>8&&clientVehicle==='ebike'){$('serviceSuggestion').classList.remove('hidden');$('serviceSuggestion').textContent='💡 Per questa distanza la Moto Express può essere più adatta. Puoi comunque mantenere Economy.';}else if(clientQuote.micro){$('serviceSuggestion').classList.remove('hidden');$('serviceSuggestion').textContent='⚡ MICRO E-BIKE applicata automaticamente: tratta entro 1 km · €2,50.';}else $('serviceSuggestion').classList.add('hidden');
+    if(clientQuote.distanceKm>8&&clientVehicle==='ebike'){$('serviceSuggestion').classList.remove('hidden');$('serviceSuggestion').textContent='💡 Oltre 8 km la tariffa è indicativa: la disponibilità viene confermata dall'operatore.';}else if(clientQuote.micro){$('serviceSuggestion').classList.remove('hidden');$('serviceSuggestion').textContent='⚡ ECONOMY E-BIKE: fascia 0–1 km · €2,50.';}else $('serviceSuggestion').classList.add('hidden');
   }catch(e){status.className='status-line error';status.textContent='⚠ '+e.message;}
 }
 
