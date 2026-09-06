@@ -9,11 +9,13 @@ html{scroll-behavior:smooth;background:var(--bg);color-scheme:dark}
 body{
   margin:0;min-height:100vh;color:var(--text);font-family:Inter,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;overflow-x:hidden;
   background:
-    radial-gradient(circle at 82% 8%,rgba(255,208,0,.075),transparent 25%),
-    radial-gradient(circle at 10% 62%,rgba(255,208,0,.035),transparent 30%),
-    repeating-linear-gradient(45deg,rgba(255,255,255,.018) 0 1px,transparent 1px 5px),
-    repeating-linear-gradient(-45deg,rgba(255,208,0,.012) 0 1px,transparent 1px 6px),
+    radial-gradient(circle at 82% 8%,rgba(255,208,0,.095),transparent 26%),
+    radial-gradient(circle at 8% 58%,rgba(255,208,0,.045),transparent 32%),
+    linear-gradient(135deg,rgba(255,208,0,.018),transparent 42%,rgba(255,208,0,.012) 72%,transparent),
+    repeating-linear-gradient(45deg,rgba(255,255,255,.028) 0 2px,rgba(0,0,0,.11) 2px 4px,transparent 4px 7px),
+    repeating-linear-gradient(-45deg,rgba(255,255,255,.014) 0 1px,rgba(255,208,0,.014) 1px 2px,transparent 2px 7px),
     #070707;
+  background-attachment:fixed;
 }
 a{color:inherit}img{display:block;max-width:100%}button,input,select,textarea{font:inherit}
 button,a{-webkit-tap-highlight-color:transparent}
@@ -27,11 +29,13 @@ html[data-theme="day"]{
 }
 html[data-theme="day"] body{
   background:
-    radial-gradient(circle at 84% 8%,rgba(246,196,0,.14),transparent 25%),
-    radial-gradient(circle at 12% 58%,rgba(246,196,0,.065),transparent 30%),
-    repeating-linear-gradient(45deg,rgba(35,38,43,.025) 0 1px,transparent 1px 5px),
-    repeating-linear-gradient(-45deg,rgba(246,196,0,.025) 0 1px,transparent 1px 6px),
+    radial-gradient(circle at 84% 8%,rgba(246,196,0,.18),transparent 26%),
+    radial-gradient(circle at 10% 58%,rgba(246,196,0,.085),transparent 31%),
+    linear-gradient(135deg,rgba(246,196,0,.05),transparent 40%,rgba(255,255,255,.72) 70%,rgba(246,196,0,.035)),
+    repeating-linear-gradient(45deg,rgba(45,48,52,.040) 0 2px,rgba(255,255,255,.42) 2px 4px,transparent 4px 7px),
+    repeating-linear-gradient(-45deg,rgba(45,48,52,.020) 0 1px,rgba(246,196,0,.022) 1px 2px,transparent 2px 7px),
     #f4f5f6;
+  background-attachment:fixed;
 }
 .site-bg{position:fixed;inset:0;z-index:-1;pointer-events:none;overflow:hidden}
 .site-bg::before{content:"";position:absolute;inset:-8%;background:
@@ -85,7 +89,7 @@ html[data-theme="day"] .btn-whatsapp{background:#edf9f1;border-color:#acd9bc;col
 .problem-track i{font-style:normal;color:var(--yellow);font-size:20px}.problem-track b{color:var(--yellow)}
 @keyframes marquee{from{transform:translateX(0)}to{transform:translateX(-22%)}}
 
-.section-head{display:flex;justify-content:space-between;gap:40px;align-items:flex-end;margin-bottom:34px}.section-head>div{max-width:760px}.section-head>p{max-width:370px;margin-bottom:7px}
+.section-head{position:relative;display:flex;justify-content:space-between;gap:40px;align-items:flex-end;margin-bottom:40px;padding-bottom:18px}.section-head::after{content:"";position:absolute;left:0;bottom:0;width:min(260px,36%);height:2px;background:linear-gradient(90deg,var(--yellow),rgba(255,208,0,.05))}.section-head>div{max-width:760px}.section-head>p{max-width:370px;margin-bottom:7px}
 .service-scroller{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
 .service-card{position:relative;min-height:430px;padding:18px 26px 26px;border:1px solid var(--line);border-radius:24px;background:
   linear-gradient(155deg,rgba(255,255,255,.015),transparent 32%),
@@ -118,7 +122,7 @@ html[data-theme="day"] .btn-whatsapp{background:#edf9f1;border-color:#acd9bc;col
 .coverage-inner{display:grid;grid-template-columns:.82fr 1.18fr;gap:52px;align-items:center}.coverage-copy p{font-size:16px}.radius-legend{display:flex;gap:9px;flex-wrap:wrap;margin:20px 0}.radius-legend span{display:flex;align-items:center;gap:7px;padding:7px 9px;border:1px solid var(--line);border-radius:999px;background:var(--surface);font-size:9px;font-weight:900}.radius-legend i{width:10px;height:10px;border-radius:50%}.r3{background:#ffd000}.r5{background:#caa600}.r8{background:#806a00}
 
 .radar-map{
-  --bx:46.5%;--by:58.1%;
+  --bx:50%;--by:50%;
   position:relative;height:540px;border:1px solid rgba(255,208,0,.28);border-radius:28px;overflow:hidden;isolation:isolate;
   background:
     radial-gradient(circle at var(--bx) var(--by),rgba(255,208,0,.09),transparent 17%),
@@ -134,8 +138,9 @@ html[data-theme="day"] .btn-whatsapp{background:#edf9f1;border-color:#acd9bc;col
 .map-grid{position:absolute;inset:0;z-index:0;opacity:.22;background-image:linear-gradient(rgba(255,255,255,.055) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.055) 1px,transparent 1px);background-size:46px 46px;mask-image:radial-gradient(circle at var(--bx) var(--by),black,transparent 83%)}
 .map-road{position:absolute;z-index:1;height:2px;background:linear-gradient(90deg,rgba(255,208,0,.08),rgba(255,208,0,.36),rgba(255,208,0,.05));transform-origin:left center;border-radius:99px}
 .road-a22{left:24%;top:-8%;width:2px;height:118%;background:linear-gradient(180deg,rgba(255,208,0,.08),rgba(255,208,0,.48),rgba(255,208,0,.08));transform:rotate(3deg)}.road-a22 span{position:absolute;top:48%;left:10px;padding:4px 6px;border:1px solid rgba(255,208,0,.32);border-radius:6px;background:#111;color:#ffd000;font-size:8px;font-weight:1000}
-.road-carpi{left:15%;top:33%;width:39%;transform:rotate(27deg)}.road-soliera{left:46.5%;top:58%;width:30%;transform:rotate(86deg)}.road-sozzigalli{left:46.5%;top:58%;width:41%;transform:rotate(18deg)}.road-cortile{left:46.5%;top:58%;width:45%;transform:rotate(-58deg)}
-.map-caption{position:absolute;z-index:3;color:#888;font-size:8px;font-weight:900;letter-spacing:.12em}.map-caption.north{left:31%;top:4%}.map-caption.south{left:67%;bottom:4%}.map-caption.east{right:4%;top:9%}
+.road-carpi{left:50%;top:50%;width:22%;transform:rotate(-147deg)}.road-soliera{left:50%;top:50%;width:14%;transform:rotate(88deg)}.road-sozzigalli{left:50%;top:50%;width:21%;transform:rotate(18deg)}.road-cortile{left:50%;top:50%;width:27%;transform:rotate(-45deg)}
+.map-caption{position:absolute;z-index:3;color:#777;font-size:8px;font-weight:900;letter-spacing:.12em}.map-caption.north{left:31%;top:4%}.map-caption.south{left:67%;bottom:4%}.map-caption.east{right:4%;top:9%}
+.terrain-label{position:absolute;z-index:2;color:rgba(255,255,255,.34);font-size:8px;font-weight:850;letter-spacing:.06em;text-transform:uppercase;white-space:nowrap;text-shadow:0 2px 10px #000}.tl-fossoli{left:20%;top:16%}.tl-cibeno{left:18%;top:31%}.tl-grande{left:31%;top:48%}.tl-due{left:58%;top:62%}.tl-appalto{left:42%;top:78%}
 .radar-zone{position:absolute;z-index:2;left:var(--bx);top:var(--by);aspect-ratio:1;border-radius:50%;transform:translate(-50%,-50%);border:1px solid rgba(255,208,0,.34);box-shadow:inset 0 0 32px rgba(255,208,0,.02)}
 .radar-8{width:82%;background:rgba(255,208,0,.012)}.radar-5{width:51.25%;background:rgba(255,208,0,.018)}.radar-3{width:30.75%;background:rgba(255,208,0,.025);border-color:rgba(255,208,0,.50)}
 .radar-sweep{position:absolute;z-index:3;left:var(--bx);top:var(--by);width:82%;aspect-ratio:1;transform:translate(-50%,-50%) rotate(0deg);transform-origin:center;pointer-events:none}
@@ -146,15 +151,16 @@ html[data-theme="day"] .btn-whatsapp{background:#edf9f1;border-color:#acd9bc;col
 .city-marker i{width:11px;height:11px;border-radius:50%;background:#ffd000;box-shadow:0 0 0 4px rgba(255,208,0,.10),0 0 14px rgba(255,208,0,.35);transition:.18s}.city-marker b{transition:.18s}.city-marker small{position:absolute;top:100%;left:9px;margin-top:4px;color:#ffd000;font-size:6px;letter-spacing:.12em}
 .city-marker.main{padding:8px 11px;border-color:rgba(255,208,0,.42);color:#ffd000}.city-marker.main i{width:14px;height:14px}
 .city-marker.radar-hit{border-color:rgba(255,208,0,.85);background:rgba(42,34,0,.86);transform:translate(-50%,-50%) scale(1.08);box-shadow:0 0 25px rgba(255,208,0,.17)}.city-marker.radar-hit i{transform:scale(1.5);box-shadow:0 0 0 10px rgba(255,208,0,.10),0 0 32px rgba(255,208,0,.95)}.city-marker.radar-hit b{color:#ffd000;text-shadow:0 0 12px rgba(255,208,0,.8)}
-.city-carpi{left:15%;top:32.6%}.city-limidi{left:46.5%;top:58.1%}.city-soliera{left:48.7%;top:85%}.city-sozzigalli{left:85%;top:72.3%}.city-cortile{left:83.3%;top:15%}
-.radius-tag{position:absolute;z-index:5;padding:5px 7px;border:1px solid rgba(255,208,0,.32);border-radius:8px;background:rgba(8,8,8,.78);color:#ffd000;font-size:8px;font-weight:1000}.tag-3{left:60%;top:61%}.tag-5{left:67%;top:70%}.tag-8{right:4%;top:83%}
+.city-carpi{left:31.48%;top:37.95%}.city-limidi{left:50%;top:50%}.city-soliera{left:50.40%;top:63.41%}.city-sozzigalli{left:69.85%;top:56.59%}.city-cortile{left:68.55%;top:31.54%}
+.radius-tag{position:absolute;z-index:5;padding:5px 7px;border:1px solid rgba(255,208,0,.32);border-radius:8px;background:rgba(8,8,8,.78);color:#ffd000;font-size:8px;font-weight:1000}.tag-3{left:61.5%;top:51%}.tag-5{left:70%;top:52%}.tag-8{left:88%;top:53%}
 .map-badge{position:absolute;z-index:8;left:14px;bottom:14px;padding:9px 11px;border:1px solid rgba(255,208,0,.34);border-radius:999px;background:rgba(8,8,8,.82);backdrop-filter:blur(10px);color:#ffd000;font-size:8px;font-weight:1000;letter-spacing:.1em}
 
-.bike-track{position:relative;height:260px;overflow:hidden;border-top:1px solid var(--line);border-bottom:1px solid var(--line);background:
-  repeating-linear-gradient(45deg,rgba(255,255,255,.01) 0 1px,transparent 1px 6px),
-  linear-gradient(180deg,rgba(255,208,0,.02),rgba(0,0,0,.05));isolation:isolate}
-.bike-road{position:absolute;left:0;right:0;bottom:35px;height:1px;background:linear-gradient(90deg,transparent,rgba(255,208,0,.55),transparent)}
-#scrollBike{position:absolute;z-index:4;left:0;bottom:20px;width:min(500px,48vw);max-height:230px;object-fit:contain;will-change:transform,opacity;filter:drop-shadow(0 18px 22px rgba(0,0,0,.34)) drop-shadow(0 0 9px rgba(255,208,0,.10));transform:translateX(-110%);opacity:0}
+.bike-track{position:relative;height:270px;overflow:hidden;border-top:1px solid rgba(255,208,0,.14);border-bottom:1px solid rgba(255,208,0,.14);background:
+  radial-gradient(circle at 50% 75%,rgba(255,208,0,.055),transparent 32%),
+  repeating-linear-gradient(45deg,rgba(255,255,255,.020) 0 2px,rgba(0,0,0,.08) 2px 4px,transparent 4px 7px),
+  linear-gradient(180deg,rgba(255,208,0,.025),rgba(0,0,0,.07));isolation:isolate}
+.bike-road{position:absolute;left:0;right:0;bottom:35px;height:1px;background:linear-gradient(90deg,transparent,rgba(255,208,0,.48),transparent)}
+#scrollBike{position:absolute;z-index:4;left:0;bottom:18px;width:min(520px,50vw);max-height:240px;object-fit:contain;will-change:transform,opacity;filter:drop-shadow(0 20px 22px rgba(0,0,0,.42));transform:translateX(-110%);opacity:0}
 .bike-speed{display:none}
 
 .steps{display:grid;grid-template-columns:repeat(5,1fr);gap:10px}.step{min-height:210px;border:1px solid var(--line);border-radius:18px;padding:18px;background:repeating-linear-gradient(45deg,rgba(255,255,255,.008) 0 1px,transparent 1px 6px),var(--surface)}.step>span{display:block;color:var(--yellow2);font-size:28px;font-weight:1000}.step div{margin-top:54px}.step b{display:block;font-size:13px}.step p{font-size:10px;margin:6px 0 0}
@@ -190,8 +196,8 @@ footer{padding:34px 0 100px;border-top:1px solid var(--line);margin-top:88px}.fo
   h2{font-size:39px}.section-head{display:block;margin-bottom:24px}.section-head>p{max-width:none}
   .service-scroller{display:flex;overflow-x:auto;scroll-snap-type:x mandatory;margin-right:-12px;padding-right:12px;scrollbar-width:none}.service-scroller::-webkit-scrollbar{display:none}.service-card{flex:0 0 86%;min-height:400px;scroll-snap-align:start}.service-media-wrap{height:175px}.service-card p{min-height:68px}
   .partner-grid{grid-template-columns:1fr}.night-fee-card{align-items:flex-start}.night-fee-card strong{font-size:31px}.pricing-note{align-items:stretch;flex-direction:column}.pricing-note .btn{width:100%}
-  .radar-map{height:440px;--bx:45%;--by:58%}.city-marker{font-size:8px;padding:5px 6px}.city-marker i{width:9px;height:9px}.city-marker.main i{width:12px;height:12px}.city-marker small{font-size:5px}.map-caption{font-size:6px}.radius-tag{font-size:6px}.map-badge{font-size:6px}.road-a22 span{font-size:6px}
-  .city-carpi{left:15%;top:34%}.city-limidi{left:45%;top:58%}.city-soliera{left:48%;top:84%}.city-sozzigalli{left:83%;top:72%}.city-cortile{left:81%;top:16%}
+  .radar-map{height:440px;--bx:50%;--by:50%}.city-marker{font-size:8px;padding:5px 6px}.city-marker i{width:9px;height:9px}.city-marker.main i{width:12px;height:12px}.city-marker small{font-size:5px}.map-caption{font-size:6px}.radius-tag{font-size:6px}.map-badge{font-size:6px}.road-a22 span{font-size:6px}.terrain-label{font-size:6px}
+  .city-carpi{left:31.48%;top:37.95%}.city-limidi{left:50%;top:50%}.city-soliera{left:50.40%;top:63.41%}.city-sozzigalli{left:69.85%;top:56.59%}.city-cortile{left:68.55%;top:31.54%}
   .bike-track{height:215px}#scrollBike{width:345px;max-width:82vw;bottom:15px}
   .steps{grid-template-columns:1fr}.step,.step:last-child{grid-column:auto;min-height:145px;display:grid;grid-template-columns:58px 1fr;gap:14px}.step div{margin-top:8px}
   .app-hero>img{border-radius:18px}.screen-rail figure{flex-basis:78%}.install-grid{grid-template-columns:1fr}
