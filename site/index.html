@@ -13,8 +13,6 @@
   <link rel="icon" href="../icon-192.png">
   <link rel="apple-touch-icon" href="../icon-192.png">
   <link rel="preconnect" href="https://cdn.shopify.com">
-  <link rel="preconnect" href="https://unpkg.com">
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
   <link rel="stylesheet" href="./styles.css">
   <script type="application/ld+json">
   {
@@ -117,7 +115,7 @@
           <p>Tratte brevi, food e piccoli pacchi. Agile, economica e perfetta per l'urbano.</p>
           <a href="https://sales403.github.io/-sos-cassa/">RICHIEDI CON E-BIKE →</a>
         </article>
-        <article class="service-card featured reveal delay-1">
+        <article class="service-card reveal delay-1">
           <div class="service-media-wrap"><img class="service-media" src="./assets/moto.webp" alt="Express Moto SOS Rider" loading="lazy"><span>EXPRESS MOTO</span></div>
           <div class="service-code">02 / EXPRESS</div>
           <h3>MOTO</h3>
@@ -145,18 +143,18 @@
 
       <div class="pricing-grid">
         <article class="price-card reveal">
-          <div class="price-top"><span>🚲</span><div><small>ECONOMY</small><h3>E-BIKE</h3></div></div>
+          <div class="price-top"><span class="vehicle-index">01</span><div><small>ECONOMY</small><h3>E-BIKE</h3></div></div>
           <div class="price-highlight"><small>MICRO · ENTRO 1 KM</small><b>€2,50</b></div>
           <div class="price-row"><span>Oltre 1 km fino a 3 km</span><b>€6,50</b></div>
           <div class="price-row"><span>Oltre 3 km</span><b>+ €1,00/km</b></div>
         </article>
-        <article class="price-card featured reveal delay-1">
-          <div class="price-top"><span>🏍️</span><div><small>EXPRESS</small><h3>MOTO</h3></div></div>
+        <article class="price-card reveal delay-1">
+          <div class="price-top"><span class="vehicle-index">02</span><div><small>EXPRESS</small><h3>MOTO</h3></div></div>
           <div class="price-highlight"><small>FINO A 5 KM</small><b>€9,00</b></div>
           <div class="price-row"><span>Oltre 5 km</span><b>+ €1,20/km</b></div>
         </article>
         <article class="price-card reveal delay-2">
-          <div class="price-top"><span>🚗</span><div><small>CARGO</small><h3>AUTO</h3></div></div>
+          <div class="price-top"><span class="vehicle-index">03</span><div><small>CARGO</small><h3>AUTO</h3></div></div>
           <div class="price-highlight"><small>FINO A 5 KM</small><b>€12,00</b></div>
           <div class="price-row"><span>Oltre 5 km</span><b>+ €1,50/km</b></div>
         </article>
@@ -192,15 +190,39 @@
     <section id="zone" class="coverage section-block">
       <div class="section-shell coverage-inner">
         <div class="coverage-copy reveal">
-          <div class="section-kicker">COPERTURA REALE</div>
+          <div class="section-kicker">COPERTURA</div>
           <h2>Limidi al centro. Il territorio intorno.</h2>
-          <p>La base è a Limidi, in posizione strategica tra Carpi e Soliera. La mappa mostra i raggi reali di 3, 5 e 8 km e i principali punti serviti.</p>
+          <p>Una rappresentazione grafica dell'area operativa, costruita rispettando la posizione reale dei paesi rispetto a Limidi. I cerchi mostrano i riferimenti di 3, 5 e 8 km.</p>
           <div class="radius-legend"><span><i class="r3"></i>3 km</span><span><i class="r5"></i>5 km</span><span><i class="r8"></i>8 km</span></div>
           <a class="btn btn-ghost" href="https://wa.me/393495153092?text=Ciao%20Marcello%2C%20vorrei%20sapere%20se%20copri%20la%20mia%20zona." target="_blank" rel="noopener">CHIEDI COPERTURA</a>
         </div>
-        <div class="map-shell reveal delay-1">
-          <div id="coverageMap" class="coverage-map-real" aria-label="Mappa reale copertura SOS Rider"></div>
-          <div class="radar-overlay" aria-hidden="true"><div class="radar-sweep"></div><div class="radar-core"></div></div>
+
+        <div class="radar-map reveal delay-1" id="radarMap">
+          <div class="map-grid"></div>
+          <div class="map-road road-a22"><span>A22</span></div>
+          <div class="map-road road-carpi"></div>
+          <div class="map-road road-soliera"></div>
+          <div class="map-road road-sozzigalli"></div>
+          <div class="map-road road-cortile"></div>
+          <div class="map-caption north">↑ MODENA NORD</div>
+          <div class="map-caption south">↓ MODENA</div>
+          <div class="map-caption east">→ MIRANDOLA</div>
+
+          <div class="radar-zone radar-8"></div>
+          <div class="radar-zone radar-5"></div>
+          <div class="radar-zone radar-3"></div>
+          <div class="radar-sweep"></div>
+          <div class="radar-core"></div>
+
+          <div class="city-marker city-carpi" data-city="carpi"><i></i><b>CARPI</b></div>
+          <div class="city-marker city-limidi main" data-city="limidi"><i></i><b>LIMIDI</b><small>BASE STRATEGICA</small></div>
+          <div class="city-marker city-soliera" data-city="soliera"><i></i><b>SOLIERA</b></div>
+          <div class="city-marker city-sozzigalli" data-city="sozzigalli"><i></i><b>SOZZIGALLI</b></div>
+          <div class="city-marker city-cortile" data-city="cortile"><i></i><b>CORTILE</b></div>
+
+          <div class="radius-tag tag-3">3 km</div>
+          <div class="radius-tag tag-5">5 km</div>
+          <div class="radius-tag tag-8">8 km</div>
           <div class="map-badge">⚡ BASE SOS RIDER · LIMIDI</div>
         </div>
       </div>
@@ -208,7 +230,7 @@
 
     <section class="bike-track" id="bikeTrack" aria-hidden="true">
       <div class="bike-road"></div>
-      <img id="scrollBike" src="https://cdn.shopify.com/s/files/1/1019/6588/9874/files/bike-scroll.webp?v=1788697971" alt="">
+      <img id="scrollBike" src="https://cdn.shopify.com/s/files/1/1019/6588/9874/files/sos-rider-ebike-clean.webp?v=1788707657" alt="">
       <div class="bike-speed speed-a"></div><div class="bike-speed speed-b"></div><div class="bike-speed speed-c"></div>
     </section>
 
@@ -313,7 +335,6 @@
     <a class="btn btn-whatsapp" href="https://wa.me/393495153092?text=Ciao%20Marcello%2C%20avrei%20bisogno%20di%20una%20consegna%20SOS." target="_blank" rel="noopener">WHATSAPP</a>
   </div>
 
-  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script src="./app.js"></script>
 </body>
 </html>
