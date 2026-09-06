@@ -1,4 +1,4 @@
-const VERSION = 'SOS Rider API 10.2.0';
+const VERSION = 'SOS Rider API 10.3.0';
 
 const ETA_MODEL = Object.freeze({
   ebikeKmh: 30,
