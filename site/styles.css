@@ -137,15 +137,33 @@ html[data-theme="day"] .btn-whatsapp{background:#edf9f1;border-color:#acd9bc;col
   linear-gradient(75deg,transparent 0 33%,rgba(255,255,255,.018) 33.1% 33.35%,transparent 33.5%)}
 .map-grid{position:absolute;inset:0;z-index:0;opacity:.22;background-image:linear-gradient(rgba(255,255,255,.055) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.055) 1px,transparent 1px);background-size:46px 46px;mask-image:radial-gradient(circle at var(--bx) var(--by),black,transparent 83%)}
 .map-road{position:absolute;z-index:1;height:2px;background:linear-gradient(90deg,rgba(255,208,0,.08),rgba(255,208,0,.36),rgba(255,208,0,.05));transform-origin:left center;border-radius:99px}
-.road-a22{left:24%;top:-8%;width:2px;height:118%;background:linear-gradient(180deg,rgba(255,208,0,.08),rgba(255,208,0,.48),rgba(255,208,0,.08));transform:rotate(3deg)}.road-a22 span{position:absolute;top:48%;left:10px;padding:4px 6px;border:1px solid rgba(255,208,0,.32);border-radius:6px;background:#111;color:#ffd000;font-size:8px;font-weight:1000}
+.road-a22{display:none}.road-a22 span{display:none}
 .road-carpi{left:50%;top:50%;width:22%;transform:rotate(-147deg)}.road-soliera{left:50%;top:50%;width:14%;transform:rotate(88deg)}.road-sozzigalli{left:50%;top:50%;width:21%;transform:rotate(18deg)}.road-cortile{left:50%;top:50%;width:27%;transform:rotate(-45deg)}
 .map-caption{position:absolute;z-index:3;color:#777;font-size:8px;font-weight:900;letter-spacing:.12em}.map-caption.north{left:31%;top:4%}.map-caption.south{left:67%;bottom:4%}.map-caption.east{right:4%;top:9%}
 .terrain-label{position:absolute;z-index:2;color:rgba(255,255,255,.34);font-size:8px;font-weight:850;letter-spacing:.06em;text-transform:uppercase;white-space:nowrap;text-shadow:0 2px 10px #000}.tl-fossoli{left:20%;top:16%}.tl-cibeno{left:18%;top:31%}.tl-grande{left:31%;top:48%}.tl-due{left:58%;top:62%}.tl-appalto{left:42%;top:78%}
 .radar-zone{position:absolute;z-index:2;left:var(--bx);top:var(--by);aspect-ratio:1;border-radius:50%;transform:translate(-50%,-50%);border:1px solid rgba(255,208,0,.34);box-shadow:inset 0 0 32px rgba(255,208,0,.02)}
 .radar-8{width:82%;background:rgba(255,208,0,.012)}.radar-5{width:51.25%;background:rgba(255,208,0,.018)}.radar-3{width:30.75%;background:rgba(255,208,0,.025);border-color:rgba(255,208,0,.50)}
-.radar-sweep{position:absolute;z-index:3;left:var(--bx);top:var(--by);width:82%;aspect-ratio:1;transform:translate(-50%,-50%) rotate(0deg);transform-origin:center;pointer-events:none}
-.radar-sweep::before{content:"";position:absolute;left:50%;bottom:50%;width:2px;height:49%;transform:translateX(-50%);background:linear-gradient(to top,rgba(255,208,0,.9),rgba(255,208,0,.05));box-shadow:0 0 15px rgba(255,208,0,.55)}
-.radar-sweep::after{content:"";position:absolute;left:50%;bottom:50%;width:33%;height:49%;transform-origin:left bottom;transform:skewX(-18deg);background:linear-gradient(115deg,rgba(255,208,0,.20),transparent 68%);filter:blur(1px)}
+.radar-sweep{
+  position:absolute;z-index:3;left:var(--bx);top:var(--by);width:82%;aspect-ratio:1;
+  transform:translate(-50%,-50%) rotate(0deg);transform-origin:center;pointer-events:none;border-radius:50%;
+  background:conic-gradient(from -40deg,
+    rgba(255,208,0,0) 0deg,
+    rgba(255,208,0,.025) 10deg,
+    rgba(255,208,0,.07) 22deg,
+    rgba(255,208,0,.16) 31deg,
+    rgba(255,208,0,.30) 38.5deg,
+    rgba(255,208,0,.38) 39.6deg,
+    rgba(255,208,0,0) 40deg,
+    rgba(255,208,0,0) 360deg);
+  filter:drop-shadow(0 0 12px rgba(255,208,0,.18));
+}
+.radar-sweep::before{
+  content:"";position:absolute;left:50%;bottom:50%;width:2px;height:50%;
+  transform:translateX(-50%);
+  background:linear-gradient(to top,rgba(255,208,0,.98),rgba(255,208,0,.45) 72%,rgba(255,208,0,.04));
+  box-shadow:0 0 7px rgba(255,208,0,.9),0 0 18px rgba(255,208,0,.46);
+}
+.radar-sweep::after{display:none}
 .radar-core{position:absolute;z-index:5;left:var(--bx);top:var(--by);width:20px;height:20px;border-radius:50%;transform:translate(-50%,-50%);background:#fff;border:5px solid #ffd000;box-shadow:0 0 0 9px rgba(255,208,0,.13),0 0 32px rgba(255,208,0,.9)}
 .city-marker{position:absolute;z-index:6;transform:translate(-50%,-50%);display:flex;align-items:center;gap:7px;padding:6px 9px;border:1px solid rgba(255,208,0,.18);border-radius:10px;background:rgba(8,8,8,.72);backdrop-filter:blur(8px);color:#eee;font-size:10px;font-weight:1000;white-space:nowrap;transition:.18s}
 .city-marker i{width:11px;height:11px;border-radius:50%;background:#ffd000;box-shadow:0 0 0 4px rgba(255,208,0,.10),0 0 14px rgba(255,208,0,.35);transition:.18s}.city-marker b{transition:.18s}.city-marker small{position:absolute;top:100%;left:9px;margin-top:4px;color:#ffd000;font-size:6px;letter-spacing:.12em}
@@ -198,7 +216,7 @@ footer{padding:34px 0 100px;border-top:1px solid var(--line);margin-top:88px}.fo
   .partner-grid{grid-template-columns:1fr}.night-fee-card{align-items:flex-start}.night-fee-card strong{font-size:31px}.pricing-note{align-items:stretch;flex-direction:column}.pricing-note .btn{width:100%}
   .radar-map{height:440px;--bx:50%;--by:50%}.city-marker{font-size:8px;padding:5px 6px}.city-marker i{width:9px;height:9px}.city-marker.main i{width:12px;height:12px}.city-marker small{font-size:5px}.map-caption{font-size:6px}.radius-tag{font-size:6px}.map-badge{font-size:6px}.road-a22 span{font-size:6px}.terrain-label{font-size:6px}
   .city-carpi{left:31.48%;top:37.95%}.city-limidi{left:50%;top:50%}.city-soliera{left:50.40%;top:63.41%}.city-sozzigalli{left:69.85%;top:56.59%}.city-cortile{left:68.55%;top:31.54%}
-  .bike-track{height:215px}#scrollBike{width:345px;max-width:82vw;bottom:15px}
+  .bike-track{height:245px}#scrollBike{width:320px;max-width:78vw;max-height:210px;bottom:12px}
   .steps{grid-template-columns:1fr}.step,.step:last-child{grid-column:auto;min-height:145px;display:grid;grid-template-columns:58px 1fr;gap:14px}.step div{margin-top:8px}
   .app-hero>img{border-radius:18px}.screen-rail figure{flex-basis:78%}.install-grid{grid-template-columns:1fr}
   .split-audience{grid-template-columns:1fr}.audience-card h2{font-size:30px}.audience-card p{min-height:0}
