@@ -38,6 +38,7 @@
     </a>
     <nav class="desktop-nav" aria-label="Navigazione principale">
       <a href="#servizi">Servizi</a>
+      <a href="#tariffe">Tariffe</a>
       <a href="#zone">Zone</a>
       <a href="#come-funziona">Come funziona</a>
       <a href="#app">App</a>
@@ -69,20 +70,14 @@
       </div>
 
       <div class="hero-visual reveal delay-1">
-        <div class="hero-panel">
-          <div class="hero-panel-top">
-            <span class="eyebrow">CENTRO OPERATIVO</span>
-            <span class="live-dot"><i></i> ONLINE</span>
-          </div>
-          <img src="../rider-banner-v2-live.png" alt="SOS Rider - Centro operativo">
-          <div class="hero-panel-grid">
-            <div><small>RICHIESTA</small><b>App o WhatsApp</b></div>
-            <div><small>MODELLO</small><b>On-demand</b></div>
-            <div><small>AREA</small><b>Carpi-Soliera</b></div>
-          </div>
-        </div>
-        <div class="floating-card fc-1"><span>FUORI ZONA?</span><b>Non rifiutare l'ordine.</b></div>
-        <div class="floating-card fc-2"><span>RIDER ASSENTE?</span><b>Scrivimi. Se ci sono, parto.</b></div>
+        <figure class="hero-cinematic">
+          <img src="./assets/hero.webp" alt="Rider SOS Rider in e-bike durante una consegna urbana serale" fetchpriority="high">
+          <figcaption class="hero-cinematic-overlay">
+            <span class="eyebrow">SOS RIDER · ON-DEMAND</span>
+            <b>Quando serve, parto.</b>
+            <small>Urgenze · fuori zona · picchi di lavoro</small>
+          </figcaption>
+        </figure>
       </div>
     </section>
 
@@ -102,6 +97,10 @@
       </div>
     </section>
 
+    <section class="section-shell ops-banner reveal" aria-label="Centro operativo SOS Rider">
+      <img src="./assets/banner.webp" alt="SOS Rider Centro Operativo con e-bike, moto e auto" loading="lazy">
+    </section>
+
     <section id="servizi" class="section-shell section-block">
       <div class="section-head reveal">
         <div>
@@ -113,7 +112,7 @@
 
       <div class="service-scroller">
         <article class="service-card reveal">
-          <div class="service-icon">🚲</div>
+          <div class="service-media-wrap"><img class="service-media" src="./assets/ebike.webp" alt="E-bike Economy SOS Rider" loading="lazy"><span>ECONOMY E-BIKE</span></div>
           <div class="service-code">01 / ECONOMY</div>
           <h3>E-BIKE</h3>
           <p>Tratte brevi, food e piccoli pacchi. Agile, economica e perfetta per l'urbano.</p>
@@ -122,7 +121,7 @@
         </article>
 
         <article class="service-card featured reveal delay-1">
-          <div class="service-icon">🏍️</div>
+          <div class="service-media-wrap"><img class="service-media" src="./assets/moto.webp" alt="Moto Express SOS Rider" loading="lazy"><span>EXPRESS MOTO</span></div>
           <div class="service-code">02 / EXPRESS</div>
           <h3>MOTO</h3>
           <p>Per urgenze e distanze maggiori. La scelta quando conta arrivare rapidamente.</p>
@@ -131,13 +130,82 @@
         </article>
 
         <article class="service-card reveal delay-2">
-          <div class="service-icon">🚗</div>
+          <div class="service-media-wrap"><img class="service-media" src="./assets/auto.webp" alt="Auto Cargo SOS Rider" loading="lazy"><span>CARGO AUTO</span></div>
           <div class="service-code">03 / CARGO</div>
           <h3>AUTO</h3>
           <p>Spesa, più pacchi e carichi più voluminosi. Più spazio, più flessibilità.</p>
           <div class="service-tags"><span>SPESA</span><span>PACCHI</span><span>VOLUME</span></div>
           <a href="https://sales403.github.io/-sos-cassa/">RICHIEDI CARGO →</a>
         </article>
+      </div>
+    </section>
+
+    <section id="tariffe" class="section-shell section-block pricing-section">
+      <div class="section-head reveal">
+        <div>
+          <div class="section-kicker">TARIFFE INDICATIVE</div>
+          <h2>Prezzi chiari prima di partire.</h2>
+        </div>
+        <p>L'app calcola il preventivo sulla distanza reale. Sai quanto costa la consegna prima di inviare la richiesta.</p>
+      </div>
+
+      <div class="pricing-grid">
+        <article class="price-card reveal">
+          <div class="price-top"><span>🚲</span><div><small>ECONOMY</small><h3>E-BIKE</h3></div></div>
+          <div class="price-highlight"><small>MICRO · ENTRO 1 KM</small><b>€2,50</b></div>
+          <div class="price-row"><span>Da oltre 1 km fino a 3 km</span><b>€6,50</b></div>
+          <div class="price-row"><span>Oltre 3 km</span><b>+ €1,00/km</b></div>
+          <p>Food, piccoli pacchi e tratte urbane brevi.</p>
+        </article>
+
+        <article class="price-card featured reveal delay-1">
+          <div class="price-top"><span>🏍️</span><div><small>EXPRESS</small><h3>MOTO</h3></div></div>
+          <div class="price-highlight"><small>FINO A 5 KM</small><b>€9,00</b></div>
+          <div class="price-row"><span>Oltre 5 km</span><b>+ €1,20/km</b></div>
+          <p>Urgenze, tempi stretti e distanze maggiori.</p>
+        </article>
+
+        <article class="price-card reveal delay-2">
+          <div class="price-top"><span>🚗</span><div><small>CARGO</small><h3>AUTO</h3></div></div>
+          <div class="price-highlight"><small>FINO A 5 KM</small><b>€12,00</b></div>
+          <div class="price-row"><span>Oltre 5 km</span><b>+ €1,50/km</b></div>
+          <p>Spesa, più pacchi e carichi più voluminosi.</p>
+        </article>
+      </div>
+
+      <div class="pricing-extras">
+        <article class="partner-card reveal">
+          <div class="section-kicker">TARIFFE PARTNER</div>
+          <h3>Per locali che generano continuità.</h3>
+          <div class="partner-grid">
+            <div><small>ENTRO 3 KM</small><b>€5,50</b></div>
+            <div><small>3–5 KM</small><b>€7,00</b></div>
+            <div><small>5–8 KM</small><b>€9,00</b></div>
+          </div>
+          <p>Nessun abbonamento: condizioni dedicate per collaborazioni continuative.</p>
+        </article>
+
+        <article class="supplement-card reveal delay-1">
+          <div class="section-kicker">SUPPLEMENTI</div>
+          <h3>Quando la richiesta richiede di più.</h3>
+          <div class="supplement-list">
+            <span><b>Urgenza · parto subito</b><strong>+ €3,00</strong></span>
+            <span><b>Priorità assoluta</b><strong>+ €5,00</strong></span>
+            <span><b>Fermata aggiuntiva</b><strong>+ €3,50</strong></span>
+            <span><b>Attesa oltre 10 min</b><strong>+ €5 / 15 min</strong></span>
+            <span><b>Dopo le 22:30</b><strong>+ €2,00</strong></span>
+            <span><b>Carico voluminoso</b><strong>da + €5,00</strong></span>
+            <span><b>Ritorno merce</b><strong>+ 50%</strong></span>
+          </div>
+        </article>
+      </div>
+
+      <div class="pricing-note reveal">
+        <div>
+          <b>Il preventivo esatto lo vedi nell'app.</b>
+          <span>Distanza, servizio e supplementi applicabili vengono chiariti prima della partenza.</span>
+        </div>
+        <a class="btn btn-primary" href="https://sales403.github.io/-sos-cassa/">CALCOLA LA TARIFFA</a>
       </div>
     </section>
 
@@ -307,7 +375,7 @@
         </details>
         <details class="faq reveal">
           <summary>Quanto costa una consegna?</summary>
-          <p>Dipende da distanza, mezzo e condizioni della richiesta. Nell'app puoi compilare ritiro e destinazione e vedere il preventivo prima di inviare.</p>
+          <p>La Micro E-bike parte da €2,50 entro 1 km. Per le altre tratte il prezzo dipende da distanza e mezzo: nell’app compili ritiro e destinazione e vedi il preventivo prima di inviare.</p>
         </details>
         <details class="faq reveal">
           <summary>Posso usare WhatsApp invece dell'app?</summary>
