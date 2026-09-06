@@ -242,3 +242,224 @@ footer{padding:34px 0 100px;border-top:1px solid var(--line);margin-top:88px}
 }
 @media(max-width:390px){.hero h1{font-size:52px}.problem-track{font-size:12px}.coverage-map{min-height:330px}.p-carpi{left:12%}.p-cortile{left:12%}}
 @media(prefers-reduced-motion:reduce){*{scroll-behavior:auto!important;animation:none!important}.reveal{opacity:1;transform:none;transition:none}}
+
+
+/* =========================================================
+   SOS RIDER SITE · VISUAL REFRESH 2026-09-06
+   Carbon texture + generated media + pricing
+   ========================================================= */
+body{
+  background:
+    radial-gradient(circle at 78% 8%,rgba(255,208,0,.09),transparent 28%),
+    radial-gradient(circle at 10% 58%,rgba(255,208,0,.035),transparent 30%),
+    var(--bg);
+}
+.site-bg::before{
+  inset:0;
+  background:
+    radial-gradient(circle at 82% 7%,rgba(255,208,0,.20),transparent 24%),
+    radial-gradient(circle at 22% 36%,rgba(255,208,0,.08),transparent 31%),
+    linear-gradient(135deg,rgba(255,208,0,.04),transparent 38%,rgba(255,208,0,.035) 70%,transparent),
+    repeating-linear-gradient(45deg,rgba(255,255,255,.025) 0 2px,rgba(0,0,0,.12) 2px 5px),
+    repeating-linear-gradient(-45deg,rgba(255,255,255,.018) 0 2px,transparent 2px 6px);
+  opacity:.92;
+}
+.site-bg::after{
+  opacity:.14;
+  background-image:
+    linear-gradient(45deg,rgba(255,255,255,.055) 25%,transparent 25%,transparent 75%,rgba(255,255,255,.055) 75%),
+    linear-gradient(45deg,rgba(0,0,0,.22) 25%,transparent 25%,transparent 75%,rgba(0,0,0,.22) 75%);
+  background-size:12px 12px;
+  background-position:0 0,6px 6px;
+  mask-image:linear-gradient(to bottom,black 0%,black 72%,transparent 100%);
+}
+html[data-theme="day"] body{
+  background:
+    radial-gradient(circle at 82% 6%,rgba(246,196,0,.17),transparent 26%),
+    radial-gradient(circle at 12% 60%,rgba(246,196,0,.08),transparent 31%),
+    linear-gradient(180deg,#fafafa,#f1f2f3);
+}
+html[data-theme="day"] .site-bg::before{
+  background:
+    radial-gradient(circle at 84% 8%,rgba(246,196,0,.27),transparent 24%),
+    radial-gradient(circle at 18% 44%,rgba(246,196,0,.12),transparent 30%),
+    linear-gradient(135deg,rgba(246,196,0,.08),transparent 34%,rgba(255,255,255,.56) 64%,rgba(246,196,0,.07)),
+    repeating-linear-gradient(45deg,rgba(20,22,24,.045) 0 2px,rgba(255,255,255,.55) 2px 5px),
+    repeating-linear-gradient(-45deg,rgba(20,22,24,.025) 0 2px,transparent 2px 6px);
+  opacity:.88;
+}
+html[data-theme="day"] .site-bg::after{
+  opacity:.07;
+  background-image:
+    linear-gradient(45deg,rgba(20,22,24,.12) 25%,transparent 25%,transparent 75%,rgba(20,22,24,.12) 75%),
+    linear-gradient(45deg,rgba(246,196,0,.10) 25%,transparent 25%,transparent 75%,rgba(246,196,0,.10) 75%);
+}
+
+.hero-cinematic{
+  position:relative;
+  margin:0;
+  min-height:540px;
+  border:1px solid color-mix(in srgb,var(--yellow) 28%,var(--line));
+  border-radius:28px;
+  overflow:hidden;
+  background:#090909;
+  box-shadow:0 30px 90px rgba(0,0,0,.35);
+}
+.hero-cinematic::after{
+  content:"";
+  position:absolute;
+  inset:0;
+  background:
+    linear-gradient(180deg,transparent 48%,rgba(0,0,0,.84) 100%),
+    linear-gradient(90deg,rgba(0,0,0,.12),transparent 45%);
+  pointer-events:none;
+}
+.hero-cinematic img{
+  position:absolute;
+  inset:0;
+  width:100%;
+  height:100%;
+  object-fit:cover;
+  object-position:center;
+}
+.hero-cinematic-overlay{
+  position:absolute;
+  z-index:2;
+  left:22px;
+  right:22px;
+  bottom:20px;
+  padding:14px 15px;
+  border:1px solid rgba(255,255,255,.16);
+  border-radius:16px;
+  background:rgba(8,8,8,.62);
+  backdrop-filter:blur(12px);
+  color:#fff;
+}
+.hero-cinematic-overlay .eyebrow{color:#ffd000}
+.hero-cinematic-overlay b{display:block;font-size:19px;margin-top:5px}
+.hero-cinematic-overlay small{display:block;color:#c4c4c4;font-size:9px;margin-top:4px;letter-spacing:.04em}
+
+.ops-banner{
+  padding-top:8px;
+  padding-bottom:20px;
+}
+.ops-banner img{
+  width:100%;
+  border-radius:24px;
+  border:1px solid color-mix(in srgb,var(--yellow) 38%,var(--line));
+  box-shadow:0 22px 70px rgba(0,0,0,.28);
+}
+
+.service-card{padding-top:18px}
+.service-media-wrap{
+  position:relative;
+  height:185px;
+  margin:-2px -8px 22px;
+  border-radius:18px;
+  overflow:hidden;
+  border:1px solid var(--line);
+  background:#090909;
+}
+.service-media{
+  width:100%;
+  height:100%;
+  object-fit:cover;
+  transition:transform .45s ease;
+}
+.service-card:hover .service-media{transform:scale(1.035)}
+.service-media-wrap::after{
+  content:"";
+  position:absolute;
+  inset:0;
+  background:linear-gradient(180deg,transparent 55%,rgba(0,0,0,.68));
+}
+.service-media-wrap>span{
+  position:absolute;
+  z-index:2;
+  left:12px;
+  bottom:10px;
+  color:#ffd000;
+  font-size:8px;
+  font-weight:1000;
+  letter-spacing:.14em;
+}
+.service-code{margin-top:0}
+.service-card p{min-height:82px}
+
+.pricing-section{position:relative}
+.pricing-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+.price-card{
+  padding:22px;
+  border:1px solid var(--line);
+  border-radius:22px;
+  background:linear-gradient(155deg,color-mix(in srgb,var(--card) 95%,transparent),color-mix(in srgb,var(--panel) 92%,transparent));
+  box-shadow:0 14px 38px rgba(0,0,0,.08);
+}
+.price-card.featured{border-color:color-mix(in srgb,var(--yellow) 58%,var(--line))}
+.price-top{display:flex;align-items:center;gap:12px}
+.price-top>span{font-size:30px}
+.price-top small{display:block;color:var(--yellow2);font-size:8px;font-weight:1000;letter-spacing:.15em}
+.price-top h3{margin:3px 0 0;font-size:23px}
+.price-highlight{
+  margin:22px 0 10px;
+  padding:16px;
+  border:1px solid color-mix(in srgb,var(--yellow) 52%,var(--line));
+  border-radius:16px;
+  background:linear-gradient(135deg,var(--accent-soft,#282200),var(--surface));
+}
+.price-highlight small{display:block;color:var(--muted);font-size:8px;font-weight:900;letter-spacing:.11em}
+.price-highlight b{display:block;margin-top:5px;color:var(--yellow2);font-size:34px;letter-spacing:-.04em}
+.price-row{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:11px 2px;border-bottom:1px solid var(--line)}
+.price-row span{color:var(--muted);font-size:10px}.price-row b{font-size:12px}
+.price-card>p{font-size:10px;margin:13px 0 0}
+
+.pricing-extras{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:14px}
+.partner-card,.supplement-card{
+  border:1px solid var(--line);
+  border-radius:22px;
+  padding:22px;
+  background:linear-gradient(155deg,var(--card),var(--panel));
+}
+.partner-card h3,.supplement-card h3{font-size:25px;margin:6px 0 16px}
+.partner-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.partner-grid div{padding:14px 10px;border:1px solid var(--line);border-radius:14px;background:var(--surface);text-align:center}
+.partner-grid small{display:block;color:var(--muted);font-size:8px;font-weight:900}
+.partner-grid b{display:block;color:var(--yellow2);font-size:21px;margin-top:5px}
+.partner-card>p{font-size:10px;margin:14px 0 0}
+.supplement-list{display:grid;gap:7px}
+.supplement-list span{display:flex;justify-content:space-between;gap:12px;padding:10px 11px;border:1px solid var(--line);border-radius:12px;background:var(--surface)}
+.supplement-list b{font-size:10px}.supplement-list strong{color:var(--yellow2);font-size:10px;white-space:nowrap}
+.pricing-note{
+  margin-top:14px;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:18px;
+  padding:18px;
+  border:1px solid color-mix(in srgb,var(--yellow) 42%,var(--line));
+  border-radius:18px;
+  background:linear-gradient(100deg,color-mix(in srgb,var(--yellow) 10%,var(--surface)),var(--surface));
+}
+.pricing-note b,.pricing-note span{display:block}
+.pricing-note b{font-size:13px}.pricing-note span{margin-top:3px;color:var(--muted);font-size:9px}
+
+html[data-theme="day"] .hero-cinematic,
+html[data-theme="day"] .service-media-wrap{background:#eceff1}
+html[data-theme="day"] .hero-cinematic-overlay{background:rgba(18,18,18,.72)}
+
+@media(max-width:960px){
+  .hero-cinematic{min-height:480px}
+  .pricing-grid{grid-template-columns:1fr}
+  .pricing-extras{grid-template-columns:1fr}
+}
+@media(max-width:700px){
+  .hero-cinematic{min-height:430px;border-radius:20px}
+  .hero-cinematic-overlay{left:12px;right:12px;bottom:12px}
+  .ops-banner{width:100%;padding:0 0 10px}
+  .ops-banner img{border-radius:0;border-left:0;border-right:0}
+  .service-media-wrap{height:170px}
+  .pricing-grid{gap:10px}
+  .partner-grid{grid-template-columns:1fr}
+  .pricing-note{align-items:stretch;flex-direction:column}
+  .pricing-note .btn{width:100%}
+}
