@@ -152,14 +152,20 @@
     if (!bikeTrack || !scrollBike) return;
     const rect = bikeTrack.getBoundingClientRect();
     const vh = window.innerHeight || document.documentElement.clientHeight;
-    const progress = clamp((vh - rect.top) / (vh + rect.height), 0, 1);
-    const bikeW = scrollBike.getBoundingClientRect().width || 360;
-    const travel = window.innerWidth + bikeW * 1.25;
-    const x = -bikeW * 1.06 + travel * progress;
-    const visible = progress > .025 && progress < .985;
+    const rawProgress = clamp((vh - rect.top) / (vh + rect.height), 0, 1);
+
+    const bikeW = scrollBike.getBoundingClientRect().width || 320;
+    const pad = window.innerWidth <= 700 ? 12 : 24;
+    const travelProgress = clamp((rawProgress - 0.12) / 0.72, 0, 1);
+    const maxX = Math.max(pad, window.innerWidth - bikeW - pad);
+    const x = pad + (maxX - pad) * travelProgress;
+
+    const fadeIn = clamp((rawProgress - 0.08) / 0.08, 0, 1);
+    const fadeOut = clamp((0.96 - rawProgress) / 0.08, 0, 1);
+    const opacity = Math.min(fadeIn, fadeOut);
 
     scrollBike.style.transform = 'translate3d(' + x + 'px,0,0)';
-    scrollBike.style.opacity = visible ? '1' : '0';
+    scrollBike.style.opacity = String(opacity);
   }
 
   let scrollTicking = false;
