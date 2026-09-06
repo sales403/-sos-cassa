@@ -766,6 +766,30 @@ function renderRemoteRequests(){
 }
 async function patchRemote(code,body){return fetchJson(apiBase()+`/api/rider/requests/${encodeURIComponent(code)}`,{method:'PATCH',headers:riderHeaders(),body:JSON.stringify(body)},8000)}
 function findRemote(code){return remoteRequests.find(r=>r.code===code)}
+function localStatusFromRemote(status){return status==='picked'?'picked':status==='arrived'?'arrived':status==='delivered'?'delivered':status==='cancelled'?'cancelled':'to_pickup';}
+async function forceRemoteToTerminal(local,remote){
+  if(!local?.remoteCode||!remote)return false;
+  const target=local.status==='cancelled'||local.outcome==='cancelled'?'cancelled':local.status==='delivered'?'delivered':null;
+  if(!target||remote.status===target||['delivered','cancelled','rejected'].includes(remote.status))return false;
+  try{
+    if(target==='cancelled'){await patchRemote(local.remoteCode,{status:'cancelled'});return true;}
+    if(remote.status==='new'){await patchRemote(local.remoteCode,{status:'accepted'});remote={...remote,status:'accepted'};}
+    if(remote.status==='accepted'){await patchRemote(local.remoteCode,{status:'picked'});remote={...remote,status:'picked'};}
+    if(remote.status==='picked'||remote.status==='arrived'){await patchRemote(local.remoteCode,{status:'delivered'});return true;}
+  }catch(e){console.warn('Autoriparazione stato remoto fallita',local.remoteCode,e);}
+  return false;
+}
+async function reconcileRemoteTerminalStates(){
+  const repairs=[];
+  for(const local of state.orders){
+    if(!local.remoteCode||!['delivered','cancelled'].includes(local.status))continue;
+    const remote=findRemote(local.remoteCode);
+    if(remote&&['new','accepted','picked','arrived'].includes(remote.status))repairs.push(forceRemoteToTerminal(local,remote));
+  }
+  if(!repairs.length)return false;
+  const results=await Promise.allSettled(repairs);
+  return results.some(x=>x.status==='fulfilled'&&x.value);
+}
 function currentShift(){return state.shifts.find(s=>s.id===state.currentShiftId && s.status!=='closed')||null}
 function startShift(name,fund){const s={id:uid('SHIFT'),name:name||`${new Date().toLocaleDateString('it-IT')} sera`,startAt:nowIso(),endAt:null,fundStart:num(fund),status:'open'};state.shifts.push(s);state.currentShiftId=s.id;saveState();renderDeliveries();return s;}
 function ensureShiftThen(done){if(currentShift()){done();return;}openModal('Apri turno per accettare',`<p class="muted">La richiesta può essere accettata appena apri il turno.</p><label>Nome turno<input id="mShiftName" value="${esc(new Date().toLocaleDateString('it-IT',{weekday:'long',day:'2-digit',month:'2-digit'})+' sera')}"></label><label style="margin-top:8px">Fondo resto<input id="mFund" type="number" min="0" value="100"></label>`,[{label:'ANNULLA',cls:'ghost'},{label:'APRI TURNO E CONTINUA',cls:'primary',fn:()=>{startShift($('mShiftName').value.trim(),num($('mFund').value));closeModal();done();}}]);}
