@@ -8,12 +8,12 @@
   <meta property="og:title" content="SOS Rider Carpi-Soliera">
   <meta property="og:description" content="Il tuo rider di emergenza. Consegne urgenti, fuori zona e picchi di lavoro.">
   <meta property="og:type" content="website">
-  <meta property="og:image" content="https://cdn.shopify.com/s/files/1/1019/6588/9874/files/hero-desktop.webp?v=1788697958">
+  <meta property="og:image" content="https://cdn.shopify.com/s/files/1/1019/6588/9874/files/sos-rider-site-hero-bg-desktop.webp?v=1788733027">
   <title>SOS Rider Carpi-Soliera · Il tuo rider di emergenza</title>
   <link rel="icon" href="../icon-192.png">
   <link rel="apple-touch-icon" href="../icon-192.png">
   <link rel="preconnect" href="https://cdn.shopify.com">
-  <link rel="stylesheet" href="./styles.css?v=202609062348">
+  <link rel="stylesheet" href="./styles.css?v=202609070018">
   <script type="application/ld+json">
   {
     "@context":"https://schema.org",
@@ -32,51 +32,76 @@
     <div class="speed-line l3"></div>
   </div>
 
-  <header class="topbar" id="topbar">
-    <a class="brand" href="#top" aria-label="SOS Rider Carpi-Soliera">
-      <img src="../logo-sos-rider.png" alt="SOS Rider">
-      <span>SOS RIDER</span>
+  <header class="topbar topbar-centered" id="topbar">
+    <button class="menu-btn quick-menu-trigger" id="menuBtn" type="button" aria-label="Apri menu">☰</button>
+
+    <a class="brand brand-centered" href="#top" aria-label="SOS Rider Carpi-Soliera">
+      <img src="../logo-sos-rider.png" alt="SOS Rider Carpi-Soliera">
     </a>
-    <nav class="desktop-nav" aria-label="Navigazione principale">
-      <a href="#servizi">Servizi</a>
-      <a href="#tariffe">Tariffe</a>
-      <a href="#zone">Zone</a>
-      <a href="#app">App</a>
-      <a href="#come-funziona">Come funziona</a>
-      <a href="#faq">FAQ</a>
-    </nav>
+
     <div class="top-actions">
       <button class="icon-btn" id="themeToggle" type="button" aria-label="Cambia tema">◐</button>
-      <a class="btn btn-small btn-primary" href="https://sales403.github.io/-sos-cassa/">APRI SOS RIDER</a>
-      <button class="menu-btn" id="menuBtn" type="button" aria-label="Apri menu">☰</button>
+      <a class="btn btn-small btn-primary top-cta" href="https://sales403.github.io/-sos-cassa/">APRI SOS RIDER</a>
     </div>
   </header>
 
-  <div class="mobile-menu" id="mobileMenu" aria-hidden="true">
+  <div class="mobile-menu quick-menu" id="mobileMenu" aria-hidden="true">
+    <div class="quick-menu-head">
+      <span>MENU VELOCE</span>
+      <b>SOS Rider Carpi-Soliera</b>
+    </div>
     <a href="#servizi">Servizi</a>
     <a href="#tariffe">Tariffe</a>
-    <a href="#zone">Zone</a>
-    <a href="#app">App</a>
+    <a href="#zone">Zone servite</a>
+    <a href="#app">Web-app</a>
     <a href="#come-funziona">Come funziona</a>
     <a href="#faq">FAQ</a>
+    <a class="quick-menu-app" href="https://sales403.github.io/-sos-cassa/">APRI SOS RIDER →</a>
   </div>
 
   <main id="top">
-    <section class="hero-banner">
-      <div class="hero-frame">
-        <picture>
-          <source media="(max-width: 700px)" srcset="https://cdn.shopify.com/s/files/1/1019/6588/9874/files/hero-mobile.webp?v=1788697964">
-          <img src="https://cdn.shopify.com/s/files/1/1019/6588/9874/files/hero-desktop.webp?v=1788697958" alt="SOS Rider Carpi-Soliera · Il tuo rider di emergenza" fetchpriority="high">
+    <section class="hero-banner hero-dynamic" aria-labelledby="heroTitle">
+      <div class="hero-stage">
+        <picture class="hero-bg" aria-hidden="true">
+          <source media="(max-width: 700px)" srcset="https://cdn.shopify.com/s/files/1/1019/6588/9874/files/sos-rider-site-hero-bg-mobile.webp?v=1788733035">
+          <img src="https://cdn.shopify.com/s/files/1/1019/6588/9874/files/sos-rider-site-hero-bg-desktop.webp?v=1788733027" alt="" fetchpriority="high">
         </picture>
-        <a class="hero-hotspot app" href="https://sales403.github.io/-sos-cassa/" aria-label="Apri SOS Rider"></a>
-        <a class="hero-hotspot whatsapp" href="https://wa.me/393495153092?text=Ciao%20Marcello%2C%20avrei%20bisogno%20di%20una%20consegna%20SOS." aria-label="Scrivi su WhatsApp" target="_blank" rel="noopener"></a>
+        <div class="hero-shade" aria-hidden="true"></div>
+
+        <div class="hero-content section-shell">
+          <div class="hero-copy">
+            <div class="hero-kicker">SOS RIDER CARPI-SOLIERA</div>
+            <h1 id="heroTitle">Il tuo rider<br><span>di emergenza.</span></h1>
+            <p>Consegne urgenti, fuori zona, picchi di lavoro e rider di backup. Paghi solo quando ti serve.</p>
+
+            <div class="hero-feature-grid" aria-label="Cosa risolve SOS Rider">
+              <div><img src="https://cdn.shopify.com/s/files/1/1019/6588/9874/files/sos-rider-site-icon-urgent.webp?v=1788733050" alt=""><span>Consegne urgenti</span></div>
+              <div><img src="https://cdn.shopify.com/s/files/1/1019/6588/9874/files/sos-rider-site-icon-zone.webp?v=1788733056" alt=""><span>Fuori zona</span></div>
+              <div><img src="https://cdn.shopify.com/s/files/1/1019/6588/9874/files/sos-rider-site-icon-peak.webp?v=1788733063" alt=""><span>Picchi di lavoro</span></div>
+              <div><img src="https://cdn.shopify.com/s/files/1/1019/6588/9874/files/sos-rider-site-icon-backup.webp?v=1788733069" alt=""><span>Rider di backup</span></div>
+            </div>
+
+            <div class="hero-vehicles" aria-label="Mezzi disponibili">
+              <span><img src="https://cdn.shopify.com/s/files/1/1019/6588/9874/files/sos-rider-site-vehicle-ebike.webp?v=1788733076" alt="">E-BIKE</span>
+              <span><img src="https://cdn.shopify.com/s/files/1/1019/6588/9874/files/sos-rider-site-vehicle-moto.webp?v=1788733083" alt="">MOTO EXPRESS</span>
+              <span><img src="https://cdn.shopify.com/s/files/1/1019/6588/9874/files/sos-rider-site-vehicle-auto.webp?v=1788733089" alt="">CARGO AUTO</span>
+            </div>
+
+            <div class="hero-actions">
+              <a class="btn btn-primary btn-big" href="https://sales403.github.io/-sos-cassa/">APRI SOS RIDER</a>
+              <a class="btn btn-whatsapp btn-big" href="https://wa.me/393495153092?text=Ciao%20Marcello%2C%20avrei%20bisogno%20di%20una%20consegna%20SOS." target="_blank" rel="noopener">WHATSAPP</a>
+            </div>
+
+            <div class="hero-zones">Carpi · Limidi · Soliera · Sozzigalli · Cortile</div>
+          </div>
+        </div>
       </div>
     </section>
 
     <section class="intro-seo section-shell reveal">
       <div class="section-kicker">SERVIZIO LOCALE ON-DEMAND</div>
-      <h1>Consegne urgenti tra Carpi, Limidi e Soliera.</h1>
-      <p>SOS Rider Carpi-Soliera è il servizio locale per consegne urgenti, fuori zona, picchi di lavoro e rider di backup per attività e privati. Nessun abbonamento e nessun costo fisso: richiedi il servizio solo quando ti serve.</p>
+      <h2>Quando serve, parto.</h2>
+      <p>SOS Rider Carpi-Soliera copre consegne urgenti e richieste fuori zona per attività e privati tra Carpi, Limidi, Soliera e dintorni. Nessun abbonamento e nessun costo fisso: richiedi il servizio solo quando ti serve.</p>
       <div class="intro-actions">
         <a class="btn btn-primary btn-big" href="https://sales403.github.io/-sos-cassa/">APRI SOS RIDER</a>
         <a class="btn btn-whatsapp btn-big" href="https://wa.me/393495153092?text=Ciao%20Marcello%2C%20avrei%20bisogno%20di%20una%20consegna%20SOS." target="_blank" rel="noopener">WHATSAPP</a>
@@ -283,13 +308,8 @@
           <a class="btn btn-primary btn-big" href="https://sales403.github.io/-sos-cassa/">APRI SOS RIDER</a>
         </div>
 
-        <div class="app-phone-stage reveal delay-1" aria-label="SOS Rider lato cliente e lato operatore">
-          <div class="phone-shell phone-client">
-            <img src="https://cdn.shopify.com/s/files/1/1019/6588/9874/files/client-form-1.webp?v=1788697983" alt="SOS Rider richiesta cliente" loading="lazy">
-          </div>
-          <div class="phone-shell phone-operator">
-            <img src="https://cdn.shopify.com/s/files/1/1019/6588/9874/files/operator-requests-1.webp?v=1788698001" alt="SOS Rider area operatore" loading="lazy">
-          </div>
+        <div class="app-phone-stage app-phone-stage-clean reveal delay-1">
+          <img class="app-phones-art" src="https://cdn.shopify.com/s/files/1/1019/6588/9874/files/sos-rider-site-app-phones.webp?v=1788733041" alt="SOS Rider web-app lato cliente e Area Rider operatore" loading="lazy">
         </div>
       </div>
 
@@ -471,6 +491,6 @@
     <a class="btn btn-whatsapp" href="https://wa.me/393495153092?text=Ciao%20Marcello%2C%20avrei%20bisogno%20di%20una%20consegna%20SOS." target="_blank" rel="noopener">WHATSAPP</a>
   </div>
 
-  <script src="./app.js?v=202609062310"></script>
+  <script src="./app.js?v=202609070018"></script>
 </body>
 </html>
