@@ -904,6 +904,7 @@ function orderCard(o){
 }
 async function orderAction(id,action){
   const o=state.orders.find(x=>x.id===id);if(!o)return;
+  const before={status:o.status,pickedAt:o.pickedAt,arrivedAt:o.arrivedAt,deliveredAt:o.deliveredAt,outcome:o.outcome,received:o.received,change:o.change};
   if(action==='picked'){o.status='picked';o.pickedAt=nowIso();}
   else if(action==='arrived'){o.status='arrived';o.arrivedAt=nowIso();}
   else if(action==='delivered'){
@@ -915,7 +916,11 @@ async function orderAction(id,action){
     if(!confirm('Annullare questa consegna? Resterà nello storico.'))return;o.status='cancelled';o.outcome='cancelled';
   }
   saveState();renderRiderAll();
-  if(o.remoteCode){try{await patchRemote(o.remoteCode,{status:action==='cancel'?'cancelled':o.status});await refreshRemoteRequests();}catch(e){console.warn('Sync stato remoto fallita',e)}}
+  if(o.remoteCode){
+    try{await patchRemote(o.remoteCode,{status:action==='cancel'?'cancelled':o.status});}
+    catch(e){Object.assign(o,before);saveState();renderRiderAll();alert('Stato non sincronizzato col server: la consegna resta aperta. Riprova. '+(e.message||e));return;}
+    await refreshRemoteRequests().catch(e=>console.warn('Refresh stato remoto fallito',e));
+  }
 }
 function renderRestaurantCash(shiftId){
   const cashOrders=state.orders.filter(o=>o.shiftId===shiftId&&o.status==='delivered'&&o.payment==='cash'&&o.outcome!=='cancelled');
