@@ -65,7 +65,7 @@
       const target = document.querySelector(id);
       if (!target) return;
       e.preventDefault();
-      const offset = window.innerWidth <= 700 ? 66 : 76;
+      const offset = window.innerWidth <= 700 ? 96 : 108;
       window.scrollTo({
         top: target.getBoundingClientRect().top + window.scrollY - offset,
         behavior: 'smooth'
