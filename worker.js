@@ -1,4 +1,4 @@
-const VERSION = 'SOS Rider API 10.0.0';
+const VERSION = 'SOS Rider API 10.3.0';
 const DEFAULT_ORIGINS = [
   'https://sales403.github.io',
   'https://sos-rider-richiesta.marcello-marcellopo.chatgpt.site',
@@ -100,11 +100,18 @@ function validCoord(lat,lon){lat=Number(lat);lon=Number(lon);return Number.isFin
 function isLate(t){const m=String(t||'').match(/^(\d{2}):(\d{2})$/);if(!m)return false;return Number(m[1])*60+Number(m[2])>=22*60+30}
 function roundHalf(n){return Math.round(Number(n||0)*2)/2}
 function tariffFor(km,service,readyTime){
-  km=Math.max(0,Number(km)||0);let base,micro=false;
-  if(service==='moto')base=km<=5?9:9+(km-5)*1.20;
-  else if(service==='auto')base=km<=5?12:12+(km-5)*1.50;
-  else if(km<=1){base=2.50;micro=true;}
-  else base=km<=3?6.50:6.50+(km-3)*1.00;
+  km=Math.max(0,Number(km)||0);
+  const tables={
+    ebike:[[1,2.50],[2,3.50],[3,4.00],[5,6.00],[8,8.50]],
+    moto:[[1,4.50],[2,5.50],[3,6.50],[5,8.50],[8,11.00]],
+    auto:[[1,5.50],[2,6.50],[3,7.50],[5,10.00],[8,13.00]]
+  };
+  const slopes={ebike:1.00,moto:1.20,auto:1.50};
+  const table=tables[service]||tables.ebike;
+  let base=table[table.length-1][1];
+  for(const [limit,price] of table){if(km<=limit){base=price;break;}}
+  if(km>8)base=table[table.length-1][1]+(km-8)*(slopes[service]||1.00);
+  const micro=service==='ebike'&&km<=1;
   base=roundHalf(base);const lateFee=isLate(readyTime)?2:0;
   return{baseFee:base,lateFee,totalFee:roundHalf(base+lateFee),microDelivery:micro};
 }
