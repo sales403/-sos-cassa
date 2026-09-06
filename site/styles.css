@@ -413,3 +413,35 @@ footer{padding:34px 0 100px;border-top:1px solid var(--line);margin-top:88px}.fo
 .mini-os-icon svg{width:30px;height:30px;fill:none;stroke:currentColor;stroke-width:2.6;stroke-linecap:round;stroke-linejoin:round}
 .mini-os-icon.chrome svg,.mini-os-icon.safari svg,.install-os-icon.chrome svg{width:100%;height:100%;stroke:none}
 .install-os-icon.chrome{padding:8px;border:0;outline:0;background:#ffd000}
+
+/* 2026-09-06 polish: clean result block + real browser brand icons */
+.operator-result-clean{
+  display:block;
+  max-width:920px;
+  margin:24px auto 0;
+  padding:30px 32px;
+  background:
+    radial-gradient(circle at 82% 24%,rgba(255,208,0,.12),transparent 34%),
+    repeating-linear-gradient(45deg,rgba(255,255,255,.018) 0 2px,transparent 2px 7px),
+    linear-gradient(135deg,#111,#090909);
+}
+.operator-result-clean>div{max-width:760px}
+.operator-result-clean h3{max-width:760px;margin-bottom:12px}
+.operator-result-clean p{margin-bottom:0;max-width:690px}
+.brand-icon,
+.brand-icon-large{
+  overflow:hidden;
+  background:#fff!important;
+  border:1px solid #eceef1;
+}
+.brand-icon img{width:36px;height:36px;object-fit:contain;display:block}
+.brand-icon-large{padding:14px!important}
+.brand-icon-large img{width:100%;height:100%;object-fit:contain;display:block}
+.install-os-icon.chrome.brand-icon-large{border:1px solid #eceef1;outline:0;background:#fff!important}
+
+@media(max-width:700px){
+  .operator-result-clean{padding:22px 20px;border-radius:22px}
+  .operator-result-clean h3{font-size:31px}
+  .brand-icon img{width:34px;height:34px}
+  .brand-icon-large{padding:11px!important}
+}
