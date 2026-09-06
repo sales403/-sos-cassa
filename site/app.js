@@ -102,7 +102,8 @@
     const cy = core.top + core.height / 2;
 
     markerAngles = cityMarkers.map(marker => {
-      const rect = marker.getBoundingClientRect();
+      const point = marker.querySelector('i') || marker;
+      const rect = point.getBoundingClientRect();
       const mx = rect.left + rect.width / 2;
       const my = rect.top + rect.height / 2;
       const dx = mx - cx;
