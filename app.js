@@ -1,7 +1,7 @@
 (() => {
 'use strict';
 
-const APP_VERSION = '10.2.0';
+const APP_VERSION = '10.2.1';
 const KEY = 'sosRiderUnifiedV10';
 const V9_KEY = 'sosRiderUnifiedV9';
 const OLD_KEY = 'sosRiderGestV7';
@@ -707,8 +707,8 @@ function updateClientStatusUI(r){
   else if(s==='accepted'){badge.classList.add('accepted');const q=r?.eta?.queuePosition||1;badge.textContent=q>1?'ACCETTATA · IN CODA':'ACCETTATA · RIDER VERSO IL LOCALE';$('clientStatusText').textContent=q>1?`Richiesta confermata. Marcello ha ${q-1} consegna${q-1===1?'':'e'} prima della tua; l’orario di ritiro viene ricalcolato automaticamente.`:'Marcello ha accettato la consegna. L’ETA di ritiro viene aggiornato automaticamente.';$('clientStatusIcon').textContent='✓';}
   else if(s==='picked'){badge.classList.add('progress');badge.textContent='IN CONSEGNA';$('clientStatusText').textContent='Ordine ritirato: il rider è diretto al destinatario.';$('clientStatusIcon').textContent='⚡';}
   else if(s==='arrived'){badge.classList.add('progress');badge.textContent='RIDER ARRIVATO';$('clientStatusText').textContent='Il rider è arrivato al punto di consegna.';$('clientStatusIcon').textContent='📍';}
-  else if(s==='delivered'){badge.classList.add('accepted');badge.textContent='COMPLETATO';$('clientStatusText').textContent='Consegna completata. Grazie per aver usato SOS Rider.';$('clientStatusIcon').textContent='✓';stopClientPolling();}
-  else if(s==='rejected'||s==='cancelled'){badge.classList.add('rejected');badge.textContent=s==='rejected'?'RICHIESTA NON ACCETTATA':'RICHIESTA ANNULLATA';$('clientStatusText').textContent=r.rejectionReason||'In questo momento la consegna non è disponibile.';$('clientStatusIcon').textContent='×';stopClientPolling();}
+  else if(s==='delivered'){badge.classList.add('accepted');badge.textContent='COMPLETATO';$('clientStatusText').textContent='Consegna completata. Grazie per aver usato SOS Rider.';$('clientStatusIcon').textContent='✓';localStorage.removeItem(CLIENT_ACTIVE_KEY);stopClientPolling();}
+  else if(s==='rejected'||s==='cancelled'){badge.classList.add('rejected');badge.textContent=s==='rejected'?'RICHIESTA NON ACCETTATA':'RICHIESTA ANNULLATA';$('clientStatusText').textContent=r.rejectionReason||'In questo momento la consegna non è disponibile.';$('clientStatusIcon').textContent='×';localStorage.removeItem(CLIENT_ACTIVE_KEY);stopClientPolling();}
 }
 function restoreActiveClientRequest(){
   try{const x=JSON.parse(localStorage.getItem(CLIENT_ACTIVE_KEY)||'null');if(x?.code&&x?.token){$('clientRequestCode').textContent=x.code;$('clientFormCard').classList.add('hidden');$('clientQuoteSection').classList.add('hidden');$('clientRequestStatus').classList.remove('hidden');startClientPolling(x.code,x.token,!!x.owned,true)}}catch{}
