@@ -3,15 +3,18 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-  <meta name="theme-color" content="#070707">
-  <meta name="description" content="SOS Rider Carpi-Soliera: consegne urgenti, fuori zona e rider di backup per locali, negozi e privati.">
+  <meta name="theme-color" content="#080808">
+  <meta name="description" content="SOS Rider Carpi-Soliera: consegne urgenti, fuori zona e rider di backup per locali, negozi e privati tra Carpi, Limidi, Soliera, Sozzigalli e Cortile.">
   <meta property="og:title" content="SOS Rider Carpi-Soliera">
   <meta property="og:description" content="Il tuo rider di emergenza. Consegne urgenti, fuori zona e picchi di lavoro.">
   <meta property="og:type" content="website">
-  <meta property="og:image" content="../rider-banner-v2-live.png">
+  <meta property="og:image" content="https://cdn.shopify.com/s/files/1/1019/6588/9874/files/hero-desktop.webp?v=1788697958">
   <title>SOS Rider Carpi-Soliera · Il tuo rider di emergenza</title>
   <link rel="icon" href="../icon-192.png">
   <link rel="apple-touch-icon" href="../icon-192.png">
+  <link rel="preconnect" href="https://cdn.shopify.com">
+  <link rel="preconnect" href="https://unpkg.com">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
   <link rel="stylesheet" href="./styles.css">
   <script type="application/ld+json">
   {
@@ -31,7 +34,7 @@
     <div class="speed-line l3"></div>
   </div>
 
-  <header class="topbar">
+  <header class="topbar" id="topbar">
     <a class="brand" href="#top" aria-label="SOS Rider Carpi-Soliera">
       <img src="../logo-sos-rider.png" alt="SOS Rider">
       <span>SOS RIDER</span>
@@ -46,59 +49,55 @@
     </nav>
     <div class="top-actions">
       <button class="icon-btn" id="themeToggle" type="button" aria-label="Cambia tema">◐</button>
-      <a class="btn btn-small btn-primary desktop-cta" href="https://sales403.github.io/-sos-cassa/">APRI SOS RIDER</a>
+      <a class="btn btn-small btn-primary" href="https://sales403.github.io/-sos-cassa/">APRI SOS RIDER</a>
+      <button class="menu-btn" id="menuBtn" type="button" aria-label="Apri menu">☰</button>
     </div>
   </header>
 
+  <div class="mobile-menu" id="mobileMenu" aria-hidden="true">
+    <a href="#servizi">Servizi</a>
+    <a href="#tariffe">Tariffe</a>
+    <a href="#zone">Zone</a>
+    <a href="#come-funziona">Come funziona</a>
+    <a href="#app">App</a>
+    <a href="#faq">FAQ</a>
+  </div>
+
   <main id="top">
-    <section class="hero section-shell">
-      <div class="hero-copy reveal">
-        <div class="status-chip"><span class="pulse"></span> SERVIZIO LOCALE · CARPI-SOLIERA</div>
-        <div class="eyebrow">SOS RIDER CARPI-SOLIERA</div>
-        <h1>Il tuo rider<br><span>di emergenza.</span></h1>
-        <p class="hero-lead">Consegne urgenti. Fuori zona. Picchi di lavoro. Se ti serve un rider solo quando sei pieno, paghi solo quando mi usi.</p>
-        <div class="hero-points" aria-label="Vantaggi principali">
-          <span>⚡ Nessun costo fisso</span>
-          <span>📍 Servizio locale</span>
-          <span>💬 Contatto diretto</span>
-        </div>
-        <div class="hero-actions">
-          <a class="btn btn-primary btn-big" href="https://sales403.github.io/-sos-cassa/">APRI SOS RIDER <span>→</span></a>
-          <a class="btn btn-whatsapp btn-big" href="https://wa.me/393495153092?text=Ciao%20Marcello%2C%20avrei%20bisogno%20di%20una%20consegna%20SOS." target="_blank" rel="noopener">WHATSAPP</a>
-        </div>
-        <div class="zone-line">Carpi <i>·</i> Limidi <i>·</i> Soliera <i>·</i> Sozzigalli <i>·</i> Cortile</div>
-      </div>
-
-      <div class="hero-visual reveal delay-1">
-        <figure class="hero-cinematic">
-          <img src="./assets/hero.webp" alt="Rider SOS Rider in e-bike durante una consegna urbana serale" fetchpriority="high">
-          <figcaption class="hero-cinematic-overlay">
-            <span class="eyebrow">SOS RIDER · ON-DEMAND</span>
-            <b>Quando serve, parto.</b>
-            <small>Urgenze · fuori zona · picchi di lavoro</small>
-          </figcaption>
-        </figure>
+    <section class="hero-banner">
+      <div class="hero-frame">
+        <picture>
+          <source media="(max-width: 700px)" srcset="https://cdn.shopify.com/s/files/1/1019/6588/9874/files/hero-mobile.webp?v=1788697964">
+          <img src="https://cdn.shopify.com/s/files/1/1019/6588/9874/files/hero-desktop.webp?v=1788697958" alt="SOS Rider Carpi-Soliera · Il tuo rider di emergenza" fetchpriority="high">
+        </picture>
+        <a class="hero-hotspot app" href="https://sales403.github.io/-sos-cassa/" aria-label="Apri SOS Rider"></a>
+        <a class="hero-hotspot whatsapp" href="https://wa.me/393495153092?text=Ciao%20Marcello%2C%20avrei%20bisogno%20di%20una%20consegna%20SOS." aria-label="Scrivi su WhatsApp" target="_blank" rel="noopener"></a>
       </div>
     </section>
 
-    <section class="statement section-shell reveal">
-      <div class="section-kicker">IL CONCETTO</div>
-      <h2>Non un altro rider.<br>Il rider jolly quando serve davvero.</h2>
-      <p>Se una sera sei pieno, ti manca un fattorino, hai un cliente fuori zona o una consegna urgente, SOS Rider entra in gioco senza abbonamenti e senza costi fissi.</p>
+    <section class="intro-seo section-shell reveal">
+      <div class="section-kicker">SERVIZIO LOCALE ON-DEMAND</div>
+      <h1>Consegne urgenti tra Carpi, Limidi e Soliera.</h1>
+      <p>SOS Rider Carpi-Soliera è il servizio locale per consegne urgenti, fuori zona, picchi di lavoro e rider di backup per attività e privati. Nessun abbonamento e nessun costo fisso: richiedi il servizio solo quando ti serve.</p>
+      <div class="intro-actions">
+        <a class="btn btn-primary btn-big" href="https://sales403.github.io/-sos-cassa/">APRI SOS RIDER</a>
+        <a class="btn btn-whatsapp btn-big" href="https://wa.me/393495153092?text=Ciao%20Marcello%2C%20avrei%20bisogno%20di%20una%20consegna%20SOS." target="_blank" rel="noopener">WHATSAPP</a>
+      </div>
+      <div class="trust-row">
+        <span>⚡ Nessun costo fisso</span>
+        <span>📍 Servizio locale</span>
+        <span>💬 Contatto diretto</span>
+      </div>
     </section>
 
-    <section class="problem-strip">
+    <section class="problem-strip" aria-label="Problemi risolti">
       <div class="problem-track">
-        <span>CLIENTE FUORI ZONA?</span><i>→</i>
         <span>RIDER ASSENTE?</span><i>→</i>
+        <span>CLIENTE FUORI ZONA?</span><i>→</i>
         <span>LOCALE PIENO?</span><i>→</i>
         <span>CONSEGNA URGENTE?</span><i>→</i>
         <b>SOS RIDER.</b>
       </div>
-    </section>
-
-    <section class="section-shell ops-banner reveal" aria-label="Centro operativo SOS Rider">
-      <img src="./assets/banner.webp" alt="SOS Rider Centro Operativo con e-bike, moto e auto" loading="lazy">
     </section>
 
     <section id="servizi" class="section-shell section-block">
@@ -107,34 +106,29 @@
           <div class="section-kicker">SERVIZI</div>
           <h2>Tre mezzi. Una sola missione.</h2>
         </div>
-        <p>Uso il mezzo più sensato in base a distanza, urgenza e carico.</p>
+        <p>Scelgo il mezzo più sensato in base a distanza, urgenza e carico.</p>
       </div>
 
       <div class="service-scroller">
         <article class="service-card reveal">
-          <div class="service-media-wrap"><img class="service-media" src="./assets/ebike.webp" alt="E-bike Economy SOS Rider" loading="lazy"><span>ECONOMY E-BIKE</span></div>
+          <div class="service-media-wrap"><img class="service-media" src="./assets/ebike.webp" alt="Economy E-bike SOS Rider" loading="lazy"><span>ECONOMY E-BIKE</span></div>
           <div class="service-code">01 / ECONOMY</div>
           <h3>E-BIKE</h3>
           <p>Tratte brevi, food e piccoli pacchi. Agile, economica e perfetta per l'urbano.</p>
-          <div class="service-tags"><span>BREVI DISTANZE</span><span>FOOD</span><span>URBANO</span></div>
           <a href="https://sales403.github.io/-sos-cassa/">RICHIEDI CON E-BIKE →</a>
         </article>
-
         <article class="service-card featured reveal delay-1">
-          <div class="service-media-wrap"><img class="service-media" src="./assets/moto.webp" alt="Moto Express SOS Rider" loading="lazy"><span>EXPRESS MOTO</span></div>
+          <div class="service-media-wrap"><img class="service-media" src="./assets/moto.webp" alt="Express Moto SOS Rider" loading="lazy"><span>EXPRESS MOTO</span></div>
           <div class="service-code">02 / EXPRESS</div>
           <h3>MOTO</h3>
-          <p>Per urgenze e distanze maggiori. La scelta quando conta arrivare rapidamente.</p>
-          <div class="service-tags"><span>URGENTE</span><span>RAPIDA</span><span>PIÙ KM</span></div>
+          <p>Urgenze e distanze maggiori. Quando conta arrivare rapidamente.</p>
           <a href="https://sales403.github.io/-sos-cassa/">RICHIEDI EXPRESS →</a>
         </article>
-
         <article class="service-card reveal delay-2">
-          <div class="service-media-wrap"><img class="service-media" src="./assets/auto.webp" alt="Auto Cargo SOS Rider" loading="lazy"><span>CARGO AUTO</span></div>
+          <div class="service-media-wrap"><img class="service-media" src="./assets/auto.webp" alt="Cargo Auto SOS Rider" loading="lazy"><span>CARGO AUTO</span></div>
           <div class="service-code">03 / CARGO</div>
           <h3>AUTO</h3>
           <p>Spesa, più pacchi e carichi più voluminosi. Più spazio, più flessibilità.</p>
-          <div class="service-tags"><span>SPESA</span><span>PACCHI</span><span>VOLUME</span></div>
           <a href="https://sales403.github.io/-sos-cassa/">RICHIEDI CARGO →</a>
         </article>
       </div>
@@ -143,33 +137,28 @@
     <section id="tariffe" class="section-shell section-block pricing-section">
       <div class="section-head reveal">
         <div>
-          <div class="section-kicker">TARIFFE INDICATIVE</div>
+          <div class="section-kicker">TARIFFE</div>
           <h2>Prezzi chiari prima di partire.</h2>
         </div>
-        <p>L'app calcola il preventivo sulla distanza reale. Sai quanto costa la consegna prima di inviare la richiesta.</p>
+        <p>L'app calcola il preventivo sulla distanza reale. Sai il costo prima di inviare la richiesta.</p>
       </div>
 
       <div class="pricing-grid">
         <article class="price-card reveal">
           <div class="price-top"><span>🚲</span><div><small>ECONOMY</small><h3>E-BIKE</h3></div></div>
           <div class="price-highlight"><small>MICRO · ENTRO 1 KM</small><b>€2,50</b></div>
-          <div class="price-row"><span>Da oltre 1 km fino a 3 km</span><b>€6,50</b></div>
+          <div class="price-row"><span>Oltre 1 km fino a 3 km</span><b>€6,50</b></div>
           <div class="price-row"><span>Oltre 3 km</span><b>+ €1,00/km</b></div>
-          <p>Food, piccoli pacchi e tratte urbane brevi.</p>
         </article>
-
         <article class="price-card featured reveal delay-1">
           <div class="price-top"><span>🏍️</span><div><small>EXPRESS</small><h3>MOTO</h3></div></div>
           <div class="price-highlight"><small>FINO A 5 KM</small><b>€9,00</b></div>
           <div class="price-row"><span>Oltre 5 km</span><b>+ €1,20/km</b></div>
-          <p>Urgenze, tempi stretti e distanze maggiori.</p>
         </article>
-
         <article class="price-card reveal delay-2">
           <div class="price-top"><span>🚗</span><div><small>CARGO</small><h3>AUTO</h3></div></div>
           <div class="price-highlight"><small>FINO A 5 KM</small><b>€12,00</b></div>
           <div class="price-row"><span>Oltre 5 km</span><b>+ €1,50/km</b></div>
-          <p>Spesa, più pacchi e carichi più voluminosi.</p>
         </article>
       </div>
 
@@ -184,65 +173,43 @@
           </div>
           <p>Nessun abbonamento: condizioni dedicate per collaborazioni continuative.</p>
         </article>
-
-        <article class="supplement-card reveal delay-1">
-          <div class="section-kicker">SUPPLEMENTI</div>
-          <h3>Quando la richiesta richiede di più.</h3>
-          <div class="supplement-list">
-            <span><b>Urgenza · parto subito</b><strong>+ €3,00</strong></span>
-            <span><b>Priorità assoluta</b><strong>+ €5,00</strong></span>
-            <span><b>Fermata aggiuntiva</b><strong>+ €3,50</strong></span>
-            <span><b>Attesa oltre 10 min</b><strong>+ €5 / 15 min</strong></span>
-            <span><b>Dopo le 22:30</b><strong>+ €2,00</strong></span>
-            <span><b>Carico voluminoso</b><strong>da + €5,00</strong></span>
-            <span><b>Ritorno merce</b><strong>+ 50%</strong></span>
+        <article class="night-fee-card reveal delay-1">
+          <div>
+            <div class="section-kicker">UNICO SUPPLEMENTO</div>
+            <h3>Dopo le 22:30</h3>
+            <p>Il supplemento serale viene applicato automaticamente dall'app.</p>
           </div>
+          <strong>+ €2,00</strong>
         </article>
       </div>
 
       <div class="pricing-note reveal">
-        <div>
-          <b>Il preventivo esatto lo vedi nell'app.</b>
-          <span>Distanza, servizio e supplementi applicabili vengono chiariti prima della partenza.</span>
-        </div>
+        <div><b>Il preventivo esatto lo vedi nell'app.</b><span>Distanza, mezzo ed eventuale supplemento serale sono calcolati prima della richiesta.</span></div>
         <a class="btn btn-primary" href="https://sales403.github.io/-sos-cassa/">CALCOLA LA TARIFFA</a>
-      </div>
-    </section>
-
-    <section class="section-shell section-block">
-      <div class="benefits-grid">
-        <article class="benefit-main reveal">
-          <div class="section-kicker">PERCHÉ SOS RIDER</div>
-          <h2>Paghi il servizio.<br>Non la struttura.</h2>
-          <p>Nessun dipendente da assumere, nessun abbonamento e nessun impegno continuativo. Quando ti servo, mi usi. Quando non ti servo, non paghi.</p>
-          <a class="text-link" href="#app">VEDI COME FUNZIONA L'APP →</a>
-        </article>
-        <div class="benefit-list">
-          <div class="benefit reveal"><b>01</b><span><strong>Nessun costo fisso</strong><small>Paghi solo le consegne effettuate.</small></span></div>
-          <div class="benefit reveal"><b>02</b><span><strong>Contatto umano diretto</strong><small>Sai chi effettua la consegna.</small></span></div>
-          <div class="benefit reveal"><b>03</b><span><strong>Fuori zona e picchi</strong><small>Copertura dove serve davvero.</small></span></div>
-          <div class="benefit reveal"><b>04</b><span><strong>Più trasparenza</strong><small>Richiesta, stato ed ETA quando disponibili.</small></span></div>
-        </div>
       </div>
     </section>
 
     <section id="zone" class="coverage section-block">
       <div class="section-shell coverage-inner">
         <div class="coverage-copy reveal">
-          <div class="section-kicker">COPERTURA INIZIALE</div>
-          <h2>Parto dal centro del problema.</h2>
-          <p>Limidi è il punto strategico tra Carpi e Soliera: permette di coprire rapidamente il territorio e le frazioni che spesso restano fuori dai flussi principali.</p>
+          <div class="section-kicker">COPERTURA REALE</div>
+          <h2>Limidi al centro. Il territorio intorno.</h2>
+          <p>La base è a Limidi, in posizione strategica tra Carpi e Soliera. La mappa mostra i raggi reali di 3, 5 e 8 km e i principali punti serviti.</p>
+          <div class="radius-legend"><span><i class="r3"></i>3 km</span><span><i class="r5"></i>5 km</span><span><i class="r8"></i>8 km</span></div>
           <a class="btn btn-ghost" href="https://wa.me/393495153092?text=Ciao%20Marcello%2C%20vorrei%20sapere%20se%20copri%20la%20mia%20zona." target="_blank" rel="noopener">CHIEDI COPERTURA</a>
         </div>
-        <div class="coverage-map reveal delay-1">
-          <div class="radar"></div>
-          <div class="place p-carpi"><i></i><b>CARPI</b></div>
-          <div class="place p-limidi main"><i></i><b>LIMIDI</b><small>BASE STRATEGICA</small></div>
-          <div class="place p-soliera"><i></i><b>SOLIERA</b></div>
-          <div class="place p-sozzigalli"><i></i><b>SOZZIGALLI</b></div>
-          <div class="place p-cortile"><i></i><b>CORTILE</b></div>
+        <div class="map-shell reveal delay-1">
+          <div id="coverageMap" class="coverage-map-real" aria-label="Mappa reale copertura SOS Rider"></div>
+          <div class="radar-overlay" aria-hidden="true"><div class="radar-sweep"></div><div class="radar-core"></div></div>
+          <div class="map-badge">⚡ BASE SOS RIDER · LIMIDI</div>
         </div>
       </div>
+    </section>
+
+    <section class="bike-track" id="bikeTrack" aria-hidden="true">
+      <div class="bike-road"></div>
+      <img id="scrollBike" src="https://cdn.shopify.com/s/files/1/1019/6588/9874/files/bike-scroll.webp?v=1788697971" alt="">
+      <div class="bike-speed speed-a"></div><div class="bike-speed speed-b"></div><div class="bike-speed speed-c"></div>
     </section>
 
     <section id="come-funziona" class="section-shell section-block">
@@ -251,184 +218,102 @@
           <div class="section-kicker">COME FUNZIONA</div>
           <h2>Da richiesta a consegna, senza casino.</h2>
         </div>
-        <p>L'app struttura i dati essenziali così si riducono messaggi incompleti, errori e telefonate inutili.</p>
+        <p>L'app raccoglie subito i dati essenziali e li invia direttamente all'Area Rider.</p>
       </div>
-
       <div class="steps">
-        <article class="step reveal"><span>01</span><div><b>Apri SOS Rider</b><p>Da browser o dalla Home del telefono.</p></div></article>
+        <article class="step reveal"><span>01</span><div><b>Apri SOS Rider</b><p>Browser o Home del telefono.</p></div></article>
         <article class="step reveal"><span>02</span><div><b>Inserisci ritiro e consegna</b><p>Indirizzi, orario, destinatario e servizio.</p></div></article>
-        <article class="step reveal"><span>03</span><div><b>Ricevi il preventivo</b><p>La tariffa viene calcolata prima dell'invio.</p></div></article>
-        <article class="step reveal"><span>04</span><div><b>Invia la richiesta</b><p>Arriva direttamente nell'Area Rider.</p></div></article>
-        <article class="step reveal"><span>05</span><div><b>Segui lo stato</b><p>Accettazione, ritiro, consegna ed ETA quando disponibili.</p></div></article>
+        <article class="step reveal"><span>03</span><div><b>Vedi la tariffa</b><p>Preventivo calcolato prima dell'invio.</p></div></article>
+        <article class="step reveal"><span>04</span><div><b>Invia la richiesta</b><p>Arriva direttamente all'operatore.</p></div></article>
+        <article class="step reveal"><span>05</span><div><b>Segui lo stato</b><p>Accettazione, ritiro, consegna ed ETA.</p></div></article>
       </div>
     </section>
 
     <section id="app" class="app-section section-block">
-      <div class="section-shell app-grid">
-        <div class="app-copy reveal">
-          <div class="section-kicker">WEB-APP SOS RIDER</div>
-          <h2>Un rider nella Home del tuo telefono.</h2>
-          <p>SOS Rider è una web-app installabile. Il locale può salvarla sulla schermata Home e usarla come una normale app, senza passare ogni volta da Google o dai messaggi.</p>
-          <div class="app-features">
-            <span>✓ Richiesta guidata</span>
-            <span>✓ Preventivo prima dell'invio</span>
-            <span>✓ Stato della consegna</span>
-            <span>✓ Storico per account cliente</span>
-          </div>
-          <div class="hero-actions">
-            <a class="btn btn-primary btn-big" href="https://sales403.github.io/-sos-cassa/">APRI L'APP</a>
-            <a class="btn btn-ghost btn-big" href="#installazione">COME SI INSTALLA</a>
-          </div>
-        </div>
-
-        <div class="phone-wrap reveal delay-1">
-          <div class="phone">
-            <div class="phone-notch"></div>
-            <div class="phone-screen">
-              <img src="../logo-sos-rider.png" alt="SOS Rider">
-              <span class="eyebrow">SOS RIDER CARPI-SOLIERA</span>
-              <h3>Richiedi una consegna</h3>
-              <div class="fake-status"><i></i><span><b>Rider disponibile</b><small>Stato aggiornato automaticamente</small></span></div>
-              <div class="fake-field"><small>INDIRIZZO DI RITIRO</small><b>Via, civico, località</b></div>
-              <div class="fake-field"><small>INDIRIZZO DI CONSEGNA</small><b>Via, civico, località</b></div>
-              <div class="fake-services"><span>🚲</span><span>🏍️</span><span>🚗</span></div>
-              <div class="fake-button">CALCOLA TARIFFA</div>
-            </div>
-          </div>
-        </div>
+      <div class="section-shell app-hero reveal">
+        <div class="section-kicker">CENTRO OPERATIVO</div>
+        <h2>Il centro operativo è l'app.</h2>
+        <p>Cliente / locale e operatore lavorano sullo stesso flusso, in tempo reale: richiesta, tariffa, accettazione, navigazione e consegna.</p>
+        <img src="https://cdn.shopify.com/s/files/1/1019/6588/9874/files/app-operations.webp?v=1788697977" alt="SOS Rider centro operativo app cliente e operatore" loading="lazy">
       </div>
 
-      <div id="installazione" class="section-shell install-grid">
-        <article class="install-card reveal">
-          <span class="platform"></span>
-          <div>
-            <div class="eyebrow">IPHONE</div>
-            <h3>Aggiungi alla schermata Home</h3>
-            <ol>
-              <li>Apri SOS Rider in Safari</li>
-              <li>Premi Condividi</li>
-              <li>Scegli “Aggiungi alla schermata Home”</li>
-              <li>Conferma</li>
-            </ol>
+      <div class="section-shell app-real-grid">
+        <article class="app-side client-side reveal">
+          <div class="app-side-head">
+            <div><span class="app-role client">CLIENTE / LOCALE</span><h3>Richiedi in pochi secondi.</h3></div>
+            <a href="https://sales403.github.io/-sos-cassa/" class="btn btn-primary btn-small">APRI APP</a>
+          </div>
+          <div class="screen-rail">
+            <figure><img src="https://cdn.shopify.com/s/files/1/1019/6588/9874/files/client-form-1.webp?v=1788697983" alt="App cliente SOS Rider dati essenziali" loading="lazy"><figcaption>Dati essenziali</figcaption></figure>
+            <figure><img src="https://cdn.shopify.com/s/files/1/1019/6588/9874/files/client-form-2.webp?v=1788697989" alt="App cliente SOS Rider calcolo tariffa" loading="lazy"><figcaption>Servizio e tariffa</figcaption></figure>
+            <figure><img src="https://cdn.shopify.com/s/files/1/1019/6588/9874/files/client-quote.webp?v=1788697995" alt="App cliente SOS Rider preventivo" loading="lazy"><figcaption>Preventivo verificato</figcaption></figure>
           </div>
         </article>
-        <article class="install-card reveal delay-1">
-          <span class="platform">A</span>
-          <div>
-            <div class="eyebrow">ANDROID</div>
-            <h3>Installa la web-app</h3>
-            <ol>
-              <li>Apri SOS Rider in Chrome</li>
-              <li>Apri il menu del browser</li>
-              <li>Scegli “Installa app” o “Aggiungi a Home”</li>
-              <li>Conferma</li>
-            </ol>
+
+        <article class="app-side operator-side reveal delay-1">
+          <div class="app-side-head">
+            <div><span class="app-role operator">OPERATORE</span><h3>Controlla, assegna, consegna.</h3></div>
+          </div>
+          <div class="screen-rail">
+            <figure><img src="https://cdn.shopify.com/s/files/1/1019/6588/9874/files/operator-requests-1.webp?v=1788698001" alt="Area Rider richieste" loading="lazy"><figcaption>Nuova richiesta</figcaption></figure>
+            <figure><img src="https://cdn.shopify.com/s/files/1/1019/6588/9874/files/operator-requests-2.webp?v=1788698007" alt="Area Rider accetta ordine" loading="lazy"><figcaption>Accetta o rifiuta</figcaption></figure>
+            <figure><img src="https://cdn.shopify.com/s/files/1/1019/6588/9874/files/operator-deliveries.webp?v=1788698013" alt="Area Rider consegne attive" loading="lazy"><figcaption>Consegne attive</figcaption></figure>
           </div>
         </article>
+      </div>
+
+      <div class="section-shell install-grid">
+        <article class="install-card reveal"><span class="platform"></span><div><div class="eyebrow">IPHONE</div><h3>Aggiungi alla schermata Home</h3><ol><li>Apri SOS Rider in Safari</li><li>Premi Condividi</li><li>Scegli “Aggiungi alla schermata Home”</li><li>Conferma</li></ol></div></article>
+        <article class="install-card reveal delay-1"><span class="platform">A</span><div><div class="eyebrow">ANDROID</div><h3>Installa la web-app</h3><ol><li>Apri SOS Rider in Chrome</li><li>Apri il menu</li><li>Scegli “Installa app” o “Aggiungi a Home”</li><li>Conferma</li></ol></div></article>
       </div>
     </section>
 
     <section class="section-shell section-block split-audience">
       <article class="audience-card reveal">
-        <div class="audience-num">B2B</div>
-        <div class="section-kicker">PER LOCALI E NEGOZI</div>
-        <h2>Non ti serve assumere un altro fattorino per avere un rider di backup.</h2>
+        <div class="audience-num">B2B</div><div class="section-kicker">PER LOCALI E NEGOZI</div>
+        <h2>Un rider di backup senza assumere un altro fattorino.</h2>
         <p>Pizzerie, ristoranti, sushi, kebab, gastronomie, pasticcerie, fioristi, ricambisti e piccoli ecommerce.</p>
         <a class="btn btn-primary" href="https://sales403.github.io/-sos-cassa/">PROVA SOS RIDER</a>
       </article>
       <article class="audience-card reveal delay-1">
-        <div class="audience-num">B2C</div>
-        <div class="section-kicker">PER PRIVATI</div>
+        <div class="audience-num">B2C</div><div class="section-kicker">PER PRIVATI</div>
         <h2>Ritiri, pacchi, acquisti e commissioni locali.</h2>
         <p>Ti serve ritirare un ordine, consegnare un documento o spostare un piccolo pacco? Invia la richiesta dall'app.</p>
         <a class="btn btn-ghost" href="https://sales403.github.io/-sos-cassa/">RICHIEDI UNA CONSEGNA</a>
       </article>
     </section>
 
-    <section class="transparency section-shell section-block reveal">
-      <div class="transparency-copy">
-        <div class="section-kicker">TRASPARENZA OPERATIVA</div>
-        <h2>Sai cosa sta succedendo.<br>Senza inseguire il rider con telefonate.</h2>
-      </div>
-      <div class="timeline">
-        <span class="done">Richiesta ricevuta</span>
-        <span class="done">Accettata</span>
-        <span class="active">Rider in arrivo</span>
-        <span>Ordine ritirato</span>
-        <span>Consegna in corso</span>
-        <span>Completata</span>
-      </div>
-    </section>
-
     <section id="faq" class="section-shell section-block">
-      <div class="section-head reveal">
-        <div>
-          <div class="section-kicker">FAQ</div>
-          <h2>Le domande che contano.</h2>
-        </div>
-      </div>
-
+      <div class="section-head reveal"><div><div class="section-kicker">FAQ</div><h2>Le domande che contano.</h2></div></div>
       <div class="faq-list">
-        <details class="faq reveal">
-          <summary>Quali zone copre SOS Rider?</summary>
-          <p>La copertura iniziale comprende Carpi, Limidi, Soliera, Sozzigalli e Cortile. Per richieste fuori da queste zone scrivimi prima su WhatsApp.</p>
-        </details>
-        <details class="faq reveal">
-          <summary>Quanto costa una consegna?</summary>
-          <p>La Micro E-bike parte da €2,50 entro 1 km. Per le altre tratte il prezzo dipende da distanza e mezzo: nell’app compili ritiro e destinazione e vedi il preventivo prima di inviare.</p>
-        </details>
-        <details class="faq reveal">
-          <summary>Posso usare WhatsApp invece dell'app?</summary>
-          <p>Sì. L'app è consigliata perché raccoglie tutti i dati in modo ordinato, ma per urgenze o richieste particolari puoi scrivere direttamente su WhatsApp.</p>
-        </details>
-        <details class="faq reveal">
-          <summary>Il servizio è sempre disponibile?</summary>
-          <p>No. SOS Rider è on-demand: la disponibilità viene confermata in base al momento e al carico di lavoro. Se sono disponibile, parto.</p>
-        </details>
-        <details class="faq reveal">
-          <summary>Posso usarlo solo durante i picchi?</summary>
-          <p>Sì. È esattamente uno degli utilizzi principali: nessun impegno continuativo, nessun abbonamento e nessun costo fisso.</p>
-        </details>
-        <details class="faq reveal">
-          <summary>Quali mezzi vengono utilizzati?</summary>
-          <p>E-bike per tratte brevi, moto per urgenze e distanze maggiori, auto per spesa, più pacchi o carichi più voluminosi.</p>
-        </details>
+        <details class="faq reveal"><summary>Quali zone copre SOS Rider?</summary><p>La copertura iniziale comprende Carpi, Limidi, Soliera, Sozzigalli e Cortile. Per richieste più lontane verifica direttamente nell'app o su WhatsApp.</p></details>
+        <details class="faq reveal"><summary>Quanto costa una consegna?</summary><p>Dipende da distanza e mezzo. L'app calcola il preventivo prima dell'invio. Dopo le 22:30 si applica un supplemento di €2.</p></details>
+        <details class="faq reveal"><summary>Posso usare WhatsApp invece dell'app?</summary><p>Sì. L'app è consigliata perché raccoglie tutti i dati in modo ordinato, ma puoi scrivere direttamente su WhatsApp.</p></details>
+        <details class="faq reveal"><summary>Il servizio è sempre disponibile?</summary><p>No. SOS Rider è on-demand: la disponibilità viene confermata in base al momento e al carico di lavoro. Se sono disponibile, parto.</p></details>
+        <details class="faq reveal"><summary>Posso usarlo solo quando il mio rider manca?</summary><p>Sì. È uno degli utilizzi principali: backup nei picchi, assenze, urgenze e consegne fuori zona.</p></details>
       </div>
     </section>
 
     <section class="final-cta section-block">
       <div class="section-shell final-cta-inner reveal">
         <img src="../logo-sos-rider.png" alt="SOS Rider">
-        <div>
-          <div class="section-kicker">HAI UN'URGENZA?</div>
-          <h2>Apri SOS Rider.<br>Oppure scrivimi direttamente.</h2>
-        </div>
+        <div><div class="section-kicker">HAI UNA CONSEGNA DA FARE?</div><h2>Apri SOS Rider. Oppure scrivimi.</h2></div>
         <div class="final-actions">
           <a class="btn btn-primary btn-big" href="https://sales403.github.io/-sos-cassa/">APRI SOS RIDER</a>
-          <a class="btn btn-whatsapp btn-big" href="https://wa.me/393495153092?text=Ciao%20Marcello%2C%20avrei%20bisogno%20di%20una%20consegna%20SOS." target="_blank" rel="noopener">WHATSAPP 349 515 3092</a>
+          <a class="btn btn-whatsapp btn-big" href="https://wa.me/393495153092?text=Ciao%20Marcello%2C%20avrei%20bisogno%20di%20una%20consegna%20SOS." target="_blank" rel="noopener">WHATSAPP</a>
         </div>
       </div>
     </section>
   </main>
 
-  <footer>
-    <div class="section-shell footer-inner">
-      <div><b>SOS Rider Carpi-Soliera</b><span>Il tuo rider di emergenza</span></div>
-      <div class="footer-links">
-        <a href="https://sales403.github.io/-sos-cassa/">App</a>
-        <a href="#zone">Zone servite</a>
-        <a href="#faq">FAQ</a>
-        <a href="https://wa.me/393495153092" target="_blank" rel="noopener">WhatsApp</a>
-      </div>
-      <small>© <span id="year"></span> SOS Rider Carpi-Soliera</small>
-    </div>
-  </footer>
+  <footer><div class="section-shell footer-inner"><div><b>SOS Rider Carpi-Soliera</b><span>Il tuo rider di emergenza</span></div><div class="footer-links"><a href="https://sales403.github.io/-sos-cassa/">App</a><a href="#zone">Zone</a><a href="#faq">FAQ</a><a href="https://wa.me/393495153092" target="_blank" rel="noopener">WhatsApp</a></div><small>© <span id="year"></span> SOS Rider Carpi-Soliera</small></div></footer>
 
   <div class="mobile-sticky">
     <a class="btn btn-primary" href="https://sales403.github.io/-sos-cassa/">APRI SOS RIDER</a>
     <a class="btn btn-whatsapp" href="https://wa.me/393495153092?text=Ciao%20Marcello%2C%20avrei%20bisogno%20di%20una%20consegna%20SOS." target="_blank" rel="noopener">WHATSAPP</a>
   </div>
 
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script src="./app.js"></script>
 </body>
 </html>
