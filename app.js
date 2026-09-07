@@ -1,7 +1,7 @@
 (() => {
 'use strict';
 
-const APP_VERSION = '10.3.1';
+const APP_VERSION = '10.3.2';
 const KEY = 'sosRiderUnifiedV10';
 const V9_KEY = 'sosRiderUnifiedV9';
 const OLD_KEY = 'sosRiderGestV7';
@@ -951,7 +951,7 @@ function settleRestaurant(name){const arr=state.orders.filter(o=>o.restaurant===
 function closeCurrentShift(){const s=currentShift();if(!s)return;const active=state.orders.some(o=>o.shiftId===s.id&&!['delivered','cancelled'].includes(o.status));if(active){alert('Chiudi prima le consegne attive.');return;}if(!confirm('Chiudere il turno attuale?'))return;s.status='closed';s.endAt=nowIso();state.currentShiftId=null;saveState();renderRiderAll()}
 
 // ---------- WhatsApp fallback parser ----------
-const LABELS = ['Locale','Ritiro','Ordine pronto','Destinatario','Cliente','Telefono','Consegna','Indirizzo','Contenuto','Servizio','Pagamento','Importo ordine','Totale ordine','Tariffa SOS','Prezzo','Note'];
+const LABELS = ['Nome destinatario','Destinatario','Nome cliente','Cliente','Tel destinatario','Telefono destinatario','Tel cliente','Telefono cliente','Telefono','Indirizzo destinatario','Indirizzo consegna','Consegna','Indirizzo','Nome locale','Locale','Ristorante','Pizzeria','Tel locale','Telefono locale','Indirizzo locale','Indirizzo ritiro','Ritiro','Ordine pronto','Contenuto','Servizio','Pagamento','Importo ordine','Totale ordine','Tariffa SOS','Prezzo','Note'];
 function sanitizeWa(raw){return String(raw||'').replace(/\uFFFD/g,' ').replace(/[�]+/g,' ').replace(/\r/g,'\n').replace(/\*+/g,'*').replace(/\s+\n/g,'\n').trim();}
 function splitLabelledMessage(raw){
   let text=sanitizeWa(raw).replace(/\n+/g,' ');
@@ -964,9 +964,48 @@ function splitLabelledMessage(raw){
 function detectVehicle(text){const t=String(text||'').toLowerCase();if(/moto|express/.test(t))return'moto';if(/auto|cargo/.test(t))return'auto';if(/e-?bike|ebike|economy|standard|bici/.test(t))return'ebike';return'ebike'}
 function detectPayment(text){const t=String(text||'').toLowerCase();if(/contant|cash|incass/.test(t))return'cash';if(/pos|carta|bancomat/.test(t))return'pos';return'paid'}
 function parseWa(raw){
-  const rows=splitLabelledMessage(raw), get=(...ks)=>{for(const k of ks){const v=rows[k.toLowerCase()];if(v)return v;}return''};
-  const moneyFrom=s=>{const m=String(s||'').match(/(\d{1,4}(?:[.,]\d{1,2})?)/);return m?Number(m[1].replace(',','.')):0};
-  return {restaurant:get('Locale'),pickupAddress:get('Ritiro'),readyTime:(get('Ordine pronto').match(/\b\d{1,2}:\d{2}\b/)||[])[0]||'',customer:get('Destinatario','Cliente'),phone:digits(get('Telefono')),address:get('Consegna','Indirizzo'),vehicle:detectVehicle(get('Servizio')),payment:detectPayment(get('Pagamento')),orderTotal:moneyFrom(get('Importo ordine','Totale ordine')),fee:moneyFrom(get('Tariffa SOS','Prezzo')),notes:get('Note')};
+  const clean=sanitizeWa(raw);
+  const rows=splitLabelledMessage(clean), get=(...ks)=>{for(const k of ks){const v=rows[k.toLowerCase()];if(v)return v;}return''};
+  const moneyFrom=x=>{const m=String(x||'').match(/(\d{1,4}(?:[.,]\d{1,2})?)/);return m?Number(m[1].replace(',','.')):0};
+  const labelled=Object.keys(rows).length>0;
+
+  let restaurant=get('Nome locale','Locale','Ristorante','Pizzeria');
+  let pickupAddress=get('Indirizzo locale','Indirizzo ritiro','Ritiro');
+  let customer=get('Nome destinatario','Destinatario','Nome cliente','Cliente');
+  let phone=digits(get('Tel destinatario','Telefono destinatario','Tel cliente','Telefono cliente','Telefono'));
+  let address=get('Indirizzo destinatario','Indirizzo consegna','Consegna','Indirizzo');
+
+  // Messaggio libero/minimale: nome + telefono + servizio + indirizzo = DESTINATARIO.
+  if(!labelled){
+    const phoneMatch=clean.match(/(?:\+?39[\s.-]*)?3\d{2}[\s.-]*\d{3}[\s.-]*\d{3,4}/);
+    if(!phone&&phoneMatch)phone=digits(phoneMatch[0]).replace(/^39(?=3\d{9,10}$)/,'');
+
+    const addressMatch=clean.match(/\b(?:via|viale|piazza|p\.?zza|corso|strada|largo|vicolo)\s+[^\n,;|]{1,60}?\s+\d+[a-z]?(?:\s*[, -]\s*(?:\d{5}\s*)?(?:carpi|soliera|limidi(?:\s+di\s+soliera)?|sozzigalli|cortile|modena))?/i);
+    if(!address&&addressMatch)address=addressMatch[0].replace(/\s+/g,' ').trim();
+
+    let residual=clean;
+    if(phoneMatch)residual=residual.replace(phoneMatch[0],' ');
+    if(addressMatch)residual=residual.replace(addressMatch[0],' ');
+    residual=residual.replace(/\b(?:economy|e[\s-]?bike|ebike|bike|bici|moto|express|cargo|auto|servizio|consegna|sos|rider|ciao|buongiorno|buonasera|grazie)\b/gi,' ');
+    const candidates=residual.split(/[\n,;|]+/).map(x=>x.replace(/[^A-Za-zÀ-ÖØ-öø-ÿ' -]/g,' ').replace(/\s+/g,' ').trim()).filter(x=>x.length>=2&&x.length<=40);
+    if(!customer&&candidates.length)customer=candidates[0];
+  }
+
+  const ready=(get('Ordine pronto').match(/\b\d{1,2}:\d{2}\b/)||clean.match(/\b\d{1,2}:\d{2}\b/)||[])[0]||'';
+  return {
+    restaurant,
+    pickupAddress,
+    readyTime:ready,
+    customer,
+    phone,
+    address,
+    vehicle:detectVehicle(get('Servizio')||clean),
+    payment:detectPayment(get('Pagamento')||clean),
+    orderTotal:moneyFrom(get('Importo ordine','Totale ordine')),
+    fee:moneyFrom(get('Tariffa SOS','Prezzo')),
+    notes:get('Note'),
+    quickRecipient:!labelled
+  };
 }
 function openWhatsAppImporter(){
   openModal('Importa da WhatsApp',`<p class="muted">Fallback per messaggi arrivati fuori dal flusso guidato. I messaggi generati da SOS Rider vengono letti in modo strutturato.</p><label>Incolla messaggio<textarea id="mWaText" rows="8" placeholder="Incolla qui il messaggio…"></textarea></label><div id="mWaResult" class="status-line"></div>`,[
