@@ -1780,3 +1780,47 @@ html[data-theme="day"] .about-story .section-kicker{color:#ffd000}
   .about-route,.about-media-shell::after,.about-mission-card::after{animation:none!important}
   .about-photo{transform:scale(1.04)!important}
 }
+
+
+/* =========================================================
+   2026-09-07 — iOS SAFE-AREA HEADER FIX
+   Keep menu / logo / theme control below the iPhone status bar.
+   ========================================================= */
+:root{
+  --sos-safe-top:env(safe-area-inset-top, 0px);
+  --sos-safe-left:env(safe-area-inset-left, 0px);
+  --sos-safe-right:env(safe-area-inset-right, 0px);
+}
+
+@media(max-width:700px){
+  .topbar.topbar-centered{
+    height:calc(88px + var(--sos-safe-top))!important;
+    padding-top:var(--sos-safe-top)!important;
+    padding-left:max(12px,var(--sos-safe-left))!important;
+    padding-right:max(12px,var(--sos-safe-right))!important;
+  }
+
+  /* Keep the actual header controls centered inside the 88px content area. */
+  .topbar-centered .brand-centered{
+    height:88px!important;
+    align-self:center!important;
+  }
+  .topbar-centered .quick-menu-trigger,
+  .topbar-centered .top-actions{
+    align-self:center!important;
+  }
+
+  /* Everything below the fixed header must include the iPhone safe area too. */
+  .hero-banner.hero-dynamic{
+    padding-top:calc(88px + var(--sos-safe-top))!important;
+  }
+  .quick-menu{
+    top:calc(98px + var(--sos-safe-top))!important;
+    left:max(12px,var(--sos-safe-left))!important;
+    width:min(310px,calc(100vw - 24px - var(--sos-safe-left) - var(--sos-safe-right)))!important;
+  }
+
+  html{
+    scroll-padding-top:calc(96px + var(--sos-safe-top));
+  }
+}
