@@ -445,3 +445,37 @@ html[data-theme="day"] .bottom-nav-v2 .nav-btn.active{background:#fff3b1;color:#
   .live-eta-grid b,.rider-eta-grid b{font-size:13px}
   .eta-inline span{font-size:7px}
 }
+
+
+/* =========================================================
+   SOS RIDER V11 · DISPATCH + GPS
+   ========================================================= */
+.rider-gps-row{grid-column:1/-1;display:flex;align-items:center;justify-content:space-between;gap:8px;padding-top:9px;margin-top:1px;border-top:1px solid rgba(255,255,255,.08)}
+.rider-gps-status{min-width:0;font-size:10px;font-weight:850;letter-spacing:.01em;display:flex;align-items:center;gap:5px}
+.rider-gps-status.ok{color:var(--green)}
+.rider-gps-status.warn{color:#ffd76a}
+.rider-gps-status.idle{color:#aab0b5}
+.rider-gps-row .btn{min-height:32px;padding:6px 9px;font-size:9px;white-space:nowrap}
+
+.dispatch-decision{margin-top:9px;padding:10px 11px;border-radius:13px;border:1px solid #4a4a4a;background:#121212}
+.dispatch-decision.green{border-color:#2d6541;background:#102419}
+.dispatch-decision.yellow{border-color:#6f5c00;background:#211b00}
+.dispatch-decision.red{border-color:#7b3232;background:#2b1111}
+.dispatch-decision-head{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.dispatch-decision-head b{font-size:12px;letter-spacing:.035em}
+.dispatch-decision-head span{font-size:10px;font-weight:900;white-space:nowrap}
+.dispatch-decision p{margin:6px 0 3px!important;color:var(--text)!important;font-size:11px;line-height:1.4}
+.dispatch-decision small{display:block;color:#b8b8b8;font-size:9px;line-height:1.45}
+.dispatch-decision.green .dispatch-decision-head{color:#b9efca}
+.dispatch-decision.yellow .dispatch-decision-head{color:#ffe36d}
+.dispatch-decision.red .dispatch-decision-head{color:#ffb0b0}
+
+html[data-theme="day"] .rider-gps-row{border-top-color:rgba(255,255,255,.13)}
+html[data-theme="day"] .dispatch-decision p{color:#fff!important}
+
+@media(max-width:520px){
+  .rider-gps-row{align-items:flex-start}
+  .rider-gps-status{font-size:9px;line-height:1.35}
+  .dispatch-decision-head{align-items:flex-start}
+  .dispatch-decision-head span{font-size:9px}
+}
