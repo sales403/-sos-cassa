@@ -1,7 +1,7 @@
 (() => {
 'use strict';
 
-const APP_VERSION = '10.3.3';
+const APP_VERSION = '11.0.0-dispatch';
 const KEY = 'sosRiderUnifiedV10';
 const V9_KEY = 'sosRiderUnifiedV9';
 const OLD_KEY = 'sosRiderGestV7';
@@ -51,6 +51,12 @@ let alarmEnabled = localStorage.getItem('sosRiderAlarmEnabledV10') === '1';
 let alarmUiText = '';
 let lastRemoteNewCodes = new Set();
 let cashStacks = {};
+let riderGeoWatchId = null;
+let riderLocation = null;
+let serverRiderLocation = null;
+let riderLocationLastSentAt = 0;
+let riderLocationError = '';
+const RIDER_LOCATION_SEND_MS = 15000;
 const searchSlots = new Map();
 
 function defaultState(){
@@ -170,7 +176,7 @@ function showOnly(view){
   window.scrollTo({top:0,behavior:'instant'});
 }
 function openHome(){
-  stopClientPolling(); stopRiderPolling(); stopAvailabilityPolling(); stopAlarm();
+  stopClientPolling(); stopRiderPolling(); stopAvailabilityPolling(); stopAlarm(); stopRiderLocationTracking();
   history.replaceState(null,'',location.pathname);
   showOnly('hubHome');
   refreshAvailability(); startAvailabilityPolling();
@@ -211,10 +217,11 @@ function showRider(){
   showOnly('riderHub');
   switchRiderPage('requests');
   renderRiderAll();
-  refreshAvailability();
+  refreshAvailability().then(av=>{ if(av?.enabled) startRiderLocationTracking(); });
   refreshRemoteRequests();
   startRiderPolling(); startAvailabilityPolling();
   updateAlarmUI();
+  renderRiderGpsStatus();
 }
 
 // ---------- Tema DAY / NIGHT ----------
@@ -297,7 +304,128 @@ function renderAvailability(){
 }
 function startAvailabilityPolling(){stopAvailabilityPolling();availabilityPolling=setInterval(refreshAvailability,8000)}
 function stopAvailabilityPolling(){if(availabilityPolling){clearInterval(availabilityPolling);availabilityPolling=null}}
-async function setRiderAvailability(enabled){try{const eta=Number($('riderEtaSelect').value)||15;const d=await fetchJson(apiBase()+'/api/rider/availability',{method:'PATCH',headers:riderHeaders(),body:JSON.stringify({enabled,etaPerJob:eta})},8000);currentAvailability=d.availability;renderAvailability()}catch(e){alert('Stato rider non aggiornato: '+e.message)}}
+async function setRiderAvailability(enabled){
+  try{
+    const eta=Number($('riderEtaSelect').value)||15;
+    const d=await fetchJson(apiBase()+'/api/rider/availability',{method:'PATCH',headers:riderHeaders(),body:JSON.stringify({enabled,etaPerJob:eta})},8000);
+    currentAvailability=d.availability;
+    renderAvailability();
+    if(enabled){
+      startRiderLocationTracking();
+      captureRiderLocationOnce(true).catch(()=>{});
+    }else{
+      stopRiderLocationTracking();
+    }
+  }catch(e){alert('Stato rider non aggiornato: '+e.message)}
+}
+
+// ---------- Posizione Rider / Dispatch ----------
+function riderLocationAgeSec(loc=riderLocation){
+  const ts=Date.parse(loc?.capturedAt||'');
+  return Number.isFinite(ts)?Math.max(0,Math.floor((Date.now()-ts)/1000)):null;
+}
+function renderRiderGpsStatus(){
+  const el=$('riderGpsStatus'); if(!el)return;
+  const loc=riderLocation||serverRiderLocation;
+  const age=riderLocationAgeSec(loc);
+  if(riderLocationError){
+    el.className='rider-gps-status warn';
+    el.innerHTML=`${icon('warning','mini-inline-icon')} GPS: ${esc(riderLocationError)}`;
+    return;
+  }
+  if(!loc){
+    el.className='rider-gps-status idle';
+    el.innerHTML=`${icon('navigation','mini-inline-icon')} GPS: in attesa di posizione…`;
+    return;
+  }
+  const fresh=age!=null&&age<=90;
+  const acc=Number(loc.accuracyM);
+  el.className='rider-gps-status '+(fresh?'ok':'warn');
+  el.innerHTML=`${icon('navigation','mini-inline-icon')} GPS ${fresh?'aggiornato':'da aggiornare'} · ${age==null?'—':age+'s'}${Number.isFinite(acc)?' · ±'+Math.round(acc)+' m':''}`;
+}
+async function sendRiderLocation(loc,force=false){
+  if(!loc||authProfile?.role!=='rider'||!authSession)return null;
+  const now=Date.now();
+  if(!force && now-riderLocationLastSentAt<RIDER_LOCATION_SEND_MS)return null;
+  riderLocationLastSentAt=now;
+  const d=await fetchJson(apiBase()+'/api/rider/location',{
+    method:'PATCH',
+    headers:riderHeaders(),
+    body:JSON.stringify({
+      lat:loc.lat,lon:loc.lon,accuracyM:loc.accuracyM,
+      speedMps:loc.speedMps,headingDeg:loc.headingDeg,
+      capturedAt:loc.capturedAt,source:'pwa'
+    })
+  },7000);
+  serverRiderLocation=d.location||serverRiderLocation;
+  renderRiderGpsStatus();
+  return d.location;
+}
+function positionToRiderLocation(pos){
+  return {
+    lat:Number(pos.coords.latitude),
+    lon:Number(pos.coords.longitude),
+    accuracyM:Number(pos.coords.accuracy)||null,
+    speedMps:Number.isFinite(Number(pos.coords.speed))?Number(pos.coords.speed):null,
+    headingDeg:Number.isFinite(Number(pos.coords.heading))?Number(pos.coords.heading):null,
+    capturedAt:new Date(pos.timestamp||Date.now()).toISOString()
+  };
+}
+function onRiderPosition(pos){
+  riderLocation=positionToRiderLocation(pos);
+  riderLocationError='';
+  renderRiderGpsStatus();
+  sendRiderLocation(riderLocation,false).catch(e=>{
+    console.warn('Invio GPS rider fallito',e);
+    riderLocationError='posizione locale ok, sync server non riuscita';
+    renderRiderGpsStatus();
+  });
+}
+function onRiderPositionError(err){
+  const map={1:'permesso posizione negato',2:'posizione non disponibile',3:'timeout GPS'};
+  riderLocationError=map[err?.code]||'GPS non disponibile';
+  renderRiderGpsStatus();
+}
+function startRiderLocationTracking(){
+  if(riderGeoWatchId!=null||!navigator.geolocation||authProfile?.role!=='rider')return;
+  riderLocationError='';
+  riderGeoWatchId=navigator.geolocation.watchPosition(
+    onRiderPosition,
+    onRiderPositionError,
+    {enableHighAccuracy:true,maximumAge:8000,timeout:15000}
+  );
+  renderRiderGpsStatus();
+}
+function stopRiderLocationTracking(){
+  if(riderGeoWatchId!=null&&navigator.geolocation){
+    navigator.geolocation.clearWatch(riderGeoWatchId);
+  }
+  riderGeoWatchId=null;
+}
+async function captureRiderLocationOnce(force=true){
+  if(!navigator.geolocation||authProfile?.role!=='rider')return null;
+  return new Promise((resolve,reject)=>{
+    navigator.geolocation.getCurrentPosition(async pos=>{
+      try{
+        onRiderPosition(pos);
+        const loc=positionToRiderLocation(pos);
+        const saved=await sendRiderLocation(loc,force);
+        resolve(saved||loc);
+      }catch(e){reject(e)}
+    },reject,{enableHighAccuracy:true,maximumAge:5000,timeout:8000});
+  });
+}
+function dispatchDecisionMarkup(r){
+  const d=r?.dispatch; if(!d)return'';
+  const cls=d.level==='green'?'green':d.level==='red'?'red':'yellow';
+  const km=d.incrementalKm==null?'—':Number(d.incrementalKm).toFixed(1)+' km';
+  const gps=d.locationFresh?'GPS live':'GPS non live';
+  return `<div class="dispatch-decision ${cls}">
+    <div class="dispatch-decision-head"><b>${d.level==='green'?'🟢':d.level==='red'?'🔴':'🟡'} ${esc(d.label||'VALUTA')}</b><span>~${Number(d.pickupEtaMin)||0} min al ritiro</span></div>
+    <p>${esc(d.reason||'')}</p>
+    <small>${esc(d.recommendation||'')} · trasferimento ${esc(km)} · ${esc(gps)}</small>
+  </div>`;
+}
 
 // ---------- Audio / feedback ----------
 function getAudioCtx(kind='client'){const C=window.AudioContext||window.webkitAudioContext;if(!C)return null;if(kind==='alarm'){if(!alarmAudioCtx)alarmAudioCtx=new C();return alarmAudioCtx}if(!clientAudioCtx)clientAudioCtx=new C();return clientAudioCtx}
@@ -730,7 +858,7 @@ async function refreshRemoteRequests(){
   if(authProfile?.role!=='rider'||!authSession){$('syncDot').className='sync-dot offline';$('syncTitle').textContent='Accesso Rider richiesto';$('syncText').textContent='Sessione non valida.';return;}
   try{
     const u=new URL(apiBase()+'/api/rider/requests');u.searchParams.set('limit','100');
-    let d=await fetchJson(u.toString(),{headers:riderHeaders()},8000);remoteRequests=d.requests||[];
+    let d=await fetchJson(u.toString(),{headers:riderHeaders()},8000);remoteRequests=d.requests||[];serverRiderLocation=d.riderLocation||serverRiderLocation;renderRiderGpsStatus();
     const repaired=await reconcileRemoteTerminalStates();
     if(repaired){d=await fetchJson(u.toString(),{headers:riderHeaders()},8000);remoteRequests=d.requests||[];}
     $('syncDot').className='sync-dot online';$('syncTitle').textContent='Richieste online';$('syncText').textContent=`Sincronizzato ${new Date().toLocaleTimeString('it-IT',{hour:'2-digit',minute:'2-digit',second:'2-digit'})}`;$('riderSyncSmall').textContent=`${authUser?.email||'Rider'} · online`;renderRemoteRequests();
@@ -768,11 +896,43 @@ function startRiderPolling(){stopRiderPolling();riderPolling=setInterval(refresh
 function stopRiderPolling(){if(riderPolling){clearInterval(riderPolling);riderPolling=null;}}
 function remoteStatusLabel(s){return s==='new'?'NUOVA':s==='accepted'?'ACCETTATA':s==='picked'?'IN CONSEGNA':s==='arrived'?'ARRIVATO':s==='delivered'?'COMPLETATA':s==='rejected'?'RIFIUTATA':s==='cancelled'?'ANNULLATA':String(s||'').toUpperCase();}
 function renderRemoteRequests(){
-  const visible=remoteRequests.filter(r=>['new','accepted','picked','arrived'].includes(r.status));const newOnes=visible.filter(r=>r.status==='new');$('newRequestCount').textContent=newOnes.length;
-  if(!visible.length){$('remoteRequestsList').innerHTML='<section class="card"><div class="eyebrow">TUTTO TRANQUILLO</div><h2>Nessuna richiesta in attesa</h2><p class="muted">Nessuna richiesta nuova e nessuna consegna attiva sul server.</p></section>';return;}
-  $('remoteRequestsList').innerHTML=visible.map(r=>{const exists=state.orders.some(o=>o.remoteCode===r.code);return `<article class="request-card ${r.status==='new'?'new':'accepted'}" data-remote-code="${esc(r.code)}"><div class="request-top"><div><div class="code">${esc(r.code)}</div><div class="tiny">${fmtDateTime(r.createdAt||r.created_at)}</div></div><span class="pill ${r.status==='new'?'yellow':'green'}">${remoteStatusLabel(r.status)}</span></div><div class="request-grid"><div class="kv"><small>RICHIEDENTE</small><b>${esc(r.requesterName||r.requester_name)}</b></div><div class="kv"><small>PRONTO</small><b>${esc(r.readyTime||r.ready_time||'—')}</b></div><div class="kv"><small>SERVIZIO</small><b>${vehicleIcon(r.service)} ${esc(r.microDelivery?'Micro E-bike':vehicleLabel(r.service))}</b></div><div class="kv"><small>TARIFFA SOS</small><b>${money(r.totalFee||r.total_fee)}</b></div></div><div class="route-box"><b>${icon('pin','mini-inline-icon')} Ritiro</b> ${esc(r.pickupAddress||r.pickup_address)}<br><b>${icon('navigation','mini-inline-icon')} Consegna</b> ${esc(r.deliveryAddress||r.delivery_address)}<br><b>${icon('customer','mini-inline-icon')}</b> ${esc(r.recipientName||r.recipient_name)} · ${esc(r.recipientPhone||r.recipient_phone)}</div>${r.status==='accepted'?riderEtaMarkup(r.eta,'to_pickup'):r?.eta?.previewPickup?`<div class="rider-eta-panel preview"><div class="rider-eta-head">PREVIEW CODA</div><div class="rider-eta-grid"><div><small>SE ACCETTI ORA</small><b>${esc(etaRange(r.eta.previewPickup))}</b><span>~${r.eta.previewPickup.min||0} min</span></div></div></div>`:''}<div class="request-actions">${r.status==='new'?`<button class="btn ghost" data-reject="${esc(r.code)}">RIFIUTA</button><button class="btn primary" data-accept="${esc(r.code)}">${icon('bolt','btn-icon')} ACCETTA ORDINE</button>`:`<button class="btn ghost" data-map-remote="${esc(r.code)}">PERCORSO</button><button class="btn primary" data-open-delivery="${esc(r.code)}">${exists?'APRI CONSEGNA':'RECUPERA CONSEGNA'}</button>`}</div></article>`}).join('');
+  const visible=remoteRequests.filter(r=>['new','accepted','picked','arrived'].includes(r.status));
+  const newOnes=visible.filter(r=>r.status==='new');
+  $('newRequestCount').textContent=newOnes.length;
+  if(!visible.length){
+    $('remoteRequestsList').innerHTML='<section class="card"><div class="eyebrow">TUTTO TRANQUILLO</div><h2>Nessuna richiesta in attesa</h2><p class="muted">Nessuna richiesta nuova e nessuna consegna attiva sul server.</p></section>';
+    return;
+  }
+  $('remoteRequestsList').innerHTML=visible.map(r=>{
+    const exists=state.orders.some(o=>o.remoteCode===r.code);
+    const etaBlock=r.status==='accepted'
+      ? riderEtaMarkup(r.eta,'to_pickup')
+      : r?.eta?.previewPickup
+        ? `<div class="rider-eta-panel preview"><div class="rider-eta-head">PREVIEW CODA</div><div class="rider-eta-grid"><div><small>SE ACCETTI ORA</small><b>${esc(etaRange(r.eta.previewPickup))}</b><span>~${r.eta.previewPickup.min||0} min</span></div></div></div>`
+        : '';
+    return `<article class="request-card ${r.status==='new'?'new':'accepted'}" data-remote-code="${esc(r.code)}">
+      <div class="request-top"><div><div class="code">${esc(r.code)}</div><div class="tiny">${fmtDateTime(r.createdAt||r.created_at)}</div></div><span class="pill ${r.status==='new'?'yellow':'green'}">${remoteStatusLabel(r.status)}</span></div>
+      <div class="request-grid">
+        <div class="kv"><small>RICHIEDENTE</small><b>${esc(r.requesterName||r.requester_name)}</b></div>
+        <div class="kv"><small>PRONTO</small><b>${esc(r.readyTime||r.ready_time||'—')}</b></div>
+        <div class="kv"><small>SERVIZIO</small><b>${vehicleIcon(r.service)} ${esc(r.microDelivery?'Micro E-bike':vehicleLabel(r.service))}</b></div>
+        <div class="kv"><small>TARIFFA SOS</small><b>${money(r.totalFee||r.total_fee)}</b></div>
+      </div>
+      <div class="route-box"><b>${icon('pin','mini-inline-icon')} Ritiro</b> ${esc(r.pickupAddress||r.pickup_address)}<br><b>${icon('navigation','mini-inline-icon')} Consegna</b> ${esc(r.deliveryAddress||r.delivery_address)}<br><b>${icon('customer','mini-inline-icon')}</b> ${esc(r.recipientName||r.recipient_name)} · ${esc(r.recipientPhone||r.recipient_phone)}</div>
+      ${r.status==='new'?dispatchDecisionMarkup(r):''}
+      ${etaBlock}
+      <div class="request-actions">${r.status==='new'
+        ? `<button class="btn ghost" data-reject="${esc(r.code)}">RIFIUTA</button><button class="btn primary" data-accept="${esc(r.code)}">${icon('bolt','btn-icon')} ACCETTA ORDINE</button>`
+        : `<button class="btn ghost" data-map-remote="${esc(r.code)}">PERCORSO</button><button class="btn primary" data-open-delivery="${esc(r.code)}">${exists?'APRI CONSEGNA':'RECUPERA CONSEGNA'}</button>`
+      }</div>
+    </article>`;
+  }).join('');
 }
-async function patchRemote(code,body){return fetchJson(apiBase()+`/api/rider/requests/${encodeURIComponent(code)}`,{method:'PATCH',headers:riderHeaders(),body:JSON.stringify(body)},8000)}
+
+async function patchRemote(code,body){
+  if(['accepted','picked','arrived','delivered'].includes(body?.status))captureRiderLocationOnce(true).catch(()=>{});
+  return fetchJson(apiBase()+`/api/rider/requests/${encodeURIComponent(code)}`,{method:'PATCH',headers:riderHeaders(),body:JSON.stringify(body)},8000)
+}
 function findRemote(code){return remoteRequests.find(r=>r.code===code)}
 function localStatusFromRemote(status){return status==='picked'?'picked':status==='arrived'?'arrived':status==='delivered'?'delivered':status==='cancelled'?'cancelled':'to_pickup';}
 async function forceRemoteToTerminal(local,remote){
@@ -803,7 +963,20 @@ function startShift(name,fund){const s={id:uid('SHIFT'),name:name||`${new Date()
 function ensureShiftThen(done){if(currentShift()){done();return;}openModal('Apri turno per accettare',`<p class="muted">La richiesta può essere accettata appena apri il turno.</p><label>Nome turno<input id="mShiftName" value="${esc(new Date().toLocaleDateString('it-IT',{weekday:'long',day:'2-digit',month:'2-digit'})+' sera')}"></label><label style="margin-top:8px">Fondo resto<input id="mFund" type="number" min="0" value="100"></label>`,[{label:'ANNULLA',cls:'ghost'},{label:'APRI TURNO E CONTINUA',cls:'primary',fn:()=>{startShift($('mShiftName').value.trim(),num($('mFund').value));closeModal();done();}}]);}
 function normalizeRemote(r){return{code:r.code,requesterName:r.requesterName||r.requester_name,requesterPhone:r.requesterPhone||r.requester_phone,pickupAddress:r.pickupAddress||r.pickup_address,pickupLat:Number(r.pickupLat??r.pickup_lat),pickupLon:Number(r.pickupLon??r.pickup_lon),readyTime:r.readyTime||r.ready_time,recipientName:r.recipientName||r.recipient_name,recipientPhone:r.recipientPhone||r.recipient_phone,deliveryAddress:r.deliveryAddress||r.delivery_address,deliveryLat:Number(r.deliveryLat??r.delivery_lat),deliveryLon:Number(r.deliveryLon??r.delivery_lon),service:r.service,payment:r.payment,orderTotal:Number(r.orderTotal??r.order_total)||0,notes:r.notes||'',distanceKm:Number(r.distanceKm??r.distance_km)||0,durationMin:Number(r.durationMin??r.duration_min)||0,baseFee:Number(r.baseFee??r.base_fee)||0,lateFee:Number(r.lateFee??r.late_fee)||0,totalFee:Number(r.totalFee??r.total_fee)||0,microDelivery:!!(r.microDelivery??r.micro_delivery),createdAt:r.createdAt||r.created_at||nowIso(),status:r.status,eta:r.eta||null};}
 function createLocalOrderFromRemote(raw){const r=normalizeRemote(raw);let o=state.orders.find(o=>o.remoteCode===r.code);if(o)return o;const s=currentShift(),localStatus=localStatusFromRemote(r.status);o={id:uid('ORD'),remoteCode:r.code,shiftId:s?.id||null,code:r.code,restaurant:r.requesterName,pickupAddress:r.pickupAddress,readyTime:r.readyTime,customer:r.recipientName,phone:r.recipientPhone,address:r.deliveryAddress,total:r.orderTotal,fee:r.totalFee,payment:r.payment,vehicle:r.service,distanceKm:r.distanceKm,durationMin:r.durationMin,baseFee:r.baseFee,lateFee:r.lateFee,microDelivery:r.microDelivery,pickupLat:r.pickupLat,pickupLon:r.pickupLon,lat:r.deliveryLat,lon:r.deliveryLon,received:0,change:0,status:localStatus,outcome:localStatus==='delivered'?'success':localStatus==='cancelled'?'cancelled':null,problemNote:'',cashSorted:false,restaurantSettled:false,createdAt:r.createdAt,pickedAt:['picked','arrived','delivered'].includes(localStatus)?nowIso():null,arrivedAt:['arrived','delivered'].includes(localStatus)?nowIso():null,deliveredAt:localStatus==='delivered'?nowIso():null,notes:r.notes||''};state.orders.push(o);state.settings.restaurantAddresses[o.restaurant]={label:o.pickupAddress,lat:o.pickupLat,lon:o.pickupLon};saveState();renderRiderAll();return o;}
-async function acceptRemote(code){const r=findRemote(code);if(!r)return;stopAlarm(code);ensureShiftThen(async()=>{try{const d=await patchRemote(code,{status:'accepted'});createLocalOrderFromRemote(d.request||r);await refreshRemoteRequests();switchRiderPage('deliveries');}catch(e){alert('Non sono riuscito ad accettare la richiesta: '+e.message)}});}
+async function acceptRemote(code){
+  const r=findRemote(code);if(!r)return;
+  const dsc=r.dispatch;
+  if(dsc?.level==='red'&&!confirm(`⚠ ${dsc.label||'NON CONSIGLIATO'}\n\n${dsc.reason||''}\n\nAccettare comunque?`))return;
+  stopAlarm(code);
+  ensureShiftThen(async()=>{
+    try{
+      const d=await patchRemote(code,{status:'accepted'});
+      createLocalOrderFromRemote(d.request||r);
+      await refreshRemoteRequests();
+      switchRiderPage('deliveries');
+    }catch(e){alert('Non sono riuscito ad accettare la richiesta: '+e.message)}
+  });
+}
 async function rejectRemote(code){if(!confirm(`Rifiutare ${code}? Il cliente vedrà che la richiesta non è disponibile.`))return;stopAlarm(code);try{await patchRemote(code,{status:'rejected'});await refreshRemoteRequests();}catch(e){alert('Errore: '+e.message)}}
 
 // ---------- Operatività rider ----------
