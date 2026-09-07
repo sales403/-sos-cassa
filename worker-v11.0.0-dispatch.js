@@ -1525,6 +1525,20 @@ async function createRequest(request, env, ctx, cors) {
     code
   );
 
+  await safeLogEvent(env, code, 'request_created', '', 'new', 'app', {
+    requesterName: d.requesterName,
+    service: d.service,
+    distanceKm: route.distanceKm,
+    totalFee: fee.totalFee
+  });
+  try {
+    await env.DB.prepare(
+      "INSERT OR IGNORE INTO request_sources(code,channel,external_id,created_at) VALUES(?,?,?,?)"
+    ).bind(code, 'app', submissionId, new Date().toISOString()).run();
+  } catch (e) {
+    console.warn('request_sources unavailable', e);
+  }
+
   const notify = async () => {
     await Promise.allSettled([
       sendTelegramNewOrder(env, row),
