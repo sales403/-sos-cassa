@@ -1008,7 +1008,7 @@ function parseWa(raw){
   };
 }
 function openWhatsAppImporter(){
-  openModal('Importa da WhatsApp',`<p class="muted">Fallback per messaggi arrivati fuori dal flusso guidato. I messaggi generati da SOS Rider vengono letti in modo strutturato.</p><label>Incolla messaggio<textarea id="mWaText" rows="8" placeholder="Incolla qui il messaggio…"></textarea></label><div id="mWaResult" class="status-line"></div>`,[
+  openModal('Importa da WhatsApp',`<p class="muted"><b>Modalità rapida:</b> se ricevi solo nome, telefono, servizio e indirizzo, vengono interpretati automaticamente come dati del destinatario. I dati del locale puoi completarli tu.</p><label>Incolla messaggio<textarea id="mWaText" rows="8" placeholder="Marcello\n3495153092\nEconomy E-bike\nVia Malpighi 5 Carpi"></textarea></label><div id="mWaResult" class="status-line"></div>`,[
     {label:'ANNULLA',cls:'ghost'},
     {label:'ANALIZZA',cls:'primary',keep:true,fn:()=>{const d=parseWa($('mWaText').value);renderWaParsed(d)}}
   ]);
