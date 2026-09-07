@@ -1,7 +1,7 @@
 (() => {
 'use strict';
 
-const APP_VERSION = '10.3.2';
+const APP_VERSION = '10.3.3';
 const KEY = 'sosRiderUnifiedV10';
 const V9_KEY = 'sosRiderUnifiedV9';
 const OLD_KEY = 'sosRiderGestV7';
@@ -951,7 +951,7 @@ function settleRestaurant(name){const arr=state.orders.filter(o=>o.restaurant===
 function closeCurrentShift(){const s=currentShift();if(!s)return;const active=state.orders.some(o=>o.shiftId===s.id&&!['delivered','cancelled'].includes(o.status));if(active){alert('Chiudi prima le consegne attive.');return;}if(!confirm('Chiudere il turno attuale?'))return;s.status='closed';s.endAt=nowIso();state.currentShiftId=null;saveState();renderRiderAll()}
 
 // ---------- WhatsApp fallback parser ----------
-const LABELS = ['Nome destinatario','Destinatario','Nome cliente','Cliente','Tel destinatario','Telefono destinatario','Tel cliente','Telefono cliente','Telefono','Indirizzo destinatario','Indirizzo consegna','Consegna','Indirizzo','Nome locale','Locale','Ristorante','Pizzeria','Tel locale','Telefono locale','Indirizzo locale','Indirizzo ritiro','Ritiro','Ordine pronto','Contenuto','Servizio','Pagamento','Importo ordine','Totale ordine','Tariffa SOS','Prezzo','Note'];
+const LABELS = ['Nome destinatario','Destinatario','Nome cliente','Cliente','Tel destinatario','Telefono destinatario','Tel cliente','Telefono cliente','Telefono','Indirizzo destinatario','Indirizzo consegna','Consegna','Indirizzo','Nome locale','Locale','Ristorante','Pizzeria','Tel locale','Telefono locale','Indirizzo locale','Indirizzo ritiro','Ritiro','Ordine pronto','Orario ritiro','Ritiro previsto','Pronto alle','Contenuto','Servizio','Pagamento','Importo ordine','Totale ordine','Tariffa SOS','Prezzo','Note'];
 function sanitizeWa(raw){return String(raw||'').replace(/\uFFFD/g,' ').replace(/[�]+/g,' ').replace(/\r/g,'\n').replace(/\*+/g,'*').replace(/\s+\n/g,'\n').trim();}
 function splitLabelledMessage(raw){
   let text=sanitizeWa(raw).replace(/\n+/g,' ');
@@ -963,6 +963,29 @@ function splitLabelledMessage(raw){
 }
 function detectVehicle(text){const t=String(text||'').toLowerCase();if(/moto|express/.test(t))return'moto';if(/auto|cargo/.test(t))return'auto';if(/e-?bike|ebike|economy|standard|bici/.test(t))return'ebike';return'ebike'}
 function detectPayment(text){const t=String(text||'').toLowerCase();if(/contant|cash|incass/.test(t))return'cash';if(/pos|carta|bancomat/.test(t))return'pos';return'paid'}
+function waPickupTime(text){
+  const t=String(text||'').toLowerCase();
+  const now=new Date();
+  const fmt=d=>String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0');
+  const addMin=n=>{const d=new Date(now.getTime()+Number(n)*60000);return fmt(d)};
+  if(/\b(?:subito|appena possibile|prima possibile|ora)\b/.test(t))return fmt(now);
+  if(/\b(?:mezz.?ora|mezza ora)\b/.test(t)&&/\b(?:tra|fra)\b/.test(t))return addMin(30);
+  const rel=t.match(/\b(?:tra|fra)\s+(\d{1,3})\s*(?:min|minuti?)\b/);
+  if(rel)return addMin(rel[1]);
+  const hm=t.match(/\b(?:alle|ore|verso|circa|intorno alle|pronto alle)?\s*(\d{1,2})[:.](\d{2})\b/);
+  if(hm){
+    const h=Math.min(23,Math.max(0,Number(hm[1])));
+    const m=Math.min(59,Math.max(0,Number(hm[2])));
+    return String(h).padStart(2,'0')+':'+String(m).padStart(2,'0');
+  }
+  const hour=t.match(/\b(?:alle|ore|verso|circa|intorno alle)\s+(\d{1,2})\b/);
+  if(hour){
+    const h=Math.min(23,Math.max(0,Number(hour[1])));
+    return String(h).padStart(2,'0')+':00';
+  }
+  return'';
+}
+
 function parseWa(raw){
   const clean=sanitizeWa(raw);
   const rows=splitLabelledMessage(clean), get=(...ks)=>{for(const k of ks){const v=rows[k.toLowerCase()];if(v)return v;}return''};
@@ -986,12 +1009,12 @@ function parseWa(raw){
     let residual=clean;
     if(phoneMatch)residual=residual.replace(phoneMatch[0],' ');
     if(addressMatch)residual=residual.replace(addressMatch[0],' ');
-    residual=residual.replace(/\b(?:economy|e[\s-]?bike|ebike|bike|bici|moto|express|cargo|auto|servizio|consegna|sos|rider|ciao|buongiorno|buonasera|grazie)\b/gi,' ');
+    residual=residual.replace(/\b(?:economy|e[\s-]?bike|ebike|bike|bici|moto|express|cargo|auto|servizio|consegna|sos|rider|ciao|buongiorno|buonasera|grazie|circa|verso|ore|alle|tra|fra|min|minuto|minuti|subito|appena possibile|prima possibile)\b/gi,' ');
     const candidates=residual.split(/[\n,;|]+/).map(x=>x.replace(/[^A-Za-zÀ-ÖØ-öø-ÿ' -]/g,' ').replace(/\s+/g,' ').trim()).filter(x=>x.length>=2&&x.length<=40);
     if(!customer&&candidates.length)customer=candidates[0];
   }
 
-  const ready=(get('Ordine pronto').match(/\b\d{1,2}:\d{2}\b/)||clean.match(/\b\d{1,2}:\d{2}\b/)||[])[0]||'';
+  const ready=waPickupTime(get('Ordine pronto','Orario ritiro','Ritiro previsto','Pronto alle')||clean);
   return {
     restaurant,
     pickupAddress,
@@ -1008,7 +1031,7 @@ function parseWa(raw){
   };
 }
 function openWhatsAppImporter(){
-  openModal('Importa da WhatsApp',`<p class="muted"><b>Modalità rapida:</b> se ricevi solo nome, telefono, servizio e indirizzo, vengono interpretati automaticamente come dati del destinatario. I dati del locale puoi completarli tu.</p><label>Incolla messaggio<textarea id="mWaText" rows="8" placeholder="Marcello\n3495153092\nEconomy E-bike\nVia Malpighi 5 Carpi"></textarea></label><div id="mWaResult" class="status-line"></div>`,[
+  openModal('Importa da WhatsApp',`<p class="muted"><b>Modalità rapida:</b> bastano nome, telefono, servizio, indirizzo e <b>orario indicativo di ritiro</b>. Può scrivere anche “20:30”, “verso le 20:30”, “tra 20 min” o “subito”. I dati del locale puoi completarli tu.</p><label>Incolla messaggio<textarea id="mWaText" rows="8" placeholder="Marcello\n3495153092\nEconomy E-bike\nVia Malpighi 5 Carpi\n20:30 circa"></textarea></label><div id="mWaResult" class="status-line"></div>`,[
     {label:'ANNULLA',cls:'ghost'},
     {label:'ANALIZZA',cls:'primary',keep:true,fn:()=>{const d=parseWa($('mWaText').value);renderWaParsed(d)}}
   ]);
