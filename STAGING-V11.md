@@ -66,3 +66,5 @@ NON modificare:
 
 ## Cloudflare preview config
 La branch include `wrangler.jsonc` con assets statici in `./preview-v11`, usati esclusivamente per generare la preview V11.
+
+Build trigger after Cloudflare Version command update: 2026-09-08.
