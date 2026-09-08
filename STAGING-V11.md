@@ -63,3 +63,6 @@ NON modificare:
 8. Verificare decisione verde/gialla/rossa.
 9. Tentare terzo ordine attivo e verificare blocco server.
 10. Controllare `request_events`.
+
+## Cloudflare preview config
+La branch include `wrangler.jsonc` con assets statici in `./preview-v11`, usati esclusivamente per generare la preview V11.
