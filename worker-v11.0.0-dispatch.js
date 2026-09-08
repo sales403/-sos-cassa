@@ -1,4 +1,4 @@
-const VERSION = 'SOS Rider API 11.0.1-dispatch';
+const VERSION = 'SOS Rider API 11.0.2-dispatch';
 
 const ETA_MODEL = Object.freeze({
   ebikeKmh: 30,
@@ -666,13 +666,24 @@ async function handleQuote(request, env, cors) {
       ? await computeAvailability(env)
       : null;
 
+  const pickupAvailability =
+    env.DB
+      ? await buildPickupAvailabilityPreview(env, {
+          pickupLat: a.lat,
+          pickupLon: a.lon,
+          service,
+          readyTime
+        })
+      : null;
+
   return json({
     ok: true,
     quote: {
       ...route,
       ...fee
     },
-    availability
+    availability,
+    pickupAvailability
   }, 200, cors);
 }
 
@@ -913,11 +924,132 @@ async function buildEtaState(env) {
           updatedAt: p.updated_at
         };
 
-  return { availability, etaByCode, decisionByCode, liveLocation };
+  return {
+    availability,
+    etaByCode,
+    decisionByCode,
+    liveLocation,
+    queueContext: {
+      active,
+      pending,
+      cursorMin: Math.max(0, Math.ceil(cursorMin)),
+      lastPoint,
+      carryingFood
+    }
+  };
 }
 
 async function computeAvailability(env) {
   return (await buildEtaState(env)).availability;
+}
+
+async function buildPickupAvailabilityPreview(env, input) {
+  const state = await buildEtaState(env);
+  const a = state.availability;
+  const ctx = state.queueContext || {};
+  const pickupLat = Number(input.pickupLat);
+  const pickupLon = Number(input.pickupLon);
+  const service = ['ebike','moto','auto'].includes(input.service) ? input.service : 'ebike';
+
+  if (!validCoord(pickupLat, pickupLon)) {
+    return {
+      mode: 'unknown',
+      enabled: !!a?.enabled,
+      canSubmit: !!a?.enabled,
+      level: 'yellow',
+      title: 'Disponibilità da verificare',
+      text: 'Indirizzo di ritiro non verificato.',
+      active: Number(ctx.active) || 0
+    };
+  }
+
+  if (!a?.enabled) {
+    return {
+      mode: 'offline',
+      enabled: false,
+      manualOffline: true,
+      canSubmit: false,
+      level: 'red',
+      title: 'Rider non disponibile',
+      text: 'Marcello ha impostato manualmente il servizio come non disponibile.',
+      active: Number(ctx.active) || 0,
+      pending: Number(ctx.pending) || 0,
+      pickupEta: null,
+      pickupEtaMin: null,
+      queueAhead: Number(ctx.active) || 0,
+      locationFresh: !!state.liveLocation?.fresh,
+      updatedAt: a?.updatedAt || new Date().toISOString()
+    };
+  }
+
+  let pickupMin = Math.max(0, Number(ctx.cursorMin) || 0);
+  let transferKm = null;
+
+  if (ctx.lastPoint && validCoord(ctx.lastPoint.lat, ctx.lastPoint.lon)) {
+    transferKm = estimatedRoadKm(
+      ctx.lastPoint.lat,
+      ctx.lastPoint.lon,
+      pickupLat,
+      pickupLon
+    );
+    pickupMin += travelMinutes(transferKm, service);
+  } else if (state.liveLocation?.fresh && validCoord(state.liveLocation.lat, state.liveLocation.lon)) {
+    transferKm = estimatedRoadKm(
+      state.liveLocation.lat,
+      state.liveLocation.lon,
+      pickupLat,
+      pickupLon
+    );
+    pickupMin += travelMinutes(transferKm, service);
+  } else {
+    pickupMin += Math.max(5, Number(a?.firstPickupEtaMin) || 5);
+  }
+
+  pickupMin = Math.max(1, Math.ceil(pickupMin));
+  const active = Number(ctx.active) || 0;
+  const readyInMin = minutesUntilReadyLocal(input.readyTime);
+  const lateByMin = Math.max(0, pickupMin - readyInMin);
+
+  let level = active > 0 ? 'yellow' : 'green';
+  let title = active > 0
+    ? `Rider impegnato · ${active} consegna${active === 1 ? '' : 'e'} prima della tua`
+    : 'Rider disponibile';
+
+  let text = active > 0
+    ? 'ETA calcolato completando prima le consegne già prese in carico.'
+    : 'ETA calcolato dalla posizione attuale del rider.';
+
+  if (lateByMin > 12) {
+    level = 'red';
+    text = 'L’arrivo stimato è sensibilmente successivo all’orario in cui l’ordine sarà pronto.';
+  } else if (lateByMin > 5) {
+    level = 'yellow';
+    text = 'L’arrivo stimato potrebbe essere qualche minuto dopo l’orario pronto.';
+  } else if (readyInMin > pickupMin) {
+    text = active > 0
+      ? 'La coda attuale è compatibile con l’orario di preparazione.'
+      : 'Arrivo previsto in linea con l’orario di preparazione.';
+  }
+
+  return {
+    mode: active > 0 ? 'busy' : 'available',
+    enabled: true,
+    manualOffline: false,
+    canSubmit: true,
+    level,
+    title,
+    text,
+    active,
+    pending: Number(ctx.pending) || 0,
+    queueAhead: active,
+    pickupEta: etaWindow(pickupMin),
+    pickupEtaMin: pickupMin,
+    readyInMin,
+    lateByMin,
+    transferKm: transferKm == null ? null : Math.round(transferKm * 10) / 10,
+    locationFresh: !!state.liveLocation?.fresh,
+    updatedAt: new Date().toISOString()
+  };
 }
 
 function attachEta(row, etaByCode, safe = false) {
