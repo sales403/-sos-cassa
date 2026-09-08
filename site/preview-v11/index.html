@@ -1,0 +1,348 @@
+<!doctype html>
+<html lang="it">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta id="themeColorMeta" name="theme-color" content="#070707">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="SOS Rider V11 STAGING">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="apple-touch-icon" href="icon-192.png">
+  <link rel="stylesheet" href="styles.css?v=11.0.1-staging">
+  <title>SOS Rider Carpi-Soliera · V11 STAGING</title>
+</head>
+<body>
+  <div class="staging-banner" role="status">⚠ V11 STAGING · TEST · NON PRODUZIONE</div>
+  <div id="splash" class="splash" aria-hidden="true">
+    <div class="splash-inner">
+      <img src="logo-sos-rider.png" alt="SOS Rider Carpi-Soliera">
+      <div class="splash-place">CARPI · SOLIERA</div>
+      <div class="splash-payoff">IL TUO RIDER DI EMERGENZA</div>
+    </div>
+  </div>
+
+  <main id="hubHome" class="hub-home hidden">
+    <section class="hub-card brand-panel">
+      <div class="home-theme-row"><button class="theme-toggle" data-theme-toggle type="button" aria-label="Cambia tema">☀︎ / ☾</button></div>
+      <img class="hub-logo" src="logo-sos-rider.png" alt="SOS Rider Carpi-Soliera">
+      <div class="eyebrow">SOS RIDER CARPI-SOLIERA</div>
+      <h1>Il tuo rider di emergenza.</h1>
+      <p>Accedi al tuo profilo oppure richiedi una consegna subito, anche senza account.</p>
+      <div class="home-motto" aria-label="Vantaggi SOS Rider">
+        <span>Paghi solo quando serve</span><i>·</i><span>Contatto diretto</span><i>·</i><span>Servizio locale</span>
+      </div>
+    </section>
+
+    <section id="homeAvailability" class="availability-card loading">
+      <span class="availability-dot"></span>
+      <div><b>Controllo disponibilità rider…</b><small>Stato aggiornato automaticamente</small></div>
+    </section>
+
+    <section class="home-route-card customer-route">
+      <div class="home-route-head">
+        <span class="home-route-icon">📦</span>
+        <div><div class="eyebrow">LOCALI · NEGOZI · PRIVATI</div><h2>Devi richiedere una consegna?</h2><p>Inserisci ritiro e destinazione, vedi il preventivo e invia la richiesta.</p></div>
+      </div>
+      <div class="home-route-actions">
+        <button id="openLoginHub" class="btn primary full big" type="button">RICHIEDI UNA CONSEGNA</button>
+        <button id="openClientHub" class="btn ghost full" type="button">CONTINUA SENZA ACCOUNT</button>
+      </div>
+    </section>
+
+    <section class="home-route-card rider-route">
+      <div class="home-route-head">
+        <span class="home-route-icon">🏍️</span>
+        <div><div class="eyebrow">AREA OPERATIVA</div><h2>Sei un rider?</h2><p>Gestisci richieste, consegne, incassi e disponibilità.</p></div>
+      </div>
+      <button id="openRiderHome" class="btn ghost full" type="button">ACCEDI ALL’AREA RIDER</button>
+    </section>
+  </main>
+
+  <main id="authHub" class="app-shell narrow hidden" aria-label="Accesso SOS Rider">
+    <header class="app-topbar">
+      <button class="icon-btn" data-back-home type="button" aria-label="Torna alla home">‹</button>
+      <div class="compact-brand"><img src="logo-sos-rider.png" alt="SOS Rider"><div><b>ACCESSO SOS RIDER</b><small>Account separati per cliente e rider</small></div></div>
+      <button class="icon-btn" data-theme-toggle type="button" aria-label="Cambia tema">◐</button>
+    </header>
+    <section class="card login-card auth-card">
+      <div class="eyebrow">ACCOUNT</div>
+      <h2>Accedi al tuo profilo</h2>
+      <p>Il ruolo viene verificato dal server. Un account cliente non può entrare nell'Area Rider.</p>
+      <label>Email<input id="authEmail" type="email" autocomplete="email" placeholder="nome@email.it"></label>
+      <label style="margin-top:8px">Password<input id="authPassword" type="password" autocomplete="current-password" placeholder="Password"></label>
+      <button id="authLoginBtn" type="button" class="btn primary full big">ACCEDI</button>
+      <button id="authPasskeyLoginBtn" type="button" class="btn ghost full">🔑 ACCEDI CON PASSKEY <span class="beta-tag">BETA</span></button>
+      <div class="auth-links"><button id="authForgotBtn" type="button">Password dimenticata?</button><button id="authShowSignupBtn" type="button">Crea account cliente</button></div>
+      <div id="authStatus" class="status-line"></div>
+    </section>
+    <section id="signupCard" class="card section hidden">
+      <div class="eyebrow">NUOVO ACCOUNT CLIENTE</div><h2>Registrati</h2>
+      <div class="form-grid">
+        <label class="full">Nome locale / richiedente<input id="signupName" autocomplete="organization" placeholder="Es. Pizzeria Vesuvio"></label>
+        <label>Telefono<input id="signupPhone" inputmode="tel" autocomplete="tel"></label>
+        <label>Email<input id="signupEmail" type="email" autocomplete="email"></label>
+        <label class="full">Password<input id="signupPassword" type="password" autocomplete="new-password" placeholder="Almeno 8 caratteri"></label>
+      </div>
+      <button id="authSignupBtn" class="btn primary full big" type="button">CREA ACCOUNT CLIENTE</button>
+      <button id="authHideSignupBtn" class="btn ghost full" type="button">HO GIÀ UN ACCOUNT</button>
+      <div id="signupStatus" class="status-line"></div>
+    </section>
+  </main>
+
+  <main id="clientHub" class="app-shell hidden" aria-label="Richiedi una consegna">
+    <header class="app-topbar">
+      <button class="icon-btn" data-back-home type="button" aria-label="Torna alla home">‹</button>
+      <div class="compact-brand">
+        <img src="logo-sos-rider.png" alt="SOS Rider">
+        <div><b>RICHIEDI UNA CONSEGNA</b><small>SOS Rider Carpi-Soliera</small></div>
+      </div>
+      <div class="top-actions"><button class="icon-btn" data-theme-toggle type="button" title="Tema giorno/notte">◐</button><button id="clientInstallBtn" class="icon-btn hidden" type="button" title="Installa app">＋</button></div>
+    </header>
+
+    <section id="clientAvailability" class="availability-card loading">
+      <span class="availability-dot"></span>
+      <div><b>Controllo disponibilità rider…</b><small>Lo stato viene aggiornato automaticamente</small></div>
+    </section>
+
+    <section id="clientAccountCard" class="card account-strip hidden">
+      <div><div class="eyebrow">PROFILO CLIENTE</div><b id="clientAccountName">—</b><small id="clientAccountEmail">—</small></div>
+      <div class="account-actions"><button id="clientRegisterPasskey" class="btn ghost small" type="button">🔑 PASSKEY <span class="beta-tag">BETA</span></button><button id="clientLogoutBtn" class="btn ghost small" type="button">ESCI</button></div>
+    </section>
+    <section id="clientGuestCard" class="card account-strip">
+      <div><div class="eyebrow">MODALITÀ OSPITE</div><b>Puoi richiedere senza registrarti</b><small>Con un account salvi profilo e storico online.</small></div>
+      <button id="guestLoginBtn" class="btn ghost small" type="button">ACCEDI</button>
+    </section>
+
+    <section class="card intro-card">
+      <div class="eyebrow">RICHIESTA GUIDATA · CONSIGLIATA</div>
+      <h2>Compila, vedi subito la tariffa e poi invia.</h2>
+      <p>Gli indirizzi vanno selezionati dai suggerimenti reali. La richiesta arriva direttamente nell'Area Rider.</p>
+      <a id="directWhatsapp" class="btn whatsapp-btn full" href="#" target="_blank" rel="noopener">💬 Scrivi direttamente su WhatsApp</a>
+    </section>
+
+    <section class="notice blue commercial-note">🏪 <b>Per locali e ristoratori:</b> la quota consegna SOS può essere addebitata totalmente o in parte al cliente finale, oppure gestita con un ordine minimo. Il costo mostrato qui è la tariffa SOS Rider.</section>
+
+    <section id="clientRecentSection" class="card section hidden">
+      <div class="section-head"><div><div class="eyebrow">RIPETI IN UN TAP</div><h2>Ultime richieste</h2></div></div>
+      <div id="clientRecentList"></div>
+    </section>
+
+    <section id="clientFormCard" class="card section">
+      <div class="section-head">
+        <div><div class="eyebrow">NUOVA CONSEGNA</div><h2>Dati essenziali</h2></div>
+        <span id="clientDraftPill" class="pill yellow hidden">BOZZA SALVATA</span>
+      </div>
+
+      <form id="clientRequestForm" novalidate>
+        <div class="form-grid">
+          <label>Nome locale / richiedente
+            <input id="cRequester" autocomplete="organization" required placeholder="Es. Pizzeria Vesuvio">
+          </label>
+          <label>Telefono referente
+            <input id="cRequesterPhone" inputmode="tel" autocomplete="tel" required placeholder="Es. 349 1234567">
+          </label>
+
+          <div class="address-field full">
+            <label>Indirizzo di ritiro
+              <input id="cPickup" autocomplete="off" required placeholder="Via, civico, località">
+            </label>
+            <div id="cPickupSuggestions" class="suggestions hidden"></div>
+            <div class="field-meta"><span id="cPickupStatus">Scrivi almeno 3 caratteri e seleziona un risultato.</span><button id="cPickupMaps" type="button" class="mini-btn">MAPS</button></div>
+          </div>
+
+          <label>Ordine pronto alle
+            <input id="cReadyTime" type="time" required>
+            <small id="cLateHint" class="field-help">Il supplemento serale si applica automaticamente dopo le 22:30.</small>
+          </label>
+          <label>Destinatario
+            <input id="cRecipient" autocomplete="name" required placeholder="Nome cliente">
+          </label>
+          <label>Telefono destinatario
+            <input id="cRecipientPhone" inputmode="tel" autocomplete="tel" required placeholder="Es. 349 1234567">
+          </label>
+
+          <div class="address-field full">
+            <label>Indirizzo di consegna
+              <input id="cDelivery" autocomplete="off" required placeholder="Via, civico, località">
+            </label>
+            <div id="cDeliverySuggestions" class="suggestions hidden"></div>
+            <div class="field-meta"><span id="cDeliveryStatus">Scrivi almeno 3 caratteri e seleziona un risultato.</span><button id="cDeliveryMaps" type="button" class="mini-btn">MAPS</button></div>
+          </div>
+
+          <div class="full">
+            <label>Servizio</label>
+            <div class="vehicle-grid" id="clientVehicles">
+              <button type="button" class="vehicle-card active" data-client-vehicle="ebike"><span>🚲</span><b>ECONOMY</b><small>E-bike · <strong>da €2,50</strong></small></button>
+              <button type="button" class="vehicle-card" data-client-vehicle="moto"><span>🏍️</span><b>EXPRESS</b><small>Moto · <strong>da €4,50</strong></small></button>
+              <button type="button" class="vehicle-card" data-client-vehicle="auto"><span>🚗</span><b>CARGO</b><small>Auto · <strong>da €5,50</strong></small></button>
+            </div>
+            <div id="serviceSuggestion" class="service-suggestion hidden"></div>
+          </div>
+
+          <label>Pagamento ordine
+            <select id="cPayment">
+              <option value="paid">Ordine già pagato</option>
+              <option value="cash">Contanti da incassare</option>
+              <option value="pos">POS del locale</option>
+            </select>
+          </label>
+          <label id="cOrderTotalWrap" class="hidden">Importo ordine da incassare
+            <input id="cOrderTotal" type="number" inputmode="decimal" min="0" step="0.01" placeholder="0,00">
+          </label>
+          <label class="full">Note facoltative
+            <textarea id="cNotes" rows="2" placeholder="Citofono, piano, indicazioni utili..."></textarea>
+          </label>
+          <label class="check-row full"><input id="cRemember" type="checkbox" checked><span>Ricorda questo locale/richiedente su questo dispositivo.</span></label>
+        </div>
+
+        <button id="clientCalcQuote" type="button" class="btn primary full big">🧮 CALCOLA TARIFFA</button>
+        <div id="clientFormStatus" class="status-line"></div>
+      </form>
+    </section>
+
+    <section id="clientQuoteSection" class="card section hidden">
+      <div class="section-head">
+        <div><div class="eyebrow">PREVENTIVO</div><h2>Tariffa calcolata</h2></div>
+        <span id="clientQuoteRouteBadge" class="pill green">INDIRIZZI VERIFICATI</span>
+      </div>
+      <div class="quote-summary">
+        <div><small>SERVIZIO</small><b id="cqService">—</b></div>
+        <div class="quote-total"><small>TOTALE CONSEGNA</small><b id="cqTotal">€0,00</b></div>
+      </div>
+      <div class="quote-details">
+        <div><span>Distanza</span><b id="cqDistance">—</b></div>
+        <div><span>Tariffa base</span><b id="cqBase">—</b></div><div id="cqMicroRow" class="hidden"><span>Microconsegna E-bike entro 1 km</span><b>€2,50</b></div>
+        <div id="cqLateRow" class="hidden"><span>Supplemento serale dopo 22:30</span><b>+ €2,00</b></div>
+      </div>
+      <div id="cqLateNotice" class="notice yellow hidden">⚡ Supplemento serale +2,00 € applicato automaticamente in base all'orario “ordine pronto”.</div>
+      <div class="quote-image-wrap"><img id="clientQuoteImage" alt="Preventivo SOS Rider"></div>
+      <div class="dual-actions">
+        <button id="clientEditQuote" type="button" class="btn ghost">← MODIFICA</button>
+        <button id="clientSendRequest" type="button" class="btn primary">⚡ INVIA RICHIESTA</button>
+      </div>
+      <div id="clientSendStatus" class="status-line"></div>
+    </section>
+
+    <section id="clientRequestStatus" class="card section hidden">
+      <div class="status-hero">
+        <span id="clientStatusIcon" class="status-icon">✓</span>
+        <div><div class="eyebrow">RICHIESTA</div><h2 id="clientRequestCode">—</h2></div>
+      </div>
+      <div id="clientStatusBadge" class="request-state waiting">IN ATTESA DEL RIDER</div>
+      <p id="clientStatusText">La richiesta è arrivata nell'Area Rider. Attendi la conferma di disponibilità.</p>
+      <div id="clientEtaBox" class="live-eta-box hidden"></div>
+      <div id="clientConfirmedPrice" class="confirmed-price"></div>
+      <div class="dual-actions">
+        <button id="clientNewRequest" type="button" class="btn ghost">NUOVA RICHIESTA</button>
+        <a id="clientStatusWhatsapp" class="btn whatsapp-btn" href="#" target="_blank" rel="noopener">WHATSAPP</a>
+      </div>
+    </section>
+  </main>
+
+  <main id="riderLogin" class="app-shell narrow hidden">
+    <header class="app-topbar"><button class="icon-btn" data-back-home type="button">‹</button><div class="compact-brand"><img src="logo-sos-rider.png" alt="SOS Rider"><div><b>AREA RIDER</b><small>Accesso riservato</small></div></div><button class="icon-btn" data-theme-toggle type="button">◐</button></header>
+    <section class="card login-card"><div class="eyebrow">ACCESSO PROTETTO</div><h2>Devi accedere con l'account Rider.</h2><p>Email, password o passkey. Il ruolo Rider viene verificato dal backend.</p><button id="riderGoLoginBtn" class="btn primary full big" type="button">VAI AL LOGIN</button><div id="riderLoginStatus" class="status-line"></div></section>
+  </main>
+
+  <main id="riderHub" class="rider-shell hidden">
+    <header class="rider-topbar">
+      <div class="compact-brand"><img src="logo-sos-rider.png" alt="SOS Rider"><div><b>AREA RIDER</b><small id="riderSyncSmall">SOS Rider Carpi-Soliera</small></div></div>
+      <div class="top-actions"><button class="icon-btn" data-theme-toggle type="button" title="Tema giorno/notte"><svg class="ui-icon" aria-hidden="true"><use href="icons.svg#icon-theme-auto"></use></svg></button><button id="riderRefresh" class="icon-btn" type="button" title="Aggiorna"><svg class="ui-icon" aria-hidden="true"><use href="icons.svg#icon-refresh"></use></svg></button><button id="openSettings" class="icon-btn" type="button" title="Impostazioni"><svg class="ui-icon" aria-hidden="true"><use href="icons.svg#icon-settings"></use></svg></button></div>
+    </header>
+
+    <section class="rider-hero-strip rider-hero-v2" aria-label="Centro operativo SOS Rider">
+      <img class="rider-hero-art"
+           src="rider-banner-v2-live.png?v=20260905-1759"
+           width="1536"
+           height="512"
+           alt="SOS Rider · Centro operativo richieste, consegne e cassa"
+           onerror="this.style.display='none';this.parentElement.style.display='none'">
+    </section>
+
+    <section id="riderAvailabilityControl" class="operator-status-card operator-status-v2">
+      <div class="operator-status-main">
+        <div class="operator-kicker"><svg class="operator-kicker-icon" aria-hidden="true"><use href="icons.svg#icon-radar"></use></svg><span>STATO OPERATORE</span></div>
+        <div class="operator-state-line"><span id="riderAvailabilityDot" class="availability-dot"></span><b id="riderAvailabilityTitle">Controllo…</b></div>
+        <small id="riderAvailabilityText">Stato visibile ai clienti</small>
+      </div>
+      <div class="operator-status-actions">
+        <label class="eta-inline"><span>1° RITIRO</span><select id="riderEtaSelect" title="Tempo stimato per raggiungere il primo locale quando non c'è una consegna già in corso"><option value="5">5 min</option><option value="10">10 min</option><option value="15" selected>15 min</option><option value="20">20 min</option><option value="25">25 min</option><option value="30">30 min</option><option value="40">40 min</option><option value="50">50 min</option><option value="60">60 min</option></select></label>
+        <div class="operator-toggle">
+          <button id="riderAvailableBtn" class="btn status-on small" type="button"><span class="status-led green"></span>DISPONIBILE</button>
+          <button id="riderOfflineBtn" class="btn status-off small" type="button"><span class="status-led red"></span>OFF</button>
+        </div>
+      </div>
+      <div class="rider-gps-row">
+        <div id="riderGpsStatus" class="rider-gps-status idle">GPS: in attesa di posizione…</div>
+        <button id="riderGpsRefresh" class="btn ghost small" type="button">AGGIORNA GPS</button>
+      </div>
+    </section>
+
+    <section id="riderPageRequests" class="rider-page active">
+      <div class="page-title-row"><div><div class="eyebrow">IN ARRIVO</div><h1>Richieste</h1></div><span id="newRequestCount" class="count-badge">0</span></div>
+      <section class="card sync-card sync-card-v2"><span class="sync-icon-wrap"><svg class="ui-icon" aria-hidden="true"><use href="icons.svg#icon-radar"></use></svg></span><span id="syncDot" class="sync-dot"></span><div><b id="syncTitle">Connessione richieste</b><small id="syncText">Controllo server…</small></div></section>
+      <section id="remoteRequestsList" class="section"></section>
+      <section class="card section fallback-card">
+        <div class="section-head"><div class="section-title-with-icon"><span class="section-icon"><svg class="ui-icon" aria-hidden="true"><use href="icons.svg#icon-message"></use></svg></span><div><div class="eyebrow">FALLBACK</div><h2>Ordine arrivato su WhatsApp?</h2></div></div></div>
+        <p class="muted">Solo per richieste ricevute fuori dal flusso automatico.</p>
+        <button id="openWaImporter" class="btn ghost full" type="button"><svg class="btn-icon" aria-hidden="true"><use href="icons.svg#icon-message"></use></svg> INCOLLA MESSAGGIO</button>
+      </section>
+    </section>
+
+    <section id="riderPageDeliveries" class="rider-page">
+      <div class="page-title-row"><div><div class="eyebrow">OPERATIVITÀ</div><h1>Consegne</h1></div><button id="newManualOrder" class="btn primary small" type="button">＋ MANUALE</button></div>
+      <section id="noShiftCard" class="card hidden empty-shift-card"><span class="empty-state-icon"><svg class="ui-icon" aria-hidden="true"><use href="icons.svg#icon-shift-clock"></use></svg></span><h2>Nessun turno aperto</h2><p class="muted">Apri un turno per iniziare a gestire consegne e incassi.</p><button id="startShiftBtn" class="btn primary full"><svg class="btn-icon" aria-hidden="true"><use href="icons.svg#icon-bolt"></use></svg> INIZIA TURNO</button></section>
+      <div id="shiftWork">
+        <section class="stats-grid rider-stats-grid">
+          <div class="stat-card stat-fund fund-initial-clickable" title="Tocca per modificare il fondo iniziale"><div class="stat-card-head"><span class="stat-icon"><svg class="ui-icon" aria-hidden="true"><use href="icons.svg#icon-cash-start"></use></svg></span><small>Fondo iniziale · tocca</small></div><b id="statFund">€0</b></div>
+          <div class="stat-card stat-available hot fund-clickable" title="Tocca per modificare il fondo resto"><div class="stat-card-head"><span class="stat-icon"><svg class="ui-icon" aria-hidden="true"><use href="icons.svg#icon-wallet"></use></svg></span><small>Fondo disponibile · tocca</small></div><b id="statAvailable">€0</b></div>
+          <div class="stat-card stat-reconcile"><div class="stat-card-head"><span class="stat-icon"><svg class="ui-icon" aria-hidden="true"><use href="icons.svg#icon-reconcile"></use></svg></span><small>Da sistemare</small></div><b id="statUnsorted">€0</b></div>
+          <div class="stat-card stat-due"><div class="stat-card-head"><span class="stat-icon"><svg class="ui-icon" aria-hidden="true"><use href="icons.svg#icon-store-euro"></use></svg></span><small>Da rendere locali</small></div><b id="statDue">€0</b></div>
+          <div class="stat-card stat-profit hot"><div class="stat-card-head"><span class="stat-icon"><svg class="ui-icon" aria-hidden="true"><use href="icons.svg#icon-bolt-coin"></use></svg></span><small>Guadagno SOS</small></div><b id="statFees">€0</b></div>
+        </section>
+        <section class="card section operational-card"><div class="section-head"><div class="section-title-with-icon"><span class="section-icon"><svg class="ui-icon" aria-hidden="true"><use href="icons.svg#icon-shift-clock"></use></svg></span><div><div class="eyebrow">TURNO ATTUALE</div><h2 id="shiftName">—</h2></div></div><button id="closeShiftBtn" class="btn ghost small" type="button">CHIUDI</button></div><p id="shiftMeta" class="muted"></p></section>
+        <section class="card section operational-card"><div class="section-head"><div class="section-title-with-icon"><span class="section-icon"><svg class="ui-icon" aria-hidden="true"><use href="icons.svg#icon-delivery-box"></use></svg></span><h2>Consegne attive</h2></div><span id="activeCount" class="pill yellow">0</span></div><div id="activeOrders"></div></section>
+        <section class="card section operational-card"><div class="section-title-with-icon"><span class="section-icon"><svg class="ui-icon" aria-hidden="true"><use href="icons.svg#icon-store-euro"></use></svg></span><h2>Incassi locali</h2></div><div id="restaurantCash"></div></section>
+      </div>
+    </section>
+
+    <section id="riderPageHistory" class="rider-page">
+      <div class="page-title-row"><div><div class="eyebrow">ARCHIVIO</div><h1>Storico</h1></div><button id="exportHistory" class="btn ghost small" type="button">CSV</button></div>
+      <section class="card"><input id="historySearch" placeholder="Cerca cliente, locale, indirizzo, codice…"></section>
+      <section id="historyList" class="section"></section>
+    </section>
+
+    <section id="riderPageAnalytics" class="rider-page">
+      <div class="page-title-row"><div><div class="eyebrow">NUMERI</div><h1>Analytics</h1></div></div>
+      <div class="period-tabs"><button class="chip active" data-period="7d">7 GIORNI</button><button class="chip" data-period="today">OGGI</button><button class="chip" data-period="yesterday">IERI</button><button class="chip" data-period="30d">30 GIORNI</button><button class="chip" data-period="lastMonth">MESE SCORSO</button><button class="chip" data-period="all">TUTTO</button></div>
+      <section class="stats-grid analytics-grid section">
+        <div class="stat-card hot"><div class="stat-card-head"><span class="stat-icon"><svg class="ui-icon" aria-hidden="true"><use href="icons.svg#icon-bolt-coin"></use></svg></span><small>Guadagno SOS</small></div><b id="aRevenue">€0</b></div>
+        <div class="stat-card"><div class="stat-card-head"><span class="stat-icon"><svg class="ui-icon" aria-hidden="true"><use href="icons.svg#icon-delivery-box"></use></svg></span><small>Consegne</small></div><b id="aOrders">0</b></div>
+        <div class="stat-card"><div class="stat-card-head"><span class="stat-icon"><svg class="ui-icon" aria-hidden="true"><use href="icons.svg#icon-average"></use></svg></span><small>Media consegna</small></div><b id="aAvg">€0</b></div>
+        <div class="stat-card"><div class="stat-card-head"><span class="stat-icon"><svg class="ui-icon" aria-hidden="true"><use href="icons.svg#icon-cash"></use></svg></span><small>Valore ordini</small></div><b id="aOrderValue">€0</b></div>
+      </section>
+      <section class="card section analytics-chart-card"><div class="section-title-with-icon"><span class="section-icon"><svg class="ui-icon" aria-hidden="true"><use href="icons.svg#icon-analytics"></use></svg></span><div><h2>Incassi</h2><small id="analyticsRangeLabel" class="analytics-range-label">Ultimi 7 giorni</small></div></div><div id="dailyChart" class="chart"></div></section>
+      <section class="card section"><div class="section-title-with-icon"><span class="section-icon"><svg class="ui-icon" aria-hidden="true"><use href="icons.svg#icon-store"></use></svg></span><h2>Locali migliori</h2></div><div id="restaurantRank"></div></section>
+    </section>
+
+    <nav class="bottom-nav bottom-nav-v2">
+      <button class="nav-btn active" data-rider-page="requests"><svg class="nav-icon" aria-hidden="true"><use href="icons.svg#icon-bell"></use></svg><small>RICHIESTE</small></button>
+      <button class="nav-btn" data-rider-page="deliveries"><svg class="nav-icon" aria-hidden="true"><use href="icons.svg#icon-delivery-box"></use></svg><small>CONSEGNE</small></button>
+      <button class="nav-btn" data-rider-page="history"><svg class="nav-icon" aria-hidden="true"><use href="icons.svg#icon-history"></use></svg><small>STORICO</small></button>
+      <button class="nav-btn" data-rider-page="analytics"><svg class="nav-icon" aria-hidden="true"><use href="icons.svg#icon-analytics"></use></svg><small>ANALYTICS</small></button>
+    </nav>
+  </main>
+
+  <div id="modalBackdrop" class="modal-backdrop hidden" role="dialog" aria-modal="true">
+    <div class="modal">
+      <div class="modal-header"><h2 id="modalTitle">—</h2><button id="modalClose" class="icon-btn" type="button">×</button></div>
+      <div id="modalBody"></div>
+      <div id="modalActions" class="modal-actions"></div>
+    </div>
+  </div>
+
+  <script src="config.js?v=11.0.1-staging"></script>
+  <script type="module" src="app.js?v=11.0.1-staging"></script>
+</body>
+</html>
