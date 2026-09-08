@@ -535,3 +535,49 @@ body{padding-top:24px}
 .password-eye-off{display:none}
 .password-toggle.is-visible .password-eye-open{display:none}
 .password-toggle.is-visible .password-eye-off{display:block}
+
+
+/* V11 client pickup availability preview */
+.pickup-availability{
+  margin:14px 0;
+  padding:14px 15px;
+  border:1px solid var(--line,#2f2f2f);
+  border-radius:16px;
+  display:flex;
+  gap:10px;
+  align-items:flex-start;
+}
+.pickup-availability b{
+  display:block;
+  font-weight:900;
+  margin-bottom:5px;
+}
+.pickup-availability small{
+  display:block;
+  line-height:1.35;
+  opacity:.9;
+}
+.pickup-availability small + small{
+  margin-top:4px;
+  opacity:.72;
+}
+.pickup-availability.green{
+  border-color:rgba(57,190,110,.55);
+  background:rgba(57,190,110,.08);
+}
+.pickup-availability.yellow{
+  border-color:rgba(255,208,0,.65);
+  background:rgba(255,208,0,.08);
+}
+.pickup-availability.red{
+  border-color:rgba(255,78,78,.65);
+  background:rgba(255,78,78,.08);
+}
+.pickup-availability.unknown{
+  border-color:rgba(160,160,160,.35);
+  background:rgba(160,160,160,.05);
+}
+.pickup-availability-icon{
+  font-size:22px;
+  line-height:1;
+}
