@@ -800,7 +800,24 @@ async function buildEtaState(env) {
       const totalTrip = travelMinutes(r.distance_km, r.service);
       const stageStarted = Date.parse(r.updated_at || '') || Date.now();
       const elapsedMin = Math.max(0, (Date.now() - stageStarted) / 60000);
-      const remaining = Math.max(1, Math.ceil(totalTrip - elapsedMin));
+
+      let remaining;
+      if (
+        cursorMin === 0 &&
+        liveLocation?.fresh &&
+        validCoord(liveLocation.lat, liveLocation.lon) &&
+        validCoord(Number(r.delivery_lat), Number(r.delivery_lon))
+      ) {
+        const liveToCustomerKm = estimatedRoadKm(
+          liveLocation.lat,
+          liveLocation.lon,
+          Number(r.delivery_lat),
+          Number(r.delivery_lon)
+        );
+        remaining = travelMinutes(liveToCustomerKm, r.service);
+      } else {
+        remaining = Math.max(1, Math.ceil(totalTrip - elapsedMin));
+      }
 
       etaByCode[r.code] = etaPayload({
         queuePosition,
