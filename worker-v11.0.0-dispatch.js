@@ -1038,17 +1038,45 @@ async function safeLogEvent(env, code, eventType, statusFrom='', statusTo='', so
   }
 }
 
+function minutesUntilReadyLocal(hhmm) {
+  const m = String(hhmm || '').match(/^(\d{2}):(\d{2})$/);
+  if (!m) return 0;
+
+  const parts = new Intl.DateTimeFormat('en-GB', {
+    timeZone: 'Europe/Rome',
+    hour: '2-digit',
+    minute: '2-digit',
+    hourCycle: 'h23'
+  }).formatToParts(new Date());
+
+  const hour = Number(parts.find(p => p.type === 'hour')?.value || 0);
+  const minute = Number(parts.find(p => p.type === 'minute')?.value || 0);
+  const nowMin = hour * 60 + minute;
+  let targetMin = Number(m[1]) * 60 + Number(m[2]);
+
+  // Se l'orario è appena dopo mezzanotte rispetto a "ora", trattalo come giorno successivo.
+  if (targetMin < nowMin - 12 * 60) targetMin += 24 * 60;
+
+  return Math.max(0, targetMin - nowMin);
+}
+
 function buildDispatchDecision(r, ctx) {
   const active = Number(ctx.activeCount) || 0;
   const pickupMin = Math.max(0, Math.ceil(Number(ctx.pickupMin) || 0));
   const transferKm = Number.isFinite(Number(ctx.transferKm)) ? Math.max(0, Number(ctx.transferKm)) : null;
   const location = ctx.liveLocation || null;
   const carryingFood = !!ctx.carryingFood;
+  const readyInMin = minutesUntilReadyLocal(r.ready_time);
+  const lateByMin = Math.max(0, pickupMin - readyInMin);
 
   let level = 'green';
   let label = 'ACCETTABILE';
-  let reason = 'Inseribile in coda senza interferire con le consegne già attive.';
-  let recommendation = active ? 'Completa prima la missione in corso, poi vai al nuovo ritiro.' : 'Puoi dirigerti verso il ritiro.';
+  let reason = active
+    ? 'Inseribile in coda senza interferire con le consegne già attive.'
+    : 'Primo ordine: ETA compatibile con l’orario di preparazione.';
+  let recommendation = active
+    ? 'Completa prima la missione in corso, poi vai al nuovo ritiro.'
+    : 'Puoi dirigerti verso il ritiro.';
 
   if (active >= MAX_ACTIVE_ORDERS) {
     level = 'red';
@@ -1060,15 +1088,34 @@ function buildDispatchDecision(r, ctx) {
     label = 'VALUTA';
     reason = 'La posizione live non è aggiornata: l’ETA usa ancora il tempo manuale per il primo ritiro.';
     recommendation = 'Aggiorna il GPS prima di confermare il tempo al locale.';
+  } else if (active === 0) {
+    if (lateByMin > 12) {
+      level = 'red';
+      label = 'NON CONSIGLIATO';
+      reason = 'Da dove sei ora arriveresti troppo tardi rispetto all’orario in cui l’ordine sarà pronto.';
+      recommendation = 'Accetta solo se il locale conferma che può attendere.';
+    } else if (lateByMin > 5) {
+      level = 'yellow';
+      label = 'VALUTA';
+      reason = 'Il ritiro è raggiungibile, ma rischi qualche minuto di ritardo rispetto all’orario pronto.';
+      recommendation = 'Conferma al locale l’ETA prima di accettare.';
+    } else {
+      level = 'green';
+      label = 'ACCETTABILE';
+      reason = readyInMin > pickupMin
+        ? 'Arrivi in linea con l’orario di preparazione, senza altre consegne attive.'
+        : 'Nessuna coda attiva e arrivo previsto compatibile con il ritiro.';
+      recommendation = 'Puoi accettare e dirigerti verso il ritiro.';
+    }
   } else if (pickupMin > 25 || (transferKm != null && transferKm > 6)) {
     level = 'red';
     label = 'NON CONSIGLIATO';
-    reason = 'Il nuovo ritiro è troppo lontano rispetto alla coda attuale.';
+    reason = 'Il nuovo ritiro è troppo lontano rispetto alle consegne già attive.';
     recommendation = 'Accetta solo se il locale conferma che può attendere.';
   } else if (pickupMin > 15 || (transferKm != null && transferKm > 3)) {
     level = 'yellow';
     label = 'VALUTA';
-    reason = 'Compatibile, ma con attesa o trasferimento non trascurabile.';
+    reason = 'Compatibile, ma con attesa o trasferimento non trascurabile rispetto alla coda attiva.';
     recommendation = carryingFood
       ? 'Consegna prima il cibo già ritirato; poi valuta il nuovo ritiro.'
       : 'Controlla l’orario “pronto” prima di accettare.';
@@ -1085,6 +1132,8 @@ function buildDispatchDecision(r, ctx) {
     reason,
     recommendation,
     pickupEtaMin: pickupMin,
+    readyInMin,
+    lateByMin,
     incrementalKm: transferKm == null ? null : Math.round(transferKm * 10) / 10,
     activeOrders: active,
     maxActiveOrders: MAX_ACTIVE_ORDERS,
