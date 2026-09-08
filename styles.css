@@ -493,3 +493,45 @@ body{padding-top:24px}
 @media(max-width:520px){
   .staging-banner{font-size:9px;letter-spacing:.06em}
 }
+
+/* V11 login password visibility */
+.password-field{
+  position:relative;
+  display:block;
+}
+.password-field input{
+  width:100%;
+  padding-right:58px;
+}
+.password-toggle{
+  position:absolute;
+  right:10px;
+  top:50%;
+  transform:translateY(-50%);
+  width:44px;
+  height:44px;
+  display:grid;
+  place-items:center;
+  border:0;
+  border-radius:12px;
+  background:transparent;
+  color:currentColor;
+  cursor:pointer;
+  -webkit-tap-highlight-color:transparent;
+}
+.password-toggle:focus-visible{
+  outline:2px solid currentColor;
+  outline-offset:2px;
+}
+.password-eye{
+  width:24px;
+  height:24px;
+  fill:none;
+  stroke:currentColor;
+  stroke-width:1.9;
+  stroke-linecap:round;
+  stroke-linejoin:round;
+}
+.password-eye-off{display:none}
+.password-toggle.is-visible .password-eye-open{display:none}
+.password-toggle.is-visible .password-eye-off{display:block}
