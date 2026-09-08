@@ -1,7 +1,7 @@
 (() => {
 'use strict';
 
-const APP_VERSION = '11.0.0-dispatch';
+const APP_VERSION = '11.0.2-dispatch';
 const KEY = 'sosRiderUnifiedV10';
 const V9_KEY = 'sosRiderUnifiedV9';
 const OLD_KEY = 'sosRiderGestV7';
@@ -695,13 +695,48 @@ async function calculateClientQuote(){
     const d=validateClientForm(true);
     const res=await fetchJson(apiBase()+'/api/quote',{method:'POST',headers:{'Accept':'application/json','Content-Type':'application/json'},body:JSON.stringify({pickupLat:d.pickupLat,pickupLon:d.pickupLon,deliveryLat:d.deliveryLat,deliveryLon:d.deliveryLon,service:d.service,readyTime:d.readyTime})},10000);
     const q=res.quote;if(!q||!Number.isFinite(Number(q.totalFee)))throw new Error('Preventivo server non disponibile.');
-    clientQuote={distanceKm:Number(q.distanceKm),durationMin:Number(q.durationMin)||0,source:q.routeSource||'server',base:Number(q.baseFee),lateFee:Number(q.lateFee)||0,total:Number(q.totalFee),micro:!!q.microDelivery,service:d.service,readyTime:d.readyTime,createdAt:Date.now()};
+    clientQuote={distanceKm:Number(q.distanceKm),durationMin:Number(q.durationMin)||0,source:q.routeSource||'server',base:Number(q.baseFee),lateFee:Number(q.lateFee)||0,total:Number(q.totalFee),micro:!!q.microDelivery,service:d.service,readyTime:d.readyTime,createdAt:Date.now(),pickupAvailability:res.pickupAvailability||null};
     clientSubmissionId=null;
     currentAvailability=res.availability||currentAvailability;renderAvailability();renderClientQuote();await generateClientQuoteImage();
     $('clientQuoteSection').classList.remove('hidden');$('clientQuoteSection').scrollIntoView({behavior:'smooth',block:'start'});
     status.className='status-line ok';status.textContent='✓ Preventivo pronto e verificato dal server. Puoi modificarlo oppure inviare la richiesta.';
     if(clientQuote.distanceKm>8&&clientVehicle==='ebike'){$('serviceSuggestion').classList.remove('hidden');$('serviceSuggestion').textContent="💡 Oltre 8 km la tariffa è indicativa: la disponibilità viene confermata dall'operatore.";}else if(clientQuote.micro){$('serviceSuggestion').classList.remove('hidden');$('serviceSuggestion').textContent='⚡ ECONOMY E-BIKE: fascia 0–1 km · €2,50.';}else $('serviceSuggestion').classList.add('hidden');
   }catch(e){status.className='status-line error';status.textContent='⚠ '+e.message;}
+}
+
+function renderClientPickupAvailability(){
+  const box=$('clientPickupAvailability');
+  if(!box)return;
+  const a=clientQuote?.pickupAvailability;
+  if(!a){
+    box.className='pickup-availability unknown';
+    box.innerHTML='<div><b>Disponibilità in verifica</b><small>La stima del rider non è disponibile in questo momento.</small></div>';
+    return;
+  }
+
+  const level=a.level==='red'?'red':a.level==='yellow'?'yellow':'green';
+  const eta=a.pickupEta?etaRange(a.pickupEta):'—';
+  const min=Number(a.pickupEtaMin);
+  const queue=Number(a.queueAhead)||0;
+
+  box.className='pickup-availability '+level;
+
+  if(a.mode==='offline'||a.enabled===false){
+    box.innerHTML=`<div class="pickup-availability-icon">⛔</div><div><b>RIDER NON DISPONIBILE</b><small>Marcello ha messo il servizio OFF. In questo momento non accetta nuove consegne.</small></div>`;
+    if($('clientSendRequest'))$('clientSendRequest').disabled=true;
+    return;
+  }
+
+  const title=queue>0
+    ? `🟡 Rider impegnato · ${queue} consegna${queue===1?'':'e'} prima della tua`
+    : (level==='red'?'🔴 Disponibilità limitata':level==='yellow'?'🟡 Rider disponibile · verifica tempi':'🟢 Rider disponibile');
+
+  const etaText=Number.isFinite(min)
+    ? `Arrivo stimato al tuo locale: <strong>${esc(eta)}</strong> · circa ${min} min.`
+    : 'ETA al ritiro in aggiornamento.';
+
+  box.innerHTML=`<div><b>${title}</b><small>${etaText}</small><small>${esc(a.text||'Stima basata su posizione GPS e consegne già in corso.')}</small></div>`;
+  if($('clientSendRequest'))$('clientSendRequest').disabled=false;
 }
 
 function renderClientQuote(){
@@ -714,6 +749,7 @@ function renderClientQuote(){
   $('cqLateRow').classList.toggle('hidden', !clientQuote.lateFee);
   $('cqLateNotice').classList.toggle('hidden', !clientQuote.lateFee);
   $('clientQuoteRouteBadge').textContent='PERCORSO CALCOLATO';
+  renderClientPickupAvailability();
 }
 
 function wrapText(ctx,text,x,y,maxWidth,lineHeight,maxLines=3){
@@ -807,7 +843,7 @@ async function submitClientRequest(){
     const headers=authSession&&authProfile?.role==='client'?authHeaders():{'Accept':'application/json','Content-Type':'application/json'};
     const res=await fetchJson(apiBase()+'/api/requests',{method:'POST',headers,body:JSON.stringify(payload)},12000);
     if(!res?.request?.code||!res?.clientToken)throw new Error('Risposta server incompleta.');
-    const r=res.request;clientQuote={service:r.service,distanceKm:Number(r.distanceKm),durationMin:Number(r.durationMin)||0,source:r.routeSource||'server',base:Number(r.baseFee),lateFee:Number(r.lateFee),total:Number(r.totalFee),micro:!!r.microDelivery,readyTime:r.readyTime};renderClientQuote();await generateClientQuoteImage();
+    const r=res.request;clientQuote={service:r.service,distanceKm:Number(r.distanceKm),durationMin:Number(r.durationMin)||0,source:r.routeSource||'server',base:Number(r.baseFee),lateFee:Number(r.lateFee),total:Number(r.totalFee),micro:!!r.microDelivery,readyTime:r.readyTime,pickupAvailability:clientQuote?.pickupAvailability||null};renderClientQuote();await generateClientQuoteImage();
     localStorage.setItem(CLIENT_ACTIVE_KEY,JSON.stringify({code:r.code,token:res.clientToken,owned:!!(authSession&&authProfile?.role==='client')}));addClientHistory(r.code);saveClientDraft();
     if(authProfile?.role==='client')updateMyProfile({displayName:d.requesterName,phone:d.requesterPhone,pickupAddress:d.pickupAddress,pickupLat:d.pickupLat,pickupLon:d.pickupLon}).catch(()=>{});
     clientSubmissionId=null;
