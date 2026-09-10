@@ -1,4 +1,6 @@
-const VERSION = 'SOS Rider API 11.0.2-dispatch';
+const VERSION = 'SOS Rider API 11.1.0-batch';
+const V11_BATCH_FEATURE = true;
+let batchSchemaReady = false;
 
 const ETA_MODEL = Object.freeze({
   ebikeKmh: 30,
@@ -46,6 +48,7 @@ export default {
             riderLocation: !!env.DB,
             dispatchDecision: !!env.DB,
             maxConcurrentOrders: 2,
+            batch: !!env.DB,
             push: !!(env.DB && env.VAPID_PRIVATE_JWK)
           }
         }, 200, cors);
@@ -61,6 +64,22 @@ export default {
 
       if (url.pathname === '/api/quote' && request.method === 'POST') {
         return handleQuote(request, env, cors);
+      }
+
+      if (url.pathname === '/api/batch/quote' && request.method === 'POST') {
+        requireDb(env);
+        return handleBatchQuote(request, env, cors);
+      }
+
+      if (url.pathname === '/api/requests/batch' && request.method === 'POST') {
+        requireDb(env);
+        return createBatchRequest(request, env, ctx, cors);
+      }
+
+      const guestBatchMatch = url.pathname.match(/^\/api\/batches\/([^/]+)$/);
+      if (guestBatchMatch && request.method === 'GET') {
+        requireDb(env);
+        return getGuestBatch(guestBatchMatch[1], url, env, cors);
       }
 
       if (url.pathname === '/api/availability' && request.method === 'GET') {
@@ -139,6 +158,13 @@ export default {
         await requireRole(request, env, 'rider');
         const result = await sendPushToAll(env);
         return json({ ok: true, ...result }, 200, cors);
+      }
+
+      const riderBatchMatch = url.pathname.match(/^\/api\/rider\/batches\/([^/]+)$/);
+      if (riderBatchMatch && request.method === 'PATCH') {
+        requireDb(env);
+        await requireRole(request, env, 'rider');
+        return updateRiderBatch(riderBatchMatch[1], request, env, cors);
       }
 
       const riderMatch = url.pathname.match(/^\/api\/rider\/requests\/([^/]+)$/);
@@ -687,6 +713,410 @@ async function handleQuote(request, env, cors) {
   }, 200, cors);
 }
 
+
+// ---------- V11_BATCH_FEATURE: giri multi-consegna (2 stop) ----------
+async function ensureBatchSchema(env) {
+  if (batchSchemaReady) return;
+  await env.DB.prepare(`CREATE TABLE IF NOT EXISTS request_batches (
+    batch_id TEXT PRIMARY KEY,
+    submission_id TEXT NOT NULL UNIQUE,
+    user_id TEXT NOT NULL DEFAULT '',
+    client_token TEXT NOT NULL,
+    requester_name TEXT NOT NULL,
+    requester_phone TEXT NOT NULL,
+    pickup_address TEXT NOT NULL,
+    pickup_lat REAL NOT NULL,
+    pickup_lon REAL NOT NULL,
+    ready_time TEXT NOT NULL,
+    service TEXT NOT NULL,
+    total_distance_km REAL NOT NULL DEFAULT 0,
+    total_duration_min INTEGER NOT NULL DEFAULT 0,
+    base_fee REAL NOT NULL DEFAULT 0,
+    extra_stop_fee REAL NOT NULL DEFAULT 3.5,
+    late_fee REAL NOT NULL DEFAULT 0,
+    total_fee REAL NOT NULL DEFAULT 0,
+    route_order TEXT NOT NULL DEFAULT '',
+    status TEXT NOT NULL DEFAULT 'new',
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL
+  )`).run();
+  await env.DB.prepare(`CREATE TABLE IF NOT EXISTS request_batch_items (
+    batch_id TEXT NOT NULL,
+    code TEXT NOT NULL UNIQUE,
+    stop_index INTEGER NOT NULL,
+    fee_share REAL NOT NULL DEFAULT 0,
+    PRIMARY KEY(batch_id, code)
+  )`).run();
+  await env.DB.prepare('CREATE INDEX IF NOT EXISTS idx_batch_items_batch_stop ON request_batch_items(batch_id, stop_index)').run();
+  await env.DB.prepare('CREATE INDEX IF NOT EXISTS idx_batches_created ON request_batches(created_at DESC)').run();
+  batchSchemaReady = true;
+}
+
+function makeBatchId() {
+  const d = new Date();
+  const day = String(d.getUTCDate()).padStart(2, '0');
+  const mo = String(d.getUTCMonth() + 1).padStart(2, '0');
+  const rnd = Math.random().toString(36).slice(2, 6).toUpperCase();
+  return 'BG-' + mo + day + '-' + rnd;
+}
+
+function validateBatchBase(p) {
+  const d = {
+    requesterName: cleanText(p.requesterName, 80),
+    requesterPhone: cleanPhone(p.requesterPhone),
+    pickupAddress: cleanText(p.pickupAddress, 180),
+    pickupLat: Number(p.pickupLat),
+    pickupLon: Number(p.pickupLon),
+    readyTime: cleanText(p.readyTime, 5),
+    service: cleanText(p.service, 10)
+  };
+  if (!d.requesterName || d.requesterPhone.length < 9) fail('Dati richiedente incompleti');
+  if (!d.pickupAddress || !validCoord(d.pickupLat, d.pickupLon)) fail('Indirizzo ritiro non verificato');
+  if (!/^\d{2}:\d{2}$/.test(d.readyTime)) fail('Orario pronto non valido');
+  if (!['ebike','moto','auto'].includes(d.service)) fail('Servizio non valido');
+  return d;
+}
+
+function validateBatchStop(x, index) {
+  const d = {
+    recipientName: cleanText(x?.recipientName, 80),
+    recipientPhone: cleanPhone(x?.recipientPhone),
+    deliveryAddress: cleanText(x?.deliveryAddress, 180),
+    deliveryLat: Number(x?.deliveryLat),
+    deliveryLon: Number(x?.deliveryLon),
+    payment: cleanText(x?.payment, 10),
+    orderTotal: Number(x?.orderTotal) || 0,
+    notes: cleanText(x?.notes, 400),
+    originalIndex: index
+  };
+  if (!d.recipientName || d.recipientPhone.length < 9) fail('Dati destinatario ' + (index + 1) + ' incompleti');
+  if (!d.deliveryAddress || !validCoord(d.deliveryLat, d.deliveryLon)) fail('Indirizzo consegna ' + (index + 1) + ' non verificato');
+  if (!['paid','cash','pos'].includes(d.payment)) fail('Pagamento consegna ' + (index + 1) + ' non valido');
+  if (d.payment === 'cash' && d.orderTotal <= 0) fail('Importo da incassare consegna ' + (index + 1) + ' non valido');
+  return d;
+}
+
+async function calculateBatchData(env, p) {
+  const base = validateBatchBase(p);
+  const inputStops = Array.isArray(p.deliveries) ? p.deliveries : [];
+  if (inputStops.length !== 2) fail('Il giro multiplo supporta esattamente 2 consegne');
+  const stops = inputStops.map(validateBatchStop);
+
+  const pickupPoint = base.pickupLon + ',' + base.pickupLat;
+  const aPoint = stops[0].deliveryLon + ',' + stops[0].deliveryLat;
+  const bPoint = stops[1].deliveryLon + ',' + stops[1].deliveryLat;
+  const [pA, pB, aB, bA] = await Promise.all([
+    routeData(pickupPoint, aPoint, base.service),
+    routeData(pickupPoint, bPoint, base.service),
+    routeData(aPoint, bPoint, base.service),
+    routeData(bPoint, aPoint, base.service)
+  ]);
+
+  const abKm = pA.distanceKm + aB.distanceKm;
+  const baKm = pB.distanceKm + bA.distanceKm;
+  const useAB = abKm <= baKm;
+  const ordered = useAB ? [stops[0], stops[1]] : [stops[1], stops[0]];
+  const firstLeg = useAB ? pA : pB;
+  const secondLeg = useAB ? aB : bA;
+  const totalDistanceKm = firstLeg.distanceKm + secondLeg.distanceKm;
+  const totalDurationMin = firstLeg.durationMin + secondLeg.durationMin;
+  const routeFee = tariffFor(totalDistanceKm, base.service, base.readyTime);
+  const extraStopFee = 3.50;
+  const totalFee = roundHalf(routeFee.totalFee + extraStopFee);
+
+  const singleRoutes = [pA, pB];
+  const singleFees = singleRoutes.map(r => tariffFor(r.distanceKm, base.service, base.readyTime).totalFee);
+  const weightTotal = Math.max(0.5, singleFees[0] + singleFees[1]);
+  let share0 = roundHalf(totalFee * singleFees[0] / weightTotal);
+  share0 = Math.max(0.5, Math.min(totalFee - 0.5, share0));
+  const share1 = roundHalf(totalFee - share0);
+  const sharesByOriginal = [share0, share1];
+
+  const pickupAvailability = await buildPickupAvailabilityPreview(env, {
+    pickupLat: base.pickupLat,
+    pickupLon: base.pickupLon,
+    service: base.service,
+    readyTime: base.readyTime
+  });
+  const activeNow = Number(pickupAvailability?.active) || 0;
+  if (pickupAvailability?.enabled && activeNow + 2 > MAX_ACTIVE_ORDERS) {
+    pickupAvailability.level = 'red';
+    pickupAvailability.title = 'Giro da 2 consegne · capacità momentaneamente piena';
+    pickupAvailability.text = 'Per accettare questo giro servono 2 slot liberi. Completa prima la consegna attiva.';
+    pickupAvailability.canAcceptNow = false;
+  } else if (pickupAvailability) {
+    pickupAvailability.canAcceptNow = !!pickupAvailability.enabled;
+  }
+
+  const pickupMin = Math.max(1, Number(pickupAvailability?.pickupEtaMin) || 1);
+  const firstDeliveryMin = pickupMin + ETA_MODEL.pickupBufferMin + travelMinutes(firstLeg.distanceKm, base.service);
+  const secondDeliveryMin = firstDeliveryMin + ETA_MODEL.dropoffBufferMin + travelMinutes(secondLeg.distanceKm, base.service);
+  const stopEtaByOriginal = {};
+  stopEtaByOriginal[ordered[0].originalIndex] = etaWindow(firstDeliveryMin);
+  stopEtaByOriginal[ordered[1].originalIndex] = etaWindow(secondDeliveryMin);
+
+  return {
+    base,
+    stops,
+    ordered,
+    routeOrder: ordered.map(x => x.originalIndex),
+    firstLeg,
+    secondLeg,
+    singleRoutes,
+    sharesByOriginal,
+    totalDistanceKm,
+    totalDurationMin,
+    baseFee: routeFee.baseFee,
+    lateFee: routeFee.lateFee,
+    extraStopFee,
+    totalFee,
+    pickupAvailability,
+    stopEtaByOriginal
+  };
+}
+
+function batchQuotePublic(x) {
+  return {
+    batch: true,
+    service: x.base.service,
+    totalDistanceKm: Math.round(x.totalDistanceKm * 10) / 10,
+    totalDurationMin: x.totalDurationMin,
+    baseFee: x.baseFee,
+    extraStopFee: x.extraStopFee,
+    lateFee: x.lateFee,
+    totalFee: x.totalFee,
+    routeOrder: x.routeOrder,
+    pickupAvailability: x.pickupAvailability,
+    stops: x.routeOrder.map((originalIndex, pos) => ({
+      originalIndex,
+      stopIndex: pos + 1,
+      recipientName: x.stops[originalIndex].recipientName,
+      deliveryAddress: x.stops[originalIndex].deliveryAddress,
+      eta: x.stopEtaByOriginal[originalIndex]
+    }))
+  };
+}
+
+async function handleBatchQuote(request, env, cors) {
+  await ensureBatchSchema(env);
+  const p = await request.json().catch(() => fail('JSON non valido'));
+  const x = await calculateBatchData(env, p);
+  return json({ ok: true, quote: batchQuotePublic(x), availability: x.pickupAvailability }, 200, cors);
+}
+
+async function loadBatchMetaMap(env) {
+  await ensureBatchSchema(env);
+  const r = await env.DB.prepare(`SELECT i.code,i.batch_id,i.stop_index,i.fee_share,
+    b.total_fee AS batch_total_fee,b.extra_stop_fee,b.total_distance_km,b.route_order,b.status AS batch_status,
+    b.pickup_address AS batch_pickup_address,b.pickup_lat AS batch_pickup_lat,b.pickup_lon AS batch_pickup_lon
+    FROM request_batch_items i JOIN request_batches b ON b.batch_id=i.batch_id
+    WHERE b.created_at >= datetime('now','-30 day')`).all();
+  const m = new Map();
+  for (const row of (r.results || [])) m.set(row.code, row);
+  return m;
+}
+
+function attachBatchMeta(obj, meta, size=2) {
+  if (!meta) return obj;
+  return {
+    ...obj,
+    batchId: meta.batch_id,
+    batchStopIndex: Number(meta.stop_index) || 1,
+    batchSize: size,
+    batchTotalFee: Number(meta.batch_total_fee) || 0,
+    batchExtraStopFee: Number(meta.extra_stop_fee) || 0,
+    batchTotalDistanceKm: Number(meta.total_distance_km) || 0,
+    batchRouteOrder: meta.route_order || '',
+    batchStatus: meta.batch_status || 'new',
+    batchPickupAddress: meta.batch_pickup_address || obj.pickupAddress,
+    batchPickupLat: Number(meta.batch_pickup_lat),
+    batchPickupLon: Number(meta.batch_pickup_lon)
+  };
+}
+
+async function createBatchRequest(request, env, ctx, cors) {
+  await ensureBatchSchema(env);
+  const p = await request.json().catch(() => fail('JSON non valido'));
+  if (p.hp || p.websiteUrl) fail('Richiesta non valida');
+  const submissionId = cleanText(p.submissionId, 80);
+  if (!/^[A-Za-z0-9_-]{10,80}$/.test(submissionId)) fail('Identificativo invio non valido');
+
+  const auth = await requireAuth(request, env, true);
+  if (auth?.profile?.role === 'rider') fail('L’account Rider non può creare richieste cliente', 403);
+  const userId = auth?.profile?.role === 'client' ? auth.user.id : '';
+
+  const existing = await env.DB.prepare('SELECT * FROM request_batches WHERE submission_id=?').bind(submissionId).first();
+  if (existing) {
+    if (userId && existing.user_id !== userId) fail('Identificativo invio già utilizzato', 409);
+    return json({ ok: true, idempotent: true, ...(await getBatchPayload(env, existing.batch_id, false)) }, 200, cors);
+  }
+
+  const availability = await computeAvailability(env);
+  if (availability.mode === 'offline') fail('Rider non disponibile in questo momento. Usa WhatsApp per richieste particolari.', 409);
+  const x = await calculateBatchData(env, p);
+  const batchId = makeBatchId();
+  const clientToken = token();
+  const codes = [makeCode(), makeCode()];
+  if (codes[0] === codes[1]) codes[1] = makeCode();
+  const now = new Date().toISOString();
+
+  const stopIndexByOriginal = {};
+  x.routeOrder.forEach((originalIndex, i) => { stopIndexByOriginal[originalIndex] = i + 1; });
+
+  const statements = [];
+  statements.push(env.DB.prepare(`INSERT INTO request_batches(
+    batch_id,submission_id,user_id,client_token,requester_name,requester_phone,pickup_address,pickup_lat,pickup_lon,
+    ready_time,service,total_distance_km,total_duration_min,base_fee,extra_stop_fee,late_fee,total_fee,route_order,status,created_at,updated_at
+  ) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`).bind(
+    batchId,submissionId,userId,clientToken,x.base.requesterName,x.base.requesterPhone,x.base.pickupAddress,x.base.pickupLat,x.base.pickupLon,
+    x.base.readyTime,x.base.service,x.totalDistanceKm,x.totalDurationMin,x.baseFee,x.extraStopFee,x.lateFee,x.totalFee,
+    x.routeOrder.join(','),'new',now,now
+  ));
+
+  for (let originalIndex = 0; originalIndex < 2; originalIndex++) {
+    const s = x.stops[originalIndex];
+    const direct = x.singleRoutes[originalIndex];
+    const share = x.sharesByOriginal[originalIndex];
+    statements.push(env.DB.prepare(`INSERT INTO requests(
+      code,client_token,submission_id,user_id,created_at,updated_at,status,requester_name,requester_phone,pickup_address,pickup_lat,pickup_lon,
+      ready_time,recipient_name,recipient_phone,delivery_address,delivery_lat,delivery_lon,service,payment,order_total,notes,
+      distance_km,duration_min,route_source,base_fee,late_fee,total_fee,micro_delivery,rejection_reason
+    ) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`).bind(
+      codes[originalIndex],clientToken,submissionId + '_' + (originalIndex + 1),userId,now,now,'new',x.base.requesterName,x.base.requesterPhone,
+      x.base.pickupAddress,x.base.pickupLat,x.base.pickupLon,x.base.readyTime,s.recipientName,s.recipientPhone,s.deliveryAddress,s.deliveryLat,s.deliveryLon,
+      x.base.service,s.payment,s.orderTotal,s.notes,direct.distanceKm,direct.durationMin,direct.source,share,0,share,
+      (x.base.service === 'ebike' && direct.distanceKm <= 1) ? 1 : 0,''
+    ));
+    statements.push(env.DB.prepare('INSERT INTO request_batch_items(batch_id,code,stop_index,fee_share) VALUES(?,?,?,?)').bind(
+      batchId,codes[originalIndex],stopIndexByOriginal[originalIndex],share
+    ));
+    statements.push(env.DB.prepare('INSERT OR IGNORE INTO request_sources(code,channel,external_id,created_at) VALUES(?,?,?,?)').bind(
+      codes[originalIndex],'app-batch',submissionId,now
+    ));
+  }
+  await env.DB.batch(statements);
+
+  if (auth?.profile?.role === 'client') {
+    await env.DB.prepare('UPDATE profiles SET display_name=?,phone=?,pickup_address=?,pickup_lat=?,pickup_lon=?,updated_at=? WHERE user_id=?').bind(
+      x.base.requesterName,x.base.requesterPhone,x.base.pickupAddress,x.base.pickupLat,x.base.pickupLon,now,auth.user.id
+    ).run();
+  }
+  for (const code of codes) await safeLogEvent(env, code, 'request_created', '', 'new', 'app-batch', { batchId, batchSize: 2 });
+
+  const notify = async () => { await Promise.allSettled([sendPushToAll(env)]); };
+  if (ctx?.waitUntil) ctx.waitUntil(notify()); else notify().catch(() => {});
+  return json({ ok: true, ...(await getBatchPayload(env, batchId, false)) }, 201, cors);
+}
+
+async function getBatchRows(env, batchId) {
+  await ensureBatchSchema(env);
+  const batch = await env.DB.prepare('SELECT * FROM request_batches WHERE batch_id=?').bind(batchId).first();
+  if (!batch) return { batch: null, rows: [] };
+  const q = await env.DB.prepare(`SELECT r.*,i.stop_index,i.fee_share FROM request_batch_items i
+    JOIN requests r ON r.code=i.code WHERE i.batch_id=? ORDER BY i.stop_index ASC`).bind(batchId).all();
+  return { batch, rows: q.results || [] };
+}
+
+function deriveBatchStatus(rows) {
+  if (!rows.length) return 'new';
+  if (rows.every(r => r.status === 'delivered')) return 'delivered';
+  if (rows.every(r => ['rejected','cancelled'].includes(r.status))) return rows.some(r => r.status === 'rejected') ? 'rejected' : 'cancelled';
+  if (rows.some(r => ['picked','arrived','delivered'].includes(r.status))) return 'picked';
+  if (rows.some(r => r.status === 'accepted')) return 'accepted';
+  return 'new';
+}
+
+async function syncBatchStatus(env, batchId) {
+  if (!batchId) return;
+  const x = await getBatchRows(env, batchId);
+  if (!x.batch) return;
+  const status = deriveBatchStatus(x.rows);
+  await env.DB.prepare('UPDATE request_batches SET status=?,updated_at=? WHERE batch_id=?').bind(status,new Date().toISOString(),batchId).run();
+}
+
+async function syncBatchStatusForCode(env, code) {
+  await ensureBatchSchema(env);
+  const item = await env.DB.prepare('SELECT batch_id FROM request_batch_items WHERE code=?').bind(code).first();
+  if (item?.batch_id) await syncBatchStatus(env, item.batch_id);
+}
+
+async function getBatchPayload(env, batchId, safe=true) {
+  const x = await getBatchRows(env, batchId);
+  if (!x.batch) fail('Giro non trovato', 404);
+  const etaState = await buildEtaState(env);
+  const status = deriveBatchStatus(x.rows);
+  const deliveredCount = x.rows.filter(r => r.status === 'delivered').length;
+  const items = x.rows.map(r => ({
+    ...(safe ? rowClientSafe(r) : rowPublic(r)),
+    batchId,
+    batchStopIndex: Number(r.stop_index),
+    batchSize: x.rows.length,
+    eta: etaState.etaByCode[r.code] || null
+  }));
+  return {
+    batch: {
+      batchId,
+      status,
+      createdAt: x.batch.created_at,
+      updatedAt: x.batch.updated_at,
+      requesterName: x.batch.requester_name,
+      pickupAddress: x.batch.pickup_address,
+      readyTime: x.batch.ready_time,
+      service: x.batch.service,
+      totalDistanceKm: Number(x.batch.total_distance_km) || 0,
+      totalDurationMin: Number(x.batch.total_duration_min) || 0,
+      baseFee: Number(x.batch.base_fee) || 0,
+      extraStopFee: Number(x.batch.extra_stop_fee) || 0,
+      lateFee: Number(x.batch.late_fee) || 0,
+      totalFee: Number(x.batch.total_fee) || 0,
+      deliveredCount,
+      totalStops: items.length,
+      items
+    },
+    clientToken: x.batch.client_token,
+    availability: etaState.availability
+  };
+}
+
+async function getGuestBatch(batchId, url, env, cors) {
+  await ensureBatchSchema(env);
+  const t = String(url.searchParams.get('token') || '');
+  const row = await env.DB.prepare('SELECT client_token FROM request_batches WHERE batch_id=?').bind(batchId).first();
+  if (!row) fail('Giro non trovato', 404);
+  if (!t || t !== row.client_token) fail('Token giro non valido', 403);
+  return json({ ok: true, ...(await getBatchPayload(env, batchId, true)) }, 200, cors);
+}
+
+async function updateRiderBatch(batchId, request, env, cors) {
+  await ensureBatchSchema(env);
+  const p = await request.json().catch(() => fail('JSON non valido'));
+  const status = cleanText(p.status, 20);
+  if (!['accepted','picked','rejected','cancelled'].includes(status)) fail('Stato giro non valido');
+  const x = await getBatchRows(env, batchId);
+  if (!x.batch) fail('Giro non trovato', 404);
+  const rows = x.rows;
+  const now = new Date().toISOString();
+
+  if (status === 'accepted') {
+    if (!rows.every(r => r.status === 'new')) fail('Il giro non è più completamente in attesa', 409);
+    const codes = new Set(rows.map(r => r.code));
+    const q = await env.DB.prepare("SELECT code FROM requests WHERE status IN ('accepted','picked','arrived')").all();
+    const activeOther = (q.results || []).filter(r => !codes.has(r.code)).length;
+    if (activeOther + rows.length > MAX_ACTIVE_ORDERS) fail('Limite sicurezza: il giro richiede 2 slot liberi.', 409);
+    await env.DB.batch(rows.map(r => env.DB.prepare("UPDATE requests SET status='accepted',updated_at=? WHERE code=? AND status='new'").bind(now,r.code)));
+  } else if (status === 'picked') {
+    if (!rows.every(r => ['accepted','picked'].includes(r.status))) fail('Accetta prima il giro completo', 409);
+    await env.DB.batch(rows.map(r => env.DB.prepare("UPDATE requests SET status='picked',updated_at=? WHERE code=? AND status='accepted'").bind(now,r.code)));
+  } else if (status === 'rejected') {
+    await env.DB.batch(rows.filter(r => r.status === 'new').map(r => env.DB.prepare("UPDATE requests SET status='rejected',rejection_reason='Giro non accettato',updated_at=? WHERE code=?").bind(now,r.code)));
+  } else if (status === 'cancelled') {
+    await env.DB.batch(rows.filter(r => !['delivered','rejected','cancelled'].includes(r.status)).map(r => env.DB.prepare("UPDATE requests SET status='cancelled',updated_at=? WHERE code=?").bind(now,r.code)));
+  }
+  await syncBatchStatus(env, batchId);
+  for (const r of rows) await safeLogEvent(env, r.code, 'batch_status_changed', r.status, status, 'rider', { batchId });
+  return json({ ok: true, ...(await getBatchPayload(env, batchId, false)) }, 200, cors);
+}
+
 // ---------- Disponibilità + ETA automatici ----------
 
 function etaSpeedKmh(service) {
@@ -775,19 +1205,13 @@ async function buildEtaState(env) {
   const enabled = Number(p.enabled) === 1;
   const firstPickupEtaMin = Math.max(5, Math.min(60, Number(p.eta_per_job) || 5));
   const liveLocation = await getRiderLocation(env);
+  await ensureBatchSchema(env);
+  const batchMap = await loadBatchMetaMap(env);
 
-  const q = await env.DB.prepare(
-    "SELECT * FROM requests WHERE status IN ('new','accepted','picked','arrived') ORDER BY created_at ASC"
-  ).all();
-  const rows = q.results || [];
-
+  const q = await env.DB.prepare("SELECT * FROM requests WHERE status IN ('new','accepted','picked','arrived') ORDER BY created_at ASC").all();
+  const rows = (q.results || []).map(r => ({ ...r, _batch: batchMap.get(r.code) || null }));
   const pendingRows = rows.filter(r => r.status === 'new');
-  const movingRows = rows
-    .filter(r => r.status === 'picked' || r.status === 'arrived')
-    .sort((a,b) => String(a.updated_at).localeCompare(String(b.updated_at)));
-  const acceptedRows = rows
-    .filter(r => r.status === 'accepted')
-    .sort((a,b) => String(a.updated_at).localeCompare(String(b.updated_at)));
+  const activeRows = rows.filter(r => ['accepted','picked','arrived'].includes(r.status));
 
   const etaByCode = {};
   const decisionByCode = {};
@@ -795,165 +1219,135 @@ async function buildEtaState(env) {
   let lastPoint = null;
   let queuePosition = 1;
 
-  for (const r of movingRows) {
-    if (r.status === 'picked') {
-      const totalTrip = travelMinutes(r.distance_km, r.service);
-      const stageStarted = Date.parse(r.updated_at || '') || Date.now();
-      const elapsedMin = Math.max(0, (Date.now() - stageStarted) / 60000);
+  const unitsFrom = list => {
+    const map = new Map();
+    for (const r of list) {
+      const key = r._batch?.batch_id ? 'B:' + r._batch.batch_id : 'R:' + r.code;
+      if (!map.has(key)) map.set(key, []);
+      map.get(key).push(r);
+    }
+    return [...map.values()].map(unit => unit.sort((a,b) => {
+      const ai = Number(a._batch?.stop_index) || 1, bi = Number(b._batch?.stop_index) || 1;
+      return ai - bi;
+    }));
+  };
 
-      let remaining;
-      if (
-        cursorMin === 0 &&
-        liveLocation?.fresh &&
-        validCoord(liveLocation.lat, liveLocation.lon) &&
-        validCoord(Number(r.delivery_lat), Number(r.delivery_lon))
-      ) {
-        const liveToCustomerKm = estimatedRoadKm(
-          liveLocation.lat,
-          liveLocation.lon,
-          Number(r.delivery_lat),
-          Number(r.delivery_lon)
-        );
-        remaining = travelMinutes(liveToCustomerKm, r.service);
+  const activeUnits = unitsFrom(activeRows).sort((a,b) => {
+    const am = a.some(r => ['picked','arrived'].includes(r.status)) ? 0 : 1;
+    const bm = b.some(r => ['picked','arrived'].includes(r.status)) ? 0 : 1;
+    if (am !== bm) return am - bm;
+    return String(a[0].updated_at || a[0].created_at).localeCompare(String(b[0].updated_at || b[0].created_at));
+  });
+
+  for (const unit of activeUnits) {
+    const isBatch = !!unit[0]._batch?.batch_id;
+    if (!isBatch) {
+      const r = unit[0];
+      if (r.status === 'picked' || r.status === 'arrived') {
+        let deliveryMin = cursorMin;
+        if (r.status !== 'arrived') {
+          if (cursorMin === 0 && liveLocation?.fresh) {
+            deliveryMin += travelMinutes(estimatedRoadKm(liveLocation.lat, liveLocation.lon, Number(r.delivery_lat), Number(r.delivery_lon)), r.service);
+          } else if (lastPoint && validCoord(lastPoint.lat,lastPoint.lon)) {
+            deliveryMin += travelMinutes(estimatedRoadKm(lastPoint.lat,lastPoint.lon, Number(r.delivery_lat), Number(r.delivery_lon)), r.service);
+          } else {
+            const totalTrip = travelMinutes(r.distance_km, r.service);
+            const stageStarted = Date.parse(r.updated_at || '') || Date.now();
+            const elapsedMin = Math.max(0, (Date.now() - stageStarted) / 60000);
+            deliveryMin += Math.max(1, Math.ceil(totalTrip - elapsedMin));
+          }
+        }
+        etaByCode[r.code] = etaPayload({ queuePosition, stage:r.status==='arrived'?'arrived':'in_delivery', pickupMin:0, deliveryMin, service:r.service });
+        cursorMin = deliveryMin + ETA_MODEL.dropoffBufferMin;
+        lastPoint = { lat:Number(r.delivery_lat), lon:Number(r.delivery_lon) };
       } else {
-        remaining = Math.max(1, Math.ceil(totalTrip - elapsedMin));
+        let pickupMin = cursorMin;
+        if (lastPoint && validCoord(lastPoint.lat,lastPoint.lon)) pickupMin += travelMinutes(estimatedRoadKm(lastPoint.lat,lastPoint.lon,Number(r.pickup_lat),Number(r.pickup_lon)),r.service);
+        else if (cursorMin === 0 && liveLocation?.fresh) pickupMin += travelMinutes(estimatedRoadKm(liveLocation.lat,liveLocation.lon,Number(r.pickup_lat),Number(r.pickup_lon)),r.service);
+        else pickupMin += firstPickupEtaMin;
+        const deliveryMin = pickupMin + ETA_MODEL.pickupBufferMin + travelMinutes(r.distance_km,r.service);
+        etaByCode[r.code] = etaPayload({ queuePosition, stage:queuePosition===1?'to_pickup':'queued', pickupMin, deliveryMin, service:r.service });
+        cursorMin = deliveryMin + ETA_MODEL.dropoffBufferMin;
+        lastPoint = { lat:Number(r.delivery_lat), lon:Number(r.delivery_lon) };
       }
-
-      etaByCode[r.code] = etaPayload({
-        queuePosition,
-        stage: 'in_delivery',
-        pickupMin: 0,
-        deliveryMin: cursorMin + remaining,
-        service: r.service
-      });
-
-      cursorMin += remaining + ETA_MODEL.dropoffBufferMin;
-    } else {
-      etaByCode[r.code] = etaPayload({
-        queuePosition,
-        stage: 'arrived',
-        pickupMin: 0,
-        deliveryMin: cursorMin,
-        service: r.service
-      });
-      cursorMin += ETA_MODEL.dropoffBufferMin;
+      queuePosition++;
+      continue;
     }
 
-    lastPoint = { lat: Number(r.delivery_lat), lon: Number(r.delivery_lon) };
-    queuePosition++;
-  }
-
-  for (let i = 0; i < acceptedRows.length; i++) {
-    const r = acceptedRows[i];
-    let pickupMin;
-
-    if (lastPoint && validCoord(lastPoint.lat, lastPoint.lon)) {
-      const transferKm = estimatedRoadKm(lastPoint.lat, lastPoint.lon, Number(r.pickup_lat), Number(r.pickup_lon));
-      pickupMin = cursorMin + travelMinutes(transferKm, r.service);
-    } else if (cursorMin > 0) {
-      pickupMin = cursorMin + firstPickupEtaMin;
-    } else if (liveLocation?.fresh && validCoord(liveLocation.lat, liveLocation.lon)) {
-      const transferKm = estimatedRoadKm(liveLocation.lat, liveLocation.lon, Number(r.pickup_lat), Number(r.pickup_lon));
-      pickupMin = travelMinutes(transferKm, r.service);
-    } else {
-      pickupMin = firstPickupEtaMin;
+    const service = unit[0].service;
+    const allAccepted = unit.every(r => r.status === 'accepted');
+    let pickupMin = null;
+    let point = lastPoint;
+    if (allAccepted) {
+      pickupMin = cursorMin;
+      const pLat = Number(unit[0]._batch.batch_pickup_lat), pLon = Number(unit[0]._batch.batch_pickup_lon);
+      if (point && validCoord(point.lat,point.lon)) pickupMin += travelMinutes(estimatedRoadKm(point.lat,point.lon,pLat,pLon),service);
+      else if (cursorMin === 0 && liveLocation?.fresh) pickupMin += travelMinutes(estimatedRoadKm(liveLocation.lat,liveLocation.lon,pLat,pLon),service);
+      else pickupMin += firstPickupEtaMin;
+      cursorMin = pickupMin + ETA_MODEL.pickupBufferMin;
+      point = { lat:pLat, lon:pLon };
+    } else if (cursorMin === 0 && liveLocation?.fresh) {
+      point = { lat:liveLocation.lat, lon:liveLocation.lon };
     }
 
-    const deliveryMin = pickupMin + ETA_MODEL.pickupBufferMin + travelMinutes(r.distance_km, r.service);
-
-    etaByCode[r.code] = etaPayload({
-      queuePosition,
-      stage: queuePosition === 1 ? 'to_pickup' : 'queued',
-      pickupMin,
-      deliveryMin,
-      service: r.service
-    });
-
-    cursorMin = deliveryMin + ETA_MODEL.dropoffBufferMin;
-    lastPoint = { lat: Number(r.delivery_lat), lon: Number(r.delivery_lon) };
-    queuePosition++;
+    for (const r of unit) {
+      let deliveryMin = cursorMin;
+      if (r.status !== 'arrived') {
+        if (point && validCoord(point.lat,point.lon)) deliveryMin += travelMinutes(estimatedRoadKm(point.lat,point.lon,Number(r.delivery_lat),Number(r.delivery_lon)),service);
+        else deliveryMin += travelMinutes(r.distance_km,service);
+      }
+      etaByCode[r.code] = etaPayload({
+        queuePosition,
+        stage: allAccepted ? (queuePosition===1?'to_pickup':'queued') : (r.status==='arrived'?'arrived':'in_delivery'),
+        pickupMin: allAccepted ? pickupMin : 0,
+        deliveryMin,
+        service
+      });
+      cursorMin = deliveryMin + ETA_MODEL.dropoffBufferMin;
+      point = { lat:Number(r.delivery_lat), lon:Number(r.delivery_lon) };
+      lastPoint = point;
+      queuePosition++;
+    }
   }
 
-  const active = movingRows.length + acceptedRows.length;
-  const carryingFood = movingRows.some(r => r.status === 'picked');
-
-  for (const r of pendingRows) {
+  const active = activeRows.length;
+  const carryingFood = activeRows.some(r => r.status === 'picked');
+  const pendingUnits = unitsFrom(pendingRows);
+  for (const unit of pendingUnits) {
+    const first = unit[0];
+    const requestedSlots = unit.length;
     let previewPickupMin = cursorMin;
     let transferKm = null;
+    const pLat = Number(first._batch?.batch_pickup_lat ?? first.pickup_lat);
+    const pLon = Number(first._batch?.batch_pickup_lon ?? first.pickup_lon);
+    if (lastPoint && validCoord(lastPoint.lat,lastPoint.lon)) {
+      transferKm = estimatedRoadKm(lastPoint.lat,lastPoint.lon,pLat,pLon);
+      previewPickupMin += travelMinutes(transferKm,first.service);
+    } else if (liveLocation?.fresh) {
+      transferKm = estimatedRoadKm(liveLocation.lat,liveLocation.lon,pLat,pLon);
+      previewPickupMin += travelMinutes(transferKm,first.service);
+    } else previewPickupMin += firstPickupEtaMin;
 
-    if (lastPoint && validCoord(lastPoint.lat, lastPoint.lon)) {
-      transferKm = estimatedRoadKm(lastPoint.lat, lastPoint.lon, Number(r.pickup_lat), Number(r.pickup_lon));
-      previewPickupMin += travelMinutes(transferKm, r.service);
-    } else if (liveLocation?.fresh && validCoord(liveLocation.lat, liveLocation.lon)) {
-      transferKm = estimatedRoadKm(liveLocation.lat, liveLocation.lon, Number(r.pickup_lat), Number(r.pickup_lon));
-      previewPickupMin += travelMinutes(transferKm, r.service);
-    } else {
-      previewPickupMin += firstPickupEtaMin;
+    for (const r of unit) {
+      etaByCode[r.code] = etaPayload({ queuePosition:null, stage:'pending', previewPickupMin, service:r.service });
+      decisionByCode[r.code] = buildDispatchDecision(r, { activeCount:active, requestedSlots, pickupMin:previewPickupMin, transferKm, liveLocation, carryingFood });
     }
-
-    etaByCode[r.code] = etaPayload({
-      queuePosition: null,
-      stage: 'pending',
-      previewPickupMin,
-      service: r.service
-    });
-
-    decisionByCode[r.code] = buildDispatchDecision(r, {
-      activeCount: active,
-      pickupMin: previewPickupMin,
-      transferKm,
-      liveLocation,
-      carryingFood
-    });
   }
 
   const pending = pendingRows.length;
-  const nextFreeMin = active ? Math.max(1, Math.ceil(cursorMin)) : 0;
-  const publicLocation = liveLocation ? {
-    fresh: !!liveLocation.fresh,
-    ageSec: liveLocation.ageSec,
-    capturedAt: liveLocation.capturedAt,
-    accuracyM: liveLocation.accuracyM
-  } : null;
-
-  const availability = !enabled
-    ? {
-        mode: 'offline', enabled: false, pending, active, firstPickupEtaMin,
-        etaMin: null, nextAvailableAt: null, availableEtaMin: 5, availableEtaMax: 10,
-        location: publicLocation,
-        etaModel: { automatic: true, ebikeKmh: ETA_MODEL.ebikeKmh, windowMin: ETA_MODEL.windowMin },
-        updatedAt: p.updated_at
-      }
-    : active
-      ? {
-          mode: 'busy', enabled: true, pending, active, firstPickupEtaMin,
-          etaMin: nextFreeMin, nextAvailableAt: isoPlusMinutes(nextFreeMin),
-          availableEtaMin: 5, availableEtaMax: 10,
-          location: publicLocation,
-          etaModel: { automatic: true, ebikeKmh: ETA_MODEL.ebikeKmh, windowMin: ETA_MODEL.windowMin },
-          updatedAt: p.updated_at
-        }
-      : {
-          mode: 'available', enabled: true, pending, active: 0, firstPickupEtaMin,
-          etaMin: 0, nextAvailableAt: new Date().toISOString(), availableEtaMin: 5, availableEtaMax: 10,
-          location: publicLocation,
-          etaModel: { automatic: true, ebikeKmh: ETA_MODEL.ebikeKmh, windowMin: ETA_MODEL.windowMin },
-          updatedAt: p.updated_at
-        };
-
-  return {
-    availability,
-    etaByCode,
-    decisionByCode,
-    liveLocation,
-    queueContext: {
-      active,
-      pending,
-      cursorMin: Math.max(0, Math.ceil(cursorMin)),
-      lastPoint,
-      carryingFood
-    }
+  const nextFreeMin = active ? Math.max(1,Math.ceil(cursorMin)) : 0;
+  const publicLocation = liveLocation ? { fresh:!!liveLocation.fresh, ageSec:liveLocation.ageSec, capturedAt:liveLocation.capturedAt, accuracyM:liveLocation.accuracyM } : null;
+  const availability = !enabled ? {
+    mode:'offline',enabled:false,pending,active,firstPickupEtaMin,etaMin:null,nextAvailableAt:null,availableEtaMin:5,availableEtaMax:10,location:publicLocation,
+    etaModel:{automatic:true,ebikeKmh:ETA_MODEL.ebikeKmh,windowMin:ETA_MODEL.windowMin},updatedAt:p.updated_at
+  } : active ? {
+    mode:'busy',enabled:true,pending,active,firstPickupEtaMin,etaMin:nextFreeMin,nextAvailableAt:isoPlusMinutes(nextFreeMin),availableEtaMin:5,availableEtaMax:10,location:publicLocation,
+    etaModel:{automatic:true,ebikeKmh:ETA_MODEL.ebikeKmh,windowMin:ETA_MODEL.windowMin},updatedAt:p.updated_at
+  } : {
+    mode:'available',enabled:true,pending,active:0,firstPickupEtaMin,etaMin:0,nextAvailableAt:new Date().toISOString(),availableEtaMin:5,availableEtaMax:10,location:publicLocation,
+    etaModel:{automatic:true,ebikeKmh:ETA_MODEL.ebikeKmh,windowMin:ETA_MODEL.windowMin},updatedAt:p.updated_at
   };
+  return { availability, etaByCode, decisionByCode, liveLocation, queueContext:{active,pending,cursorMin:Math.max(0,Math.ceil(cursorMin)),lastPoint,carryingFood} };
 }
 
 async function computeAvailability(env) {
@@ -1215,6 +1609,7 @@ function buildDispatchDecision(r, ctx) {
   const transferKm = Number.isFinite(Number(ctx.transferKm)) ? Math.max(0, Number(ctx.transferKm)) : null;
   const location = ctx.liveLocation || null;
   const carryingFood = !!ctx.carryingFood;
+  const requestedSlots = Math.max(1, Number(ctx.requestedSlots) || 1);
   const readyInMin = minutesUntilReadyLocal(r.ready_time);
   const lateByMin = Math.max(0, pickupMin - readyInMin);
 
@@ -1227,10 +1622,10 @@ function buildDispatchDecision(r, ctx) {
     ? 'Completa prima la missione in corso, poi vai al nuovo ritiro.'
     : 'Puoi dirigerti verso il ritiro.';
 
-  if (active >= MAX_ACTIVE_ORDERS) {
+  if (active + requestedSlots > MAX_ACTIVE_ORDERS) {
     level = 'red';
     label = 'NON ACCETTARE';
-    reason = 'Hai già raggiunto il limite iniziale di 2 ordini attivi.';
+    reason = requestedSlots > 1 ? 'Il giro richiede 2 slot liberi e supererebbe il limite operativo.' : 'Hai già raggiunto il limite iniziale di 2 ordini attivi.';
     recommendation = 'Completa almeno una consegna prima di accettarne un’altra.';
   } else if (active === 0 && (!location || !location.fresh)) {
     level = 'yellow';
@@ -1285,6 +1680,7 @@ function buildDispatchDecision(r, ctx) {
     lateByMin,
     incrementalKm: transferKm == null ? null : Math.round(transferKm * 10) / 10,
     activeOrders: active,
+    requestedSlots,
     maxActiveOrders: MAX_ACTIVE_ORDERS,
     carryingFood,
     locationFresh: !!location?.fresh,
@@ -1841,41 +2237,18 @@ async function listClientRequests(url, env, a, cors) {
 }
 
 async function listRiderRequests(url, env, cors) {
-  const limit = Math.min(
-    200,
-    Math.max(
-      1,
-      Number(url.searchParams.get('limit')) || 100
-    )
-  );
-
+  const limit = Math.min(200, Math.max(1, Number(url.searchParams.get('limit')) || 100));
   const status = url.searchParams.get('status');
-
   let r;
-
-  if (status) {
-    r = await env.DB.prepare(
-      'SELECT * FROM requests WHERE status=? ORDER BY created_at DESC LIMIT ?'
-    ).bind(
-      status,
-      limit
-    ).all();
-
-  } else {
-    r = await env.DB.prepare(
-      "SELECT * FROM requests WHERE created_at >= datetime('now','-30 day') ORDER BY created_at DESC LIMIT ?"
-    ).bind(limit).all();
-  }
-
+  if (status) r = await env.DB.prepare('SELECT * FROM requests WHERE status=? ORDER BY created_at DESC LIMIT ?').bind(status,limit).all();
+  else r = await env.DB.prepare("SELECT * FROM requests WHERE created_at >= datetime('now','-30 day') ORDER BY created_at DESC LIMIT ?").bind(limit).all();
   const etaState = await buildEtaState(env);
+  const batchMap = await loadBatchMetaMap(env);
   return json({
-    ok: true,
-    requests: (r.results || []).map(row => ({
-      ...attachEta(row, etaState.etaByCode),
-      dispatch: etaState.decisionByCode?.[row.code] || null
-    })),
-    riderLocation: etaState.liveLocation
-  }, 200, cors);
+    ok:true,
+    requests:(r.results||[]).map(row => attachBatchMeta({ ...attachEta(row,etaState.etaByCode), dispatch:etaState.decisionByCode?.[row.code]||null }, batchMap.get(row.code))),
+    riderLocation:etaState.liveLocation
+  },200,cors);
 }
 
 const TRANSITIONS = {
@@ -1975,6 +2348,7 @@ async function updateRiderRequest(code, request, env, cors) {
   ).run();
 
   await safeLogEvent(env, code, 'status_changed', row.status, status, 'rider', { rejectionReason: reason || '' });
+  await syncBatchStatusForCode(env, code);
   const updatedRow = await getByCode(env, code);
   const etaState = await buildEtaState(env);
   return json({

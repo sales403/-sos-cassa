@@ -9,7 +9,7 @@
   <meta name="apple-mobile-web-app-title" content="SOS Rider V11 STAGING">
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="apple-touch-icon" href="icon-192.png">
-  <link rel="stylesheet" href="styles.css?v=11.0.4-staging">
+  <link rel="stylesheet" href="styles.css?v=11.1.0-batch">
   <title>SOS Rider Carpi-Soliera · V11 STAGING</title>
 </head>
 <body>
@@ -201,6 +201,23 @@
           <label class="full">Note facoltative
             <textarea id="cNotes" rows="2" placeholder="Citofono, piano, indicazioni utili..."></textarea>
           </label>
+
+          <div class="full batch-add-wrap">
+            <button id="clientAddSecond" type="button" class="btn batch-add-btn">+ AGGIUNGI SECONDA CONSEGNA</button>
+            <small>Stesso ritiro, due indirizzi: il sistema sceglie automaticamente l'ordine di consegna più efficiente.</small>
+          </div>
+
+          <section id="clientSecondDelivery" class="full second-delivery-panel hidden">
+            <div class="second-delivery-head"><div><div class="eyebrow">STOP 2</div><b>Seconda consegna</b></div><span class="pill yellow">STESSO RITIRO</span></div>
+            <div class="form-grid">
+              <label>Destinatario 2<input id="cRecipient2" autocomplete="name" placeholder="Nome cliente"></label>
+              <label>Telefono destinatario 2<input id="cRecipientPhone2" inputmode="tel" autocomplete="tel" placeholder="Es. 349 1234567"></label>
+              <div class="address-field full"><label>Indirizzo consegna 2<input id="cDelivery2" autocomplete="off" placeholder="Via, civico, località"></label><div id="cDelivery2Suggestions" class="suggestions hidden"></div><div class="field-meta"><span id="cDelivery2Status">Scrivi almeno 3 caratteri e seleziona un risultato.</span><button id="cDelivery2Maps" type="button" class="mini-btn">MAPS</button></div></div>
+              <label>Pagamento ordine 2<select id="cPayment2"><option value="paid">Ordine già pagato</option><option value="cash">Contanti da incassare</option><option value="pos">POS del locale</option></select></label>
+              <label id="cOrderTotalWrap2" class="hidden">Importo ordine 2 da incassare<input id="cOrderTotal2" type="number" inputmode="decimal" min="0" step="0.01" placeholder="0,00"></label>
+              <label class="full">Note consegna 2<textarea id="cNotes2" rows="2" placeholder="Citofono, piano, indicazioni utili..."></textarea></label>
+            </div>
+          </section>
           <label class="check-row full"><input id="cRemember" type="checkbox" checked><span>Ricorda questo locale/richiedente su questo dispositivo.</span></label>
         </div>
 
@@ -222,7 +239,9 @@
         <div><span>Distanza</span><b id="cqDistance">—</b></div>
         <div><span>Tariffa base</span><b id="cqBase">—</b></div><div id="cqMicroRow" class="hidden"><span>Microconsegna E-bike entro 1 km</span><b>€2,50</b></div>
         <div id="cqLateRow" class="hidden"><span>Supplemento serale dopo 22:30</span><b>+ €2,00</b></div>
+        <div id="cqBatchRow" class="hidden"><span>Seconda fermata / gestione giro</span><b id="cqBatchExtra">+ €3,50</b></div>
       </div>
+      <div id="clientBatchRoute" class="batch-route-preview hidden"></div>
       <div id="cqLateNotice" class="notice yellow hidden">⚡ Supplemento serale +2,00 € applicato automaticamente in base all'orario “ordine pronto”.</div>
       <div id="clientPickupAvailability" class="pickup-availability unknown">
         <div><b>Disponibilità in verifica</b><small>Calcolo posizione rider e consegne già in corso…</small></div>
@@ -354,6 +373,6 @@
   </div>
 
   <script src="config.js?v=11.0.2-staging"></script>
-  <script type="module" src="app.js?v=11.0.2-staging"></script>
+  <script type="module" src="app.js?v=11.1.0-batch"></script>
 </body>
 </html>
