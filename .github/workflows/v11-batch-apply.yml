@@ -30,8 +30,12 @@ jobs:
         run: |
           node --check app.js
           node --check preview-v11/app.js
+          node --check worker-v11.0.0-dispatch.js
           node --check sw.js
           node --check preview-v11/sw.js
+          grep -q "SOS Rider API 11.1.0-batch" worker-v11.0.0-dispatch.js
+          grep -q "clientSecondDelivery" index.html
+          grep -q "RITIRATI 2 ORDINI" app.js
 
       - name: Commit generated V11.1 files
         run: |
