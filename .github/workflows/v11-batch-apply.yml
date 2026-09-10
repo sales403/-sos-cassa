@@ -23,6 +23,9 @@ jobs:
       - name: Apply V11.1 batch patch
         run: python3 .github/scripts/apply_v11_batch.py
 
+      - name: Repair generated app replacement
+        run: python3 .github/scripts/fix_v11_batch_generated.py
+
       - name: Syntax checks
         run: |
           node --check app.js
