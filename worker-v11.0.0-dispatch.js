@@ -1051,6 +1051,12 @@ async function getBatchPayload(env, batchId, safe=true) {
     batchId,
     batchStopIndex: Number(r.stop_index),
     batchSize: x.rows.length,
+    batchTotalFee: Number(x.batch.total_fee) || 0,
+    batchExtraStopFee: Number(x.batch.extra_stop_fee) || 0,
+    batchTotalDistanceKm: Number(x.batch.total_distance_km) || 0,
+    batchPickupAddress: x.batch.pickup_address || r.pickup_address,
+    batchPickupLat: Number(x.batch.pickup_lat),
+    batchPickupLon: Number(x.batch.pickup_lon),
     eta: etaState.etaByCode[r.code] || null
   }));
   return {
