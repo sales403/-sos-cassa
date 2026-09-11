@@ -9,7 +9,7 @@
   <meta name="apple-mobile-web-app-title" content="SOS Rider V11 STAGING">
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="apple-touch-icon" href="icon-192.png">
-  <link rel="stylesheet" href="styles.css?v=11.1.0-batch">
+  <link rel="stylesheet" href="styles.css?v=11.2.0-weather">
   <title>SOS Rider Carpi-Soliera · V11 STAGING</title>
 </head>
 <body>
@@ -239,6 +239,7 @@
         <div><span>Distanza</span><b id="cqDistance">—</b></div>
         <div><span>Tariffa base</span><b id="cqBase">—</b></div><div id="cqMicroRow" class="hidden"><span>Microconsegna E-bike entro 1 km</span><b>€2,50</b></div>
         <div id="cqLateRow" class="hidden"><span>Supplemento serale dopo 22:30</span><b>+ €2,00</b></div>
+        <div id="cqWeatherRow" class="hidden"><span>Supplemento meteo avverso</span><b>+ €3,00</b></div>
         <div id="cqBatchRow" class="hidden"><span>Seconda fermata / gestione giro</span><b id="cqBatchExtra">+ €3,50</b></div>
       </div>
       <div id="clientBatchRoute" class="batch-route-preview hidden"></div>
@@ -307,6 +308,13 @@
         <div id="riderGpsStatus" class="rider-gps-status idle">GPS: in attesa di posizione…</div>
         <button id="riderGpsRefresh" class="btn ghost small" type="button">AGGIORNA GPS</button>
       </div>
+      <div class="rider-gps-row">
+        <div id="riderWeatherStatus" class="rider-gps-status idle">☔ Meteo avverso: controllo stato…</div>
+        <div class="operator-toggle" aria-label="Supplemento meteo avverso">
+          <button id="riderWeatherOnBtn" class="btn status-on small" type="button" aria-pressed="false">METEO ON +€3</button>
+          <button id="riderWeatherOffBtn" class="btn status-off small" type="button" aria-pressed="true">METEO OFF</button>
+        </div>
+      </div>
     </section>
 
     <section id="riderPageRequests" class="rider-page active">
@@ -373,6 +381,6 @@
   </div>
 
   <script src="config.js?v=11.0.2-staging"></script>
-  <script type="module" src="app.js?v=11.1.0-batch"></script>
+  <script type="module" src="app.js?v=11.2.0-weather"></script>
 </body>
 </html>

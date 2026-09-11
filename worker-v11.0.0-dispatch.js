@@ -1,6 +1,8 @@
-const VERSION = 'SOS Rider API 11.1.0-batch';
+const VERSION = 'SOS Rider API 11.2.0-weather';
 const V11_BATCH_FEATURE = true;
+const WEATHER_FEE_EUR = 3;
 let batchSchemaReady = false;
+let weatherSchemaReady = false;
 
 const ETA_MODEL = Object.freeze({
   ebikeKmh: 30,
@@ -49,6 +51,7 @@ export default {
             dispatchDecision: !!env.DB,
             maxConcurrentOrders: 2,
             batch: !!env.DB,
+            weatherAdverse: !!env.DB,
             push: !!(env.DB && env.VAPID_PRIVATE_JWK)
           }
         }, 200, cors);
@@ -127,6 +130,18 @@ export default {
         requireDb(env);
         await requireRole(request, env, 'rider');
         return updateAvailability(request, env, cors);
+      }
+
+      if (url.pathname === '/api/rider/weather' && request.method === 'GET') {
+        requireDb(env);
+        await requireRole(request, env, 'rider');
+        return json({ ok: true, weather: await getWeatherState(env) }, 200, cors);
+      }
+
+      if (url.pathname === '/api/rider/weather' && request.method === 'PATCH') {
+        requireDb(env);
+        await requireRole(request, env, 'rider');
+        return updateWeatherState(request, env, cors);
       }
 
       if (url.pathname === '/api/rider/location' && request.method === 'GET') {
@@ -271,7 +286,7 @@ function roundHalf(n) {
   return Math.round(Number(n || 0) * 2) / 2;
 }
 
-function tariffFor(km, service, readyTime) {
+function tariffFor(km, service, readyTime, weatherAdverse = false) {
   km = Math.max(0, Number(km) || 0);
 
   let base;
@@ -290,13 +305,59 @@ function tariffFor(km, service, readyTime) {
 
   base = roundHalf(base);
   const lateFee = isLate(readyTime) ? 2 : 0;
+  const weatherFee = weatherAdverse ? WEATHER_FEE_EUR : 0;
 
   return {
     baseFee: base,
     lateFee,
-    totalFee: roundHalf(base + lateFee),
+    weatherFee,
+    weatherAdverse: weatherFee > 0,
+    totalFee: roundHalf(base + lateFee + weatherFee),
     microDelivery: micro
   };
+}
+
+async function ensureWeatherSchema(env) {
+  if (weatherSchemaReady) return;
+
+  await env.DB.prepare(`CREATE TABLE IF NOT EXISTS operator_settings (
+    id INTEGER PRIMARY KEY,
+    weather_adverse INTEGER NOT NULL DEFAULT 0,
+    updated_at TEXT NOT NULL
+  )`).run();
+
+  await env.DB.prepare(
+    `INSERT OR IGNORE INTO operator_settings(id,weather_adverse,updated_at) VALUES(1,0,?)`
+  ).bind(new Date().toISOString()).run();
+
+  const cols = await env.DB.prepare('PRAGMA table_info(requests)').all();
+  const names = new Set((cols.results || []).map(x => String(x.name || '')));
+  if (!names.has('weather_fee')) {
+    await env.DB.prepare('ALTER TABLE requests ADD COLUMN weather_fee REAL NOT NULL DEFAULT 0').run();
+  }
+
+  weatherSchemaReady = true;
+}
+
+async function getWeatherState(env) {
+  await ensureWeatherSchema(env);
+  const row = await env.DB.prepare('SELECT weather_adverse,updated_at FROM operator_settings WHERE id=1').first();
+  const adverse = Number(row?.weather_adverse) === 1;
+  return {
+    adverse,
+    fee: adverse ? WEATHER_FEE_EUR : 0,
+    updatedAt: row?.updated_at || new Date().toISOString()
+  };
+}
+
+async function updateWeatherState(request, env, cors) {
+  const p = await request.json().catch(() => fail('JSON non valido'));
+  const adverse = !!p.adverse;
+  await ensureWeatherSchema(env);
+  await env.DB.prepare(
+    'UPDATE operator_settings SET weather_adverse=?,updated_at=? WHERE id=1'
+  ).bind(adverse ? 1 : 0, new Date().toISOString()).run();
+  return json({ ok: true, weather: await getWeatherState(env) }, 200, cors);
 }
 
 // ---------- Auth Supabase ----------
@@ -681,10 +742,12 @@ async function handleQuote(request, env, cors) {
     service
   );
 
+  const weather = env.DB ? await getWeatherState(env) : { adverse: false, fee: 0 };
   const fee = tariffFor(
     route.distanceKm,
     service,
-    readyTime
+    readyTime,
+    weather.adverse
   );
 
   const availability =
@@ -734,6 +797,7 @@ async function ensureBatchSchema(env) {
     base_fee REAL NOT NULL DEFAULT 0,
     extra_stop_fee REAL NOT NULL DEFAULT 3.5,
     late_fee REAL NOT NULL DEFAULT 0,
+    weather_fee REAL NOT NULL DEFAULT 0,
     total_fee REAL NOT NULL DEFAULT 0,
     route_order TEXT NOT NULL DEFAULT '',
     status TEXT NOT NULL DEFAULT 'new',
@@ -747,6 +811,12 @@ async function ensureBatchSchema(env) {
     fee_share REAL NOT NULL DEFAULT 0,
     PRIMARY KEY(batch_id, code)
   )`).run();
+  const batchCols = await env.DB.prepare('PRAGMA table_info(request_batches)').all();
+  const batchNames = new Set((batchCols.results || []).map(x => String(x.name || '')));
+  if (!batchNames.has('weather_fee')) {
+    await env.DB.prepare('ALTER TABLE request_batches ADD COLUMN weather_fee REAL NOT NULL DEFAULT 0').run();
+  }
+  await ensureWeatherSchema(env);
   await env.DB.prepare('CREATE INDEX IF NOT EXISTS idx_batch_items_batch_stop ON request_batch_items(batch_id, stop_index)').run();
   await env.DB.prepare('CREATE INDEX IF NOT EXISTS idx_batches_created ON request_batches(created_at DESC)').run();
   batchSchemaReady = true;
@@ -820,7 +890,8 @@ async function calculateBatchData(env, p) {
   const secondLeg = useAB ? aB : bA;
   const totalDistanceKm = firstLeg.distanceKm + secondLeg.distanceKm;
   const totalDurationMin = firstLeg.durationMin + secondLeg.durationMin;
-  const routeFee = tariffFor(totalDistanceKm, base.service, base.readyTime);
+  const weather = await getWeatherState(env);
+  const routeFee = tariffFor(totalDistanceKm, base.service, base.readyTime, weather.adverse);
   const extraStopFee = 3.50;
   const totalFee = roundHalf(routeFee.totalFee + extraStopFee);
 
@@ -868,6 +939,8 @@ async function calculateBatchData(env, p) {
     totalDurationMin,
     baseFee: routeFee.baseFee,
     lateFee: routeFee.lateFee,
+    weatherFee: routeFee.weatherFee,
+    weatherAdverse: routeFee.weatherAdverse,
     extraStopFee,
     totalFee,
     pickupAvailability,
@@ -884,6 +957,8 @@ function batchQuotePublic(x) {
     baseFee: x.baseFee,
     extraStopFee: x.extraStopFee,
     lateFee: x.lateFee,
+    weatherFee: x.weatherFee,
+    weatherAdverse: x.weatherAdverse,
     totalFee: x.totalFee,
     routeOrder: x.routeOrder,
     pickupAvailability: x.pickupAvailability,
@@ -907,7 +982,7 @@ async function handleBatchQuote(request, env, cors) {
 async function loadBatchMetaMap(env) {
   await ensureBatchSchema(env);
   const r = await env.DB.prepare(`SELECT i.code,i.batch_id,i.stop_index,i.fee_share,
-    b.total_fee AS batch_total_fee,b.extra_stop_fee,b.total_distance_km,b.route_order,b.status AS batch_status,
+    b.total_fee AS batch_total_fee,b.extra_stop_fee,b.weather_fee AS batch_weather_fee,b.total_distance_km,b.route_order,b.status AS batch_status,
     b.pickup_address AS batch_pickup_address,b.pickup_lat AS batch_pickup_lat,b.pickup_lon AS batch_pickup_lon
     FROM request_batch_items i JOIN request_batches b ON b.batch_id=i.batch_id
     WHERE b.created_at >= datetime('now','-30 day')`).all();
@@ -925,6 +1000,7 @@ function attachBatchMeta(obj, meta, size=2) {
     batchSize: size,
     batchTotalFee: Number(meta.batch_total_fee) || 0,
     batchExtraStopFee: Number(meta.extra_stop_fee) || 0,
+    batchWeatherFee: Number(meta.batch_weather_fee) || 0,
     batchTotalDistanceKm: Number(meta.total_distance_km) || 0,
     batchRouteOrder: meta.route_order || '',
     batchStatus: meta.batch_status || 'new',
@@ -966,10 +1042,10 @@ async function createBatchRequest(request, env, ctx, cors) {
   const statements = [];
   statements.push(env.DB.prepare(`INSERT INTO request_batches(
     batch_id,submission_id,user_id,client_token,requester_name,requester_phone,pickup_address,pickup_lat,pickup_lon,
-    ready_time,service,total_distance_km,total_duration_min,base_fee,extra_stop_fee,late_fee,total_fee,route_order,status,created_at,updated_at
-  ) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`).bind(
+    ready_time,service,total_distance_km,total_duration_min,base_fee,extra_stop_fee,late_fee,weather_fee,total_fee,route_order,status,created_at,updated_at
+  ) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`).bind(
     batchId,submissionId,userId,clientToken,x.base.requesterName,x.base.requesterPhone,x.base.pickupAddress,x.base.pickupLat,x.base.pickupLon,
-    x.base.readyTime,x.base.service,x.totalDistanceKm,x.totalDurationMin,x.baseFee,x.extraStopFee,x.lateFee,x.totalFee,
+    x.base.readyTime,x.base.service,x.totalDistanceKm,x.totalDurationMin,x.baseFee,x.extraStopFee,x.lateFee,x.weatherFee,x.totalFee,
     x.routeOrder.join(','),'new',now,now
   ));
 
@@ -980,11 +1056,11 @@ async function createBatchRequest(request, env, ctx, cors) {
     statements.push(env.DB.prepare(`INSERT INTO requests(
       code,client_token,submission_id,user_id,created_at,updated_at,status,requester_name,requester_phone,pickup_address,pickup_lat,pickup_lon,
       ready_time,recipient_name,recipient_phone,delivery_address,delivery_lat,delivery_lon,service,payment,order_total,notes,
-      distance_km,duration_min,route_source,base_fee,late_fee,total_fee,micro_delivery,rejection_reason
-    ) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`).bind(
+      distance_km,duration_min,route_source,base_fee,late_fee,weather_fee,total_fee,micro_delivery,rejection_reason
+    ) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`).bind(
       codes[originalIndex],clientToken,submissionId + '_' + (originalIndex + 1),userId,now,now,'new',x.base.requesterName,x.base.requesterPhone,
       x.base.pickupAddress,x.base.pickupLat,x.base.pickupLon,x.base.readyTime,s.recipientName,s.recipientPhone,s.deliveryAddress,s.deliveryLat,s.deliveryLon,
-      x.base.service,s.payment,s.orderTotal,s.notes,direct.distanceKm,direct.durationMin,direct.source,share,0,share,
+      x.base.service,s.payment,s.orderTotal,s.notes,direct.distanceKm,direct.durationMin,direct.source,share,0,0,share,
       (x.base.service === 'ebike' && direct.distanceKm <= 1) ? 1 : 0,''
     ));
     statements.push(env.DB.prepare('INSERT INTO request_batch_items(batch_id,code,stop_index,fee_share) VALUES(?,?,?,?)').bind(
@@ -1074,6 +1150,8 @@ async function getBatchPayload(env, batchId, safe=true) {
       baseFee: Number(x.batch.base_fee) || 0,
       extraStopFee: Number(x.batch.extra_stop_fee) || 0,
       lateFee: Number(x.batch.late_fee) || 0,
+      weatherFee: Number(x.batch.weather_fee) || 0,
+      weatherAdverse: Number(x.batch.weather_fee) > 0,
       totalFee: Number(x.batch.total_fee) || 0,
       deliveredCount,
       totalStops: items.length,
@@ -2004,10 +2082,12 @@ async function createRequest(request, env, ctx, cors) {
     d.service
   );
 
+  const weather = await getWeatherState(env);
   const fee = tariffFor(
     route.distanceKm,
     d.service,
-    d.readyTime
+    d.readyTime,
+    weather.adverse
   );
 
   const clientToken = token();
@@ -2048,13 +2128,14 @@ async function createRequest(request, env, ctx, cors) {
           route_source,
           base_fee,
           late_fee,
+          weather_fee,
           total_fee,
           micro_delivery,
           rejection_reason
         ) VALUES(
           ?,?,?,?,?,?,?,?,?,?,
           ?,?,?,?,?,?,?,?,?,?,
-          ?,?,?,?,?,?,?,?,?,?
+          ?,?,?,?,?,?,?,?,?,?,?
         )`
       ).bind(
         code,
@@ -2084,6 +2165,7 @@ async function createRequest(request, env, ctx, cors) {
         route.source,
         fee.baseFee,
         fee.lateFee,
+        fee.weatherFee,
         fee.totalFee,
         fee.microDelivery ? 1 : 0,
         ''
@@ -2390,6 +2472,8 @@ function rowBase(r) {
     routeSource: r.route_source,
     baseFee: r.base_fee,
     lateFee: r.late_fee,
+    weatherFee: Number(r.weather_fee) || 0,
+    weatherAdverse: Number(r.weather_fee) > 0,
     totalFee: r.total_fee,
     microDelivery: Number(r.micro_delivery) === 1,
     rejectionReason: r.rejection_reason || ''
