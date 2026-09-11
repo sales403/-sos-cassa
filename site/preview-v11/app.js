@@ -1,8 +1,7 @@
 (() => {
 'use strict';
 
-const APP_VERSION = '11.2.0-weather';
-const V11_BATCH_UI = true;
+const APP_VERSION = '11.0.0-dispatch';
 const KEY = 'sosRiderUnifiedV10';
 const V9_KEY = 'sosRiderUnifiedV9';
 const OLD_KEY = 'sosRiderGestV7';
@@ -30,9 +29,6 @@ let deferredInstall = null;
 let clientVehicle = 'ebike';
 let clientPickup = null;
 let clientDelivery = null;
-let clientDelivery2 = null;
-let clientBatchMode = false;
-let clientBatchPolling = null;
 let clientQuote = null;
 let clientSubmissionId = null;
 let clientPolling = null;
@@ -44,7 +40,6 @@ let authSession = null;
 let authUser = null;
 let authProfile = null;
 let currentAvailability = null;
-let currentWeatherAdverse = null;
 let availabilityPolling = null;
 let recentClientItems = [];
 let lastClientStatus = null;
@@ -181,7 +176,7 @@ function showOnly(view){
   window.scrollTo({top:0,behavior:'instant'});
 }
 function openHome(){
-  stopClientPolling(); stopClientBatchPolling(); stopRiderPolling(); stopAvailabilityPolling(); stopAlarm(); stopRiderLocationTracking();
+  stopClientPolling(); stopRiderPolling(); stopAvailabilityPolling(); stopAlarm(); stopRiderLocationTracking();
   history.replaceState(null,'',location.pathname);
   showOnly('hubHome');
   refreshAvailability(); startAvailabilityPolling();
@@ -224,7 +219,6 @@ function showRider(){
   renderRiderAll();
   refreshAvailability().then(av=>{ if(av?.enabled) startRiderLocationTracking(); });
   refreshRemoteRequests();
-  refreshRiderWeather();
   startRiderPolling(); startAvailabilityPolling();
   updateAlarmUI();
   renderRiderGpsStatus();
@@ -323,28 +317,6 @@ async function setRiderAvailability(enabled){
       stopRiderLocationTracking();
     }
   }catch(e){alert('Stato rider non aggiornato: '+e.message)}
-}
-
-function renderRiderWeather(){
-  const el=$('riderWeatherStatus');if(!el)return;
-  const on=!!currentWeatherAdverse?.adverse;
-  el.className='rider-gps-status '+(on?'warn':'ok');
-  el.textContent=on?'☔ Meteo avverso: ON · +3 € su tutti i nuovi preventivi':'☔ Meteo avverso: OFF · nessun supplemento';
-  if($('riderWeatherOnBtn'))$('riderWeatherOnBtn').setAttribute('aria-pressed',on?'true':'false');
-  if($('riderWeatherOffBtn'))$('riderWeatherOffBtn').setAttribute('aria-pressed',on?'false':'true');
-}
-async function refreshRiderWeather(){
-  if(authProfile?.role!=='rider'||!authSession)return null;
-  try{
-    const d=await fetchJson(apiBase()+'/api/rider/weather',{headers:riderHeaders()},7000);
-    currentWeatherAdverse=d.weather||null;renderRiderWeather();return currentWeatherAdverse;
-  }catch(e){console.warn('Stato meteo non disponibile',e);return null}
-}
-async function setRiderWeather(adverse){
-  try{
-    const d=await fetchJson(apiBase()+'/api/rider/weather',{method:'PATCH',headers:riderHeaders(),body:JSON.stringify({adverse:!!adverse})},7000);
-    currentWeatherAdverse=d.weather||null;renderRiderWeather();
-  }catch(e){alert('Meteo avverso non aggiornato: '+e.message)}
 }
 
 // ---------- Posizione Rider / Dispatch ----------
@@ -690,15 +662,6 @@ function updateLateHint(){
   const late=isLateTime($('cReadyTime').value);
   $('cLateHint').innerHTML=late ? '<b class="late-active">+2,00 € serale applicati automaticamente.</b>' : 'Il supplemento serale si applica automaticamente dopo le 22:30.';
 }
-function clientSecondData(){
-  if(!clientBatchMode)return null;
-  return {
-    recipientName:clampText($('cRecipient2')?.value,80),recipientPhone:digits($('cRecipientPhone2')?.value),
-    deliveryAddress:clampText($('cDelivery2')?.value,180),deliveryLat:clientDelivery2?.lat??null,deliveryLon:clientDelivery2?.lon??null,
-    payment:$('cPayment2')?.value||'paid',orderTotal:$('cPayment2')?.value==='cash'?num($('cOrderTotal2')?.value):0,
-    notes:clampText($('cNotes2')?.value,400)
-  };
-}
 function clientFormData(){
   return {
     requesterName:clampText($('cRequester').value,80), requesterPhone:digits($('cRequesterPhone').value),
@@ -707,7 +670,7 @@ function clientFormData(){
     recipientName:clampText($('cRecipient').value,80), recipientPhone:digits($('cRecipientPhone').value),
     deliveryAddress:clampText($('cDelivery').value,180), deliveryLat:clientDelivery?.lat??null, deliveryLon:clientDelivery?.lon??null,
     service:clientVehicle, payment:$('cPayment').value, orderTotal:$('cPayment').value==='cash'?num($('cOrderTotal').value):0,
-    notes:clampText($('cNotes').value,400), second:clientSecondData()
+    notes:clampText($('cNotes').value,400)
   };
 }
 function validateClientForm(forQuote=true){
@@ -716,87 +679,29 @@ function validateClientForm(forQuote=true){
   if(d.requesterPhone.length<9) missing.push('telefono referente');
   if(!d.pickupAddress || !clientPickup) missing.push('indirizzo ritiro selezionato');
   if(!d.readyTime) missing.push('orario ordine pronto');
-  if(!d.recipientName) missing.push('destinatario 1');
-  if(d.recipientPhone.length<9) missing.push('telefono destinatario 1');
-  if(!d.deliveryAddress || !clientDelivery) missing.push('indirizzo consegna 1 selezionato');
-  if(d.payment==='cash' && d.orderTotal<=0) missing.push('importo ordine 1 da incassare');
-  if(clientBatchMode){
-    const s=d.second||{};
-    if(!s.recipientName)missing.push('destinatario 2');
-    if((s.recipientPhone||'').length<9)missing.push('telefono destinatario 2');
-    if(!s.deliveryAddress||!clientDelivery2)missing.push('indirizzo consegna 2 selezionato');
-    if(s.payment==='cash'&&s.orderTotal<=0)missing.push('importo ordine 2 da incassare');
-  }
-  if(missing.length)throw new Error('Completa: '+missing.join(', ')+'.');
-  if(forQuote && (!clientPickup?.lat || !clientDelivery?.lat || (clientBatchMode&&!clientDelivery2?.lat)))throw new Error('Seleziona gli indirizzi dai suggerimenti reali.');
+  if(!d.recipientName) missing.push('destinatario');
+  if(d.recipientPhone.length<9) missing.push('telefono destinatario');
+  if(!d.deliveryAddress || !clientDelivery) missing.push('indirizzo consegna selezionato');
+  if(d.payment==='cash' && d.orderTotal<=0) missing.push('importo ordine da incassare');
+  if(missing.length){ throw new Error('Completa: '+missing.join(', ')+'.'); }
+  if(forQuote && (!clientPickup?.lat || !clientDelivery?.lat)) throw new Error('Seleziona gli indirizzi dai suggerimenti reali.');
   return d;
 }
 function hideClientQuote(){ $('clientQuoteSection').classList.add('hidden'); }
 function invalidateClientQuote(){ clientQuote=null; clientSubmissionId=null; hideClientQuote(); }
-function batchPayload(d){
-  return {
-    requesterName:d.requesterName,requesterPhone:d.requesterPhone,pickupAddress:d.pickupAddress,pickupLat:d.pickupLat,pickupLon:d.pickupLon,
-    readyTime:d.readyTime,service:d.service,
-    deliveries:[
-      {recipientName:d.recipientName,recipientPhone:d.recipientPhone,deliveryAddress:d.deliveryAddress,deliveryLat:d.deliveryLat,deliveryLon:d.deliveryLon,payment:d.payment,orderTotal:d.orderTotal,notes:d.notes},
-      d.second
-    ]
-  };
-}
 async function calculateClientQuote(){
-  const status=$('clientFormStatus');status.className='status-line';status.textContent=clientBatchMode?'Calcolo il giro migliore per 2 consegne…':'Calcolo percorso e tariffa sul server…';
+  const status=$('clientFormStatus'); status.className='status-line'; status.textContent='Calcolo percorso e tariffa sul server…';
   try{
     const d=validateClientForm(true);
-    if(clientBatchMode){
-      const res=await fetchJson(apiBase()+'/api/batch/quote',{method:'POST',headers:{'Accept':'application/json','Content-Type':'application/json'},body:JSON.stringify(batchPayload(d))},14000);
-      const q=res.quote;if(!q||!Number.isFinite(Number(q.totalFee)))throw new Error('Preventivo giro non disponibile.');
-      clientQuote={batch:true,distanceKm:Number(q.totalDistanceKm)||0,durationMin:Number(q.totalDurationMin)||0,base:Number(q.baseFee)||0,extraStopFee:Number(q.extraStopFee)||3.5,lateFee:Number(q.lateFee)||0,weatherFee:Number(q.weatherFee)||0,weatherAdverse:!!q.weatherAdverse,total:Number(q.totalFee),service:d.service,readyTime:d.readyTime,routeOrder:q.routeOrder||[0,1],stops:q.stops||[],pickupAvailability:q.pickupAvailability||res.availability||null,createdAt:Date.now()};
-    }else{
-      const res=await fetchJson(apiBase()+'/api/quote',{method:'POST',headers:{'Accept':'application/json','Content-Type':'application/json'},body:JSON.stringify({pickupLat:d.pickupLat,pickupLon:d.pickupLon,deliveryLat:d.deliveryLat,deliveryLon:d.deliveryLon,service:d.service,readyTime:d.readyTime})},10000);
-      const q=res.quote;if(!q||!Number.isFinite(Number(q.totalFee)))throw new Error('Preventivo server non disponibile.');
-      clientQuote={distanceKm:Number(q.distanceKm),durationMin:Number(q.durationMin)||0,source:q.routeSource||'server',base:Number(q.baseFee),lateFee:Number(q.lateFee)||0,weatherFee:Number(q.weatherFee)||0,weatherAdverse:!!q.weatherAdverse,total:Number(q.totalFee),micro:!!q.microDelivery,service:d.service,readyTime:d.readyTime,createdAt:Date.now(),pickupAvailability:res.pickupAvailability||null};
-      currentAvailability=res.availability||currentAvailability;
-    }
-    clientSubmissionId=null;renderAvailability();renderClientQuote();await generateClientQuoteImage();
+    const res=await fetchJson(apiBase()+'/api/quote',{method:'POST',headers:{'Accept':'application/json','Content-Type':'application/json'},body:JSON.stringify({pickupLat:d.pickupLat,pickupLon:d.pickupLon,deliveryLat:d.deliveryLat,deliveryLon:d.deliveryLon,service:d.service,readyTime:d.readyTime})},10000);
+    const q=res.quote;if(!q||!Number.isFinite(Number(q.totalFee)))throw new Error('Preventivo server non disponibile.');
+    clientQuote={distanceKm:Number(q.distanceKm),durationMin:Number(q.durationMin)||0,source:q.routeSource||'server',base:Number(q.baseFee),lateFee:Number(q.lateFee)||0,total:Number(q.totalFee),micro:!!q.microDelivery,service:d.service,readyTime:d.readyTime,createdAt:Date.now()};
+    clientSubmissionId=null;
+    currentAvailability=res.availability||currentAvailability;renderAvailability();renderClientQuote();await generateClientQuoteImage();
     $('clientQuoteSection').classList.remove('hidden');$('clientQuoteSection').scrollIntoView({behavior:'smooth',block:'start'});
-    status.className='status-line ok';status.textContent=clientBatchMode?'✓ Giro ottimizzato: 1 ritiro, 2 consegne. Controlla ordine e tariffa.':'✓ Preventivo pronto e verificato dal server. Puoi modificarlo oppure inviare la richiesta.';
-    if(!clientBatchMode&&clientQuote.distanceKm>8&&clientVehicle==='ebike'){$('serviceSuggestion').classList.remove('hidden');$('serviceSuggestion').textContent="💡 Oltre 8 km la tariffa è indicativa: la disponibilità viene confermata dall'operatore.";}else if(!clientBatchMode&&clientQuote.micro){$('serviceSuggestion').classList.remove('hidden');$('serviceSuggestion').textContent='⚡ ECONOMY E-BIKE: fascia 0–1 km · €2,50.';}else $('serviceSuggestion').classList.add('hidden');
+    status.className='status-line ok';status.textContent='✓ Preventivo pronto e verificato dal server. Puoi modificarlo oppure inviare la richiesta.';
+    if(clientQuote.distanceKm>8&&clientVehicle==='ebike'){$('serviceSuggestion').classList.remove('hidden');$('serviceSuggestion').textContent="💡 Oltre 8 km la tariffa è indicativa: la disponibilità viene confermata dall'operatore.";}else if(clientQuote.micro){$('serviceSuggestion').classList.remove('hidden');$('serviceSuggestion').textContent='⚡ ECONOMY E-BIKE: fascia 0–1 km · €2,50.';}else $('serviceSuggestion').classList.add('hidden');
   }catch(e){status.className='status-line error';status.textContent='⚠ '+e.message;}
-}
-
-function renderClientPickupAvailability(){
-  const box=$('clientPickupAvailability');
-  if(!box)return;
-  const a=clientQuote?.pickupAvailability;
-  if(!a){
-    box.className='pickup-availability unknown';
-    box.innerHTML='<div><b>Disponibilità in verifica</b><small>La stima del rider non è disponibile in questo momento.</small></div>';
-    return;
-  }
-
-  const level=a.level==='red'?'red':a.level==='yellow'?'yellow':'green';
-  const eta=a.pickupEta?etaRange(a.pickupEta):'—';
-  const min=Number(a.pickupEtaMin);
-  const queue=Number(a.queueAhead)||0;
-
-  box.className='pickup-availability '+level;
-
-  if(a.mode==='offline'||a.enabled===false){
-    box.innerHTML=`<div class="pickup-availability-icon">⛔</div><div><b>RIDER NON DISPONIBILE</b><small>Marcello ha messo il servizio OFF. In questo momento non accetta nuove consegne.</small></div>`;
-    if($('clientSendRequest'))$('clientSendRequest').disabled=true;
-    return;
-  }
-
-  const title=queue>0
-    ? `🟡 Rider impegnato · ${queue} consegna${queue===1?'':'e'} prima della tua`
-    : (level==='red'?'🔴 Disponibilità limitata':level==='yellow'?'🟡 Rider disponibile · verifica tempi':'🟢 Rider disponibile');
-
-  const etaText=Number.isFinite(min)
-    ? `Arrivo stimato al tuo locale: <strong>${esc(eta)}</strong> · circa ${min} min.`
-    : 'ETA al ritiro in aggiornamento.';
-
-  box.innerHTML=`<div><b>${title}</b><small>${etaText}</small><small>${esc(a.text||'Stima basata su posizione GPS e consegne già in corso.')}</small></div>`;
-  if($('clientSendRequest'))$('clientSendRequest').disabled=false;
 }
 
 function renderClientQuote(){
@@ -808,13 +713,7 @@ function renderClientQuote(){
   $('cqMicroRow').classList.toggle('hidden',!clientQuote.micro);
   $('cqLateRow').classList.toggle('hidden', !clientQuote.lateFee);
   $('cqLateNotice').classList.toggle('hidden', !clientQuote.lateFee);
-  $('cqWeatherRow')?.classList.toggle('hidden', !clientQuote.weatherFee);
-  $('cqBatchRow')?.classList.toggle('hidden',!clientQuote.batch);
-  if($('cqBatchExtra'))$('cqBatchExtra').textContent=clientQuote.batch?money(clientQuote.extraStopFee||3.5):'—';
-  const br=$('clientBatchRoute');
-  if(br){br.classList.toggle('hidden',!clientQuote.batch);br.innerHTML=clientQuote.batch?'<b>⚡ ORDINE DI CONSEGNA OTTIMIZZATO</b>'+clientQuote.stops.map(s=>`<span>${s.stopIndex}️⃣ ${esc(s.recipientName)} · ${esc(s.deliveryAddress)} · ETA ${esc(etaRange(s.eta))}</span>`).join(''):'';}
-  $('clientQuoteRouteBadge').textContent=clientQuote.batch?'GIRO OTTIMIZZATO':'PERCORSO CALCOLATO';
-  renderClientPickupAvailability();
+  $('clientQuoteRouteBadge').textContent='PERCORSO CALCOLATO';
 }
 
 function wrapText(ctx,text,x,y,maxWidth,lineHeight,maxLines=3){
@@ -838,7 +737,7 @@ async function generateClientQuoteImage(){
   const field=(label,value)=>{x.fillStyle=muted;x.font='700 18px Arial';x.fillText(label.toUpperCase(),110,y);y+=34;x.fillStyle=text;x.font='800 28px Arial';y=wrapText(x,value||'—',110,y,850,34,2);y+=28;};
   field('Locale / richiedente',d.requesterName);field('Ritiro',d.pickupAddress);field('Consegna',d.deliveryAddress);field('Ordine pronto',d.readyTime+(clientQuote.lateFee?' · supplemento serale +2 €':''));field('Servizio',clientQuote.micro?'MICRO E-BIKE · entro 1 km':vehicleLabel(clientQuote.service));field('Distanza calcolata',`${clientQuote.distanceKm.toFixed(1)} km`);
   x.fillStyle=soft;x.fillRect(100,y-5,880,150);x.strokeStyle=line;x.strokeRect(100,y-5,880,150);x.fillStyle=muted;x.font='700 19px Arial';x.fillText('TOTALE CONSEGNA',125,y+35);x.fillStyle=day?'#8a6b00':accent;x.font='900 62px Arial';x.fillText(money(clientQuote.total),125,y+104);y+=180;
-  x.fillStyle=muted;x.font='20px Arial';x.fillText(`${clientQuote.micro?'Micro E-bike':'Tariffa base'} ${money(clientQuote.base)}${clientQuote.lateFee?'  +  serale €2,00':''}${clientQuote.weatherFee?'  +  meteo avverso €3,00':''}`,110,y);y+=38;x.fillStyle=text;x.font='700 20px Arial';x.fillText('Tariffa verificata dal server · richiesta soggetta a disponibilità rider.',110,y);y+=45;x.fillStyle=muted;x.font='20px Arial';x.fillText('WhatsApp Marcello · 349 515 3092',110,1240);$('clientQuoteImage').src=c.toDataURL('image/png');
+  x.fillStyle=muted;x.font='20px Arial';x.fillText(`${clientQuote.micro?'Micro E-bike':'Tariffa base'} ${money(clientQuote.base)}${clientQuote.lateFee?'  +  serale €2,00':''}`,110,y);y+=38;x.fillStyle=text;x.font='700 20px Arial';x.fillText('Tariffa verificata dal server · richiesta soggetta a disponibilità rider.',110,y);y+=45;x.fillStyle=muted;x.font='20px Arial';x.fillText('WhatsApp Marcello · 349 515 3092',110,1240);$('clientQuoteImage').src=c.toDataURL('image/png');
 }
 
 function clientHistory(){try{return JSON.parse(localStorage.getItem(CLIENT_HISTORY_KEY)||'[]')}catch{return[]}}
@@ -877,13 +776,6 @@ function restoreClientDraft(){
       if(d.readyTime)$('cReadyTime').value=d.readyTime;if(d.recipientName)$('cRecipient').value=d.recipientName;if(d.recipientPhone)$('cRecipientPhone').value=d.recipientPhone;
       if(d.deliveryAddress)$('cDelivery').value=d.deliveryAddress;clientDelivery=d.deliveryGeo||null;if(d.payment)$('cPayment').value=d.payment;if(d.orderTotal)$('cOrderTotal').value=d.orderTotal;if(d.notes)$('cNotes').value=d.notes;
       if(d.service){clientVehicle=d.service;setClientVehicle(d.service,false)}
-      if(d.second){
-        clientBatchMode=true;$('clientSecondDelivery')?.classList.remove('hidden');if($('clientAddSecond'))$('clientAddSecond').textContent='− RIMUOVI SECONDA CONSEGNA';
-        if($('cRecipient2'))$('cRecipient2').value=d.second.recipientName||'';if($('cRecipientPhone2'))$('cRecipientPhone2').value=d.second.recipientPhone||'';
-        if($('cDelivery2'))$('cDelivery2').value=d.second.deliveryAddress||'';
-        if(Number.isFinite(Number(d.second.deliveryLat))&&Number.isFinite(Number(d.second.deliveryLon))){clientDelivery2={label:d.second.deliveryAddress||'',lat:Number(d.second.deliveryLat),lon:Number(d.second.deliveryLon)};if($('cDelivery2Status'))$('cDelivery2Status').textContent='✓ Indirizzo verificato';}
-        if($('cPayment2'))$('cPayment2').value=d.second.payment||'paid';if($('cOrderTotal2'))$('cOrderTotal2').value=d.second.orderTotal||'';if($('cNotes2'))$('cNotes2').value=d.second.notes||'';toggleOrderTotal2();
-      }
       if(clientPickup)$('cPickupStatus').textContent='✓ Indirizzo verificato';if(clientDelivery)$('cDeliveryStatus').textContent='✓ Indirizzo verificato';
       $('clientDraftPill').classList.remove('hidden');
     }
@@ -897,54 +789,31 @@ function setClientVehicle(v,invalidate=true){
   clientVehicle=v;document.querySelectorAll('[data-client-vehicle]').forEach(b=>b.classList.toggle('active',b.dataset.clientVehicle===v));if(invalidate)invalidateClientQuote();saveClientDraft();
 }
 function toggleOrderTotal(){ $('cOrderTotalWrap').classList.toggle('hidden',$('cPayment').value!=='cash'); if($('cPayment').value!=='cash')$('cOrderTotal').value=''; }
-function clientStructuredWhatsApp(d=clientFormData(),q=clientQuote){
-  if(clientBatchMode&&d.second){
-    return `Ciao Marcello, avrei bisogno di un giro SOS con 2 consegne.\n\n*Locale:* ${d.requesterName||'—'}\n*Ritiro unico:* ${d.pickupAddress||'—'}\n*Ordini pronti:* ${d.readyTime||'—'}\n\n*CONSEGNA 1*\n${d.recipientName} · ${d.recipientPhone}\n${d.deliveryAddress}\n${paymentLabel(d.payment)}${d.payment==='cash'?` · ${money(d.orderTotal)}`:''}\n\n*CONSEGNA 2*\n${d.second.recipientName} · ${d.second.recipientPhone}\n${d.second.deliveryAddress}\n${paymentLabel(d.second.payment)}${d.second.payment==='cash'?` · ${money(d.second.orderTotal)}`:''}${q&&q.weatherFee?`\n\n*Supplemento meteo avverso:* + €3,00`:''}${q?`\n*Tariffa giro SOS:* ${money(q.total)}`:''}`;
-  }
-  return `Ciao Marcello, avrei bisogno di una consegna SOS.\n\n*Locale:* ${d.requesterName||'—'}\n*Ritiro:* ${d.pickupAddress||'—'}\n*Ordine pronto:* ${d.readyTime||'—'}\n*Destinatario:* ${d.recipientName||'—'}\n*Telefono:* ${d.recipientPhone||'—'}\n*Consegna:* ${d.deliveryAddress||'—'}\n*Servizio:* ${vehicleLabel(d.service)}\n*Pagamento:* ${paymentLabel(d.payment)}${d.payment==='cash'?`\n*Importo ordine:* ${money(d.orderTotal)}`:''}${q&&q.weatherFee?`\n*Supplemento meteo avverso:* + €3,00`:''}${q?`\n*Tariffa SOS:* ${money(q.total)}`:''}${d.notes?`\n*Note:* ${d.notes}`:''}`;
+function clientStructuredWhatsApp(d=clientFormData(), q=clientQuote){
+  return `Ciao Marcello, avrei bisogno di una consegna SOS.\n\n*Locale:* ${d.requesterName||'—'}\n*Ritiro:* ${d.pickupAddress||'—'}\n*Ordine pronto:* ${d.readyTime||'—'}\n*Destinatario:* ${d.recipientName||'—'}\n*Telefono:* ${d.recipientPhone||'—'}\n*Consegna:* ${d.deliveryAddress||'—'}\n*Servizio:* ${vehicleLabel(d.service)}\n*Pagamento:* ${paymentLabel(d.payment)}${d.payment==='cash'?`\n*Importo ordine:* ${money(d.orderTotal)}`:''}${q?`\n*Tariffa SOS:* ${money(q.total)}${q.lateFee?' (include +€2 serale)':''}`:''}${d.notes?`\n*Note:* ${d.notes}`:''}`;
 }
 async function submitClientRequest(){
-  const status=$('clientSendStatus'),sendBtn=$('clientSendRequest');if(sendBtn.disabled)return;
+  const status=$('clientSendStatus'),sendBtn=$('clientSendRequest');
+  if(sendBtn.disabled)return;
   sendBtn.disabled=true;status.className='status-line';status.textContent='Verifico disponibilità e dati…';
   try{
     const d=validateClientForm(true);if(!clientQuote)throw new Error('Ricalcola prima la tariffa.');
     if(!clientSubmissionId)clientSubmissionId=(crypto.randomUUID?.()||uid('SUB'));
     getAudioCtx('client')?.resume?.();
     const av=await refreshAvailability();if(av?.mode==='offline')throw new Error('Il rider è segnato come non disponibile. Puoi contattarlo su WhatsApp.');
-    if(!clientBatchMode&&av?.mode==='busy'&&!confirm(`Il rider è attualmente occupato. Nuova partenza stimata ~${av.etaMin||25} min. Vuoi comunque inviare la richiesta?`))return;
-    if(clientBatchMode&&clientQuote?.pickupAvailability?.canAcceptNow===false&&!confirm('Il giro usa 2 slot e al momento non può essere accettato subito. Vuoi inviarlo comunque in attesa?'))return;
-    status.textContent=clientBatchMode?'Invio giro da 2 consegne all’Area Rider…':'Invio automatico all’Area Rider…';
+    if(av?.mode==='busy'&&!confirm(`Il rider è attualmente occupato. Nuova partenza stimata ~${av.etaMin||25} min. Vuoi comunque inviare la richiesta?`))return;
+    status.textContent='Invio automatico all’Area Rider…';
+    const payload={...d,submissionId:clientSubmissionId,clientQuote:{distanceKm:clientQuote.distanceKm,total:clientQuote.total},formStartedAt:Number(sessionStorage.getItem('sosClientStartedAt')||Date.now()),website:'sos-rider-v10'};
     const headers=authSession&&authProfile?.role==='client'?authHeaders():{'Accept':'application/json','Content-Type':'application/json'};
-    if(clientBatchMode){
-      const payload={...batchPayload(d),submissionId:clientSubmissionId,formStartedAt:Number(sessionStorage.getItem('sosClientStartedAt')||Date.now()),website:'sos-rider-v11-batch'};
-      const res=await fetchJson(apiBase()+'/api/requests/batch',{method:'POST',headers,body:JSON.stringify(payload)},16000);
-      if(!res?.batch?.batchId||!res?.clientToken)throw new Error('Risposta giro incompleta.');
-      localStorage.setItem(CLIENT_ACTIVE_KEY,JSON.stringify({batch:true,batchId:res.batch.batchId,token:res.clientToken}));
-      clientSubmissionId=null;showClientBatchStatus(res.batch,res.clientToken);status.className='status-line ok';status.textContent='✓ Giro con 2 consegne inviato.';
-    }else{
-      const payload={...d,second:undefined,submissionId:clientSubmissionId,clientQuote:{distanceKm:clientQuote.distanceKm,total:clientQuote.total},formStartedAt:Number(sessionStorage.getItem('sosClientStartedAt')||Date.now()),website:'sos-rider-v11'};
-      const res=await fetchJson(apiBase()+'/api/requests',{method:'POST',headers,body:JSON.stringify(payload)},12000);
-      if(!res?.request?.code||!res?.clientToken)throw new Error('Risposta server incompleta.');
-      const r=res.request;clientQuote={service:r.service,distanceKm:Number(r.distanceKm),durationMin:Number(r.durationMin)||0,source:r.routeSource||'server',base:Number(r.baseFee),lateFee:Number(r.lateFee),weatherFee:Number(r.weatherFee)||0,weatherAdverse:!!r.weatherAdverse,total:Number(r.totalFee),micro:!!r.microDelivery,readyTime:r.readyTime,pickupAvailability:clientQuote?.pickupAvailability||null};renderClientQuote();await generateClientQuoteImage();
-      localStorage.setItem(CLIENT_ACTIVE_KEY,JSON.stringify({code:r.code,token:res.clientToken,owned:!!(authSession&&authProfile?.role==='client')}));addClientHistory(r.code);saveClientDraft();clientSubmissionId=null;
-      showClientRequestStatus(r,res.clientToken,!!(authSession&&authProfile?.role==='client'));status.className='status-line ok';status.textContent='✓ Richiesta inviata automaticamente.';currentAvailability=res.availability||currentAvailability;renderAvailability();loadClientRecent();
-    }
+    const res=await fetchJson(apiBase()+'/api/requests',{method:'POST',headers,body:JSON.stringify(payload)},12000);
+    if(!res?.request?.code||!res?.clientToken)throw new Error('Risposta server incompleta.');
+    const r=res.request;clientQuote={service:r.service,distanceKm:Number(r.distanceKm),durationMin:Number(r.durationMin)||0,source:r.routeSource||'server',base:Number(r.baseFee),lateFee:Number(r.lateFee),total:Number(r.totalFee),micro:!!r.microDelivery,readyTime:r.readyTime};renderClientQuote();await generateClientQuoteImage();
+    localStorage.setItem(CLIENT_ACTIVE_KEY,JSON.stringify({code:r.code,token:res.clientToken,owned:!!(authSession&&authProfile?.role==='client')}));addClientHistory(r.code);saveClientDraft();
+    if(authProfile?.role==='client')updateMyProfile({displayName:d.requesterName,phone:d.requesterPhone,pickupAddress:d.pickupAddress,pickupLat:d.pickupLat,pickupLon:d.pickupLon}).catch(()=>{});
+    clientSubmissionId=null;
+    showClientRequestStatus(r,res.clientToken,!!(authSession&&authProfile?.role==='client'));status.className='status-line ok';status.textContent='✓ Richiesta inviata automaticamente.';currentAvailability=res.availability||currentAvailability;renderAvailability();loadClientRecent();
   }catch(e){status.className='status-line error';status.innerHTML=`⚠ Invio automatico non riuscito: ${esc(e.message)}<br><a class="btn whatsapp-btn full" style="margin-top:8px" href="${waLink(clientStructuredWhatsApp())}" target="_blank" rel="noopener">INVIA I DATI SU WHATSAPP</a>`;}finally{sendBtn.disabled=false;}
 }
-function showClientBatchStatus(batch,token){
-  $('clientFormCard').classList.add('hidden');$('clientQuoteSection').classList.add('hidden');$('clientRequestStatus').classList.remove('hidden');$('clientRequestCode').textContent=batch.batchId;$('clientStatusWhatsapp').href=waLink(`Ciao Marcello, ho inviato il giro SOS Rider ${batch.batchId}.`);lastClientStatus=null;updateClientBatchStatusUI(batch);startClientBatchPolling(batch.batchId,token);$('clientRequestStatus').scrollIntoView({behavior:'smooth',block:'start'});
-}
-function updateClientBatchStatusUI(b){
-  const badge=$('clientStatusBadge'),s=b.status||'new';if(lastClientStatus&&lastClientStatus!==s)playDing();lastClientStatus=s;badge.className='request-state';$('clientConfirmedPrice').textContent=`Tariffa giro: ${money(b.totalFee)}`;$('clientStatusIcon').textContent=s==='delivered'?'✓':s==='new'?'…':'⚡';
-  if(s==='new'){badge.classList.add('waiting');badge.textContent='GIRO IN ATTESA DEL RIDER';$('clientStatusText').textContent='Richiesta unica: 1 ritiro e 2 consegne.';}
-  else if(s==='accepted'){badge.classList.add('accepted');badge.textContent='GIRO ACCETTATO';$('clientStatusText').textContent='Marcello ha preso in carico entrambi gli ordini.';}
-  else if(s==='picked'){badge.classList.add('progress');badge.textContent=`IN CONSEGNA · ${b.deliveredCount||0}/2 COMPLETATE`;$('clientStatusText').textContent='Entrambi gli ordini sono stati ritirati. Il rider segue l’ordine di consegna ottimizzato.';}
-  else if(s==='delivered'){badge.classList.add('accepted');badge.textContent='GIRO COMPLETATO';$('clientStatusText').textContent='Entrambe le consegne sono state completate.';localStorage.removeItem(CLIENT_ACTIVE_KEY);stopClientBatchPolling();}
-  else if(s==='rejected'||s==='cancelled'){badge.classList.add('rejected');badge.textContent='GIRO NON ATTIVO';$('clientStatusText').textContent='Il giro non è stato preso in carico.';localStorage.removeItem(CLIENT_ACTIVE_KEY);stopClientBatchPolling();}
-  const items=(b.items||[]).slice().sort((x,y)=>x.batchStopIndex-y.batchStopIndex);$('clientEtaBox').innerHTML=`<div class="live-eta-title">⚡ GIRO 2 CONSEGNE</div><div class="batch-status-stops">${items.map(x=>`<div><b>${x.batchStopIndex}️⃣ ${esc(x.recipientName)}</b><span>${esc(x.deliveryAddress)}</span><small>${x.status==='delivered'?'✓ CONSEGNATA':x.eta?.delivery?'ETA '+esc(etaRange(x.eta.delivery)):remoteStatusLabel(x.status)}</small></div>`).join('')}</div>`;$('clientEtaBox').classList.remove('hidden');
-}
-function startClientBatchPolling(batchId,token){stopClientBatchPolling();const go=async()=>{try{const u=new URL(apiBase()+`/api/batches/${encodeURIComponent(batchId)}`);u.searchParams.set('token',token);const d=await fetchJson(u.toString(),{headers:{Accept:'application/json'}},7000);if(d?.batch)updateClientBatchStatusUI(d.batch)}catch(e){console.warn('Status giro non disponibile',e)}};go();clientBatchPolling=setInterval(go,4000);}
-function stopClientBatchPolling(){if(clientBatchPolling){clearInterval(clientBatchPolling);clientBatchPolling=null;}}
 function showClientRequestStatus(r,token,owned=false){
   $('clientFormCard').classList.add('hidden');$('clientQuoteSection').classList.add('hidden');$('clientRequestStatus').classList.remove('hidden');$('clientRequestCode').textContent=r.code;$('clientStatusWhatsapp').href=waLink(`Ciao Marcello, ho inviato la richiesta SOS Rider ${r.code}.`);lastClientStatus=null;updateClientStatusUI(r);startClientPolling(r.code,token,owned);$('clientRequestStatus').scrollIntoView({behavior:'smooth',block:'start'});
 }
@@ -976,9 +845,8 @@ function updateClientStatusUI(r){
   else if(s==='rejected'||s==='cancelled'){badge.classList.add('rejected');badge.textContent=s==='rejected'?'RICHIESTA NON ACCETTATA':'RICHIESTA ANNULLATA';$('clientStatusText').textContent=r.rejectionReason||'In questo momento la consegna non è disponibile.';$('clientStatusIcon').textContent='×';localStorage.removeItem(CLIENT_ACTIVE_KEY);stopClientPolling();}
 }
 function restoreActiveClientRequest(){
-  try{const x=JSON.parse(localStorage.getItem(CLIENT_ACTIVE_KEY)||'null');if(x?.batch&&x?.batchId&&x?.token){$('clientRequestCode').textContent=x.batchId;$('clientFormCard').classList.add('hidden');$('clientQuoteSection').classList.add('hidden');$('clientRequestStatus').classList.remove('hidden');startClientBatchPolling(x.batchId,x.token);return;}if(x?.code&&x?.token){$('clientRequestCode').textContent=x.code;$('clientFormCard').classList.add('hidden');$('clientQuoteSection').classList.add('hidden');$('clientRequestStatus').classList.remove('hidden');startClientPolling(x.code,x.token,!!x.owned,true)}}catch{}
+  try{const x=JSON.parse(localStorage.getItem(CLIENT_ACTIVE_KEY)||'null');if(x?.code&&x?.token){$('clientRequestCode').textContent=x.code;$('clientFormCard').classList.add('hidden');$('clientQuoteSection').classList.add('hidden');$('clientRequestStatus').classList.remove('hidden');startClientPolling(x.code,x.token,!!x.owned,true)}}catch{}
 }
-
 function startClientPolling(code,token,owned=false,immediate=false){
   stopClientPolling();const go=async()=>{try{let url,headers;if(owned&&authSession&&authProfile?.role==='client'){url=apiBase()+`/api/client/requests/${encodeURIComponent(code)}`;headers=authHeaders()}else{const u=new URL(apiBase()+`/api/requests/${encodeURIComponent(code)}`);u.searchParams.set('token',token);url=u.toString();headers={Accept:'application/json'}}const d=await fetchJson(url,{headers},7000);if(d?.request)updateClientStatusUI(d.request)}catch(e){console.warn('Status client non disponibile',e)}};if(immediate)go();clientPolling=setInterval(go,4000);
 }
@@ -1024,18 +892,40 @@ async function manualRiderRefresh(){
     },wait);
   }
 }
-function startRiderPolling(){stopRiderPolling();riderPolling=setInterval(()=>{refreshRemoteRequests();refreshRiderWeather();},4000)}
+function startRiderPolling(){stopRiderPolling();riderPolling=setInterval(refreshRemoteRequests,4000)}
 function stopRiderPolling(){if(riderPolling){clearInterval(riderPolling);riderPolling=null;}}
 function remoteStatusLabel(s){return s==='new'?'NUOVA':s==='accepted'?'ACCETTATA':s==='picked'?'IN CONSEGNA':s==='arrived'?'ARRIVATO':s==='delivered'?'COMPLETATA':s==='rejected'?'RIFIUTATA':s==='cancelled'?'ANNULLATA':String(s||'').toUpperCase();}
 function renderRemoteRequests(){
   const visible=remoteRequests.filter(r=>['new','accepted','picked','arrived'].includes(r.status));
-  const newOnes=visible.filter(r=>r.status==='new');$('newRequestCount').textContent=newOnes.length;
-  if(!visible.length){$('remoteRequestsList').innerHTML='<section class="card"><div class="eyebrow">TUTTO TRANQUILLO</div><h2>Nessuna richiesta in attesa</h2><p class="muted">Nessuna richiesta nuova e nessuna consegna attiva sul server.</p></section>';return;}
-  const units=[];const seen=new Set();
-  for(const r of visible){if(r.batchId){if(seen.has(r.batchId))continue;seen.add(r.batchId);units.push(visible.filter(x=>x.batchId===r.batchId).sort((a,b)=>a.batchStopIndex-b.batchStopIndex));}else units.push([r]);}
-  $('remoteRequestsList').innerHTML=units.map(unit=>{
-    if(unit.length===1&&!unit[0].batchId){const r=unit[0],exists=state.orders.some(o=>o.remoteCode===r.code);const etaBlock=r.status==='accepted'?riderEtaMarkup(r.eta,'to_pickup'):r?.eta?.previewPickup?`<div class="rider-eta-panel preview"><div class="rider-eta-head">PREVIEW CODA</div><div class="rider-eta-grid"><div><small>SE ACCETTI ORA</small><b>${esc(etaRange(r.eta.previewPickup))}</b><span>~${r.eta.previewPickup.min||0} min</span></div></div></div>`:'';return `<article class="request-card ${r.status==='new'?'new':'accepted'}"><div class="request-top"><div><div class="code">${esc(r.code)}</div><div class="tiny">${fmtDateTime(r.createdAt||r.created_at)}</div></div><span class="pill ${r.status==='new'?'yellow':'green'}">${remoteStatusLabel(r.status)}</span></div><div class="request-grid"><div class="kv"><small>RICHIEDENTE</small><b>${esc(r.requesterName||r.requester_name)}</b></div><div class="kv"><small>PRONTO</small><b>${esc(r.readyTime||r.ready_time||'—')}</b></div><div class="kv"><small>SERVIZIO</small><b>${vehicleIcon(r.service)} ${esc(r.microDelivery?'Micro E-bike':vehicleLabel(r.service))}</b></div><div class="kv"><small>TARIFFA SOS</small><b>${money(r.totalFee||r.total_fee)}</b></div></div><div class="route-box"><b>${icon('pin','mini-inline-icon')} Ritiro</b> ${esc(r.pickupAddress||r.pickup_address)}<br><b>${icon('navigation','mini-inline-icon')} Consegna</b> ${esc(r.deliveryAddress||r.delivery_address)}<br><b>${icon('customer','mini-inline-icon')}</b> ${esc(r.recipientName||r.recipient_name)} · ${esc(r.recipientPhone||r.recipient_phone)}</div>${r.status==='new'?dispatchDecisionMarkup(r):''}${etaBlock}<div class="request-actions">${r.status==='new'?`<button class="btn ghost" data-reject="${esc(r.code)}">RIFIUTA</button><button class="btn primary" data-accept="${esc(r.code)}">${icon('bolt','btn-icon')} ACCETTA ORDINE</button>`:`<button class="btn ghost" data-map-remote="${esc(r.code)}">PERCORSO</button><button class="btn primary" data-open-delivery="${esc(r.code)}">${exists?'APRI CONSEGNA':'RECUPERA CONSEGNA'}</button>`}</div></article>`;}
-    const first=unit[0],allNew=unit.every(x=>x.status==='new'),batchId=first.batchId;return `<article class="request-card batch-request ${allNew?'new':'accepted'}"><div class="request-top"><div><div class="code">${esc(batchId)}</div><div class="tiny">1 RITIRO · 2 CONSEGNE</div></div><span class="pill yellow">⚡ GIRO 2 STOP</span></div><div class="request-grid"><div class="kv"><small>LOCALE</small><b>${esc(first.requesterName)}</b></div><div class="kv"><small>PRONTO</small><b>${esc(first.readyTime||'—')}</b></div><div class="kv"><small>SERVIZIO</small><b>${vehicleIcon(first.service)} ${esc(vehicleLabel(first.service))}</b></div><div class="kv"><small>TARIFFA GIRO</small><b>${money(first.batchTotalFee)}</b></div></div><div class="batch-pickup"><b>${icon('store','mini-inline-icon')} RITIRO UNICO</b><span>${esc(first.batchPickupAddress||first.pickupAddress)}</span></div><div class="batch-stop-list">${unit.map(x=>`<div><b>${x.batchStopIndex}️⃣ ${esc(x.recipientName)}</b><span>${esc(x.deliveryAddress)}</span><small>${esc(x.recipientPhone||'')} · ${paymentLabel(x.payment)}</small></div>`).join('')}</div>${allNew?dispatchDecisionMarkup(first):''}<div class="request-actions">${allNew?`<button class="btn ghost" data-reject-batch="${esc(batchId)}">RIFIUTA GIRO</button><button class="btn primary" data-accept-batch="${esc(batchId)}">⚡ ACCETTA GIRO</button>`:`<button class="btn primary" data-open-batch="${esc(batchId)}">APRI GIRO</button>`}</div></article>`;
+  const newOnes=visible.filter(r=>r.status==='new');
+  $('newRequestCount').textContent=newOnes.length;
+  if(!visible.length){
+    $('remoteRequestsList').innerHTML='<section class="card"><div class="eyebrow">TUTTO TRANQUILLO</div><h2>Nessuna richiesta in attesa</h2><p class="muted">Nessuna richiesta nuova e nessuna consegna attiva sul server.</p></section>';
+    return;
+  }
+  $('remoteRequestsList').innerHTML=visible.map(r=>{
+    const exists=state.orders.some(o=>o.remoteCode===r.code);
+    const etaBlock=r.status==='accepted'
+      ? riderEtaMarkup(r.eta,'to_pickup')
+      : r?.eta?.previewPickup
+        ? `<div class="rider-eta-panel preview"><div class="rider-eta-head">PREVIEW CODA</div><div class="rider-eta-grid"><div><small>SE ACCETTI ORA</small><b>${esc(etaRange(r.eta.previewPickup))}</b><span>~${r.eta.previewPickup.min||0} min</span></div></div></div>`
+        : '';
+    return `<article class="request-card ${r.status==='new'?'new':'accepted'}" data-remote-code="${esc(r.code)}">
+      <div class="request-top"><div><div class="code">${esc(r.code)}</div><div class="tiny">${fmtDateTime(r.createdAt||r.created_at)}</div></div><span class="pill ${r.status==='new'?'yellow':'green'}">${remoteStatusLabel(r.status)}</span></div>
+      <div class="request-grid">
+        <div class="kv"><small>RICHIEDENTE</small><b>${esc(r.requesterName||r.requester_name)}</b></div>
+        <div class="kv"><small>PRONTO</small><b>${esc(r.readyTime||r.ready_time||'—')}</b></div>
+        <div class="kv"><small>SERVIZIO</small><b>${vehicleIcon(r.service)} ${esc(r.microDelivery?'Micro E-bike':vehicleLabel(r.service))}</b></div>
+        <div class="kv"><small>TARIFFA SOS</small><b>${money(r.totalFee||r.total_fee)}</b></div>
+      </div>
+      <div class="route-box"><b>${icon('pin','mini-inline-icon')} Ritiro</b> ${esc(r.pickupAddress||r.pickup_address)}<br><b>${icon('navigation','mini-inline-icon')} Consegna</b> ${esc(r.deliveryAddress||r.delivery_address)}<br><b>${icon('customer','mini-inline-icon')}</b> ${esc(r.recipientName||r.recipient_name)} · ${esc(r.recipientPhone||r.recipient_phone)}</div>
+      ${r.status==='new'?dispatchDecisionMarkup(r):''}
+      ${etaBlock}
+      <div class="request-actions">${r.status==='new'
+        ? `<button class="btn ghost" data-reject="${esc(r.code)}">RIFIUTA</button><button class="btn primary" data-accept="${esc(r.code)}">${icon('bolt','btn-icon')} ACCETTA ORDINE</button>`
+        : `<button class="btn ghost" data-map-remote="${esc(r.code)}">PERCORSO</button><button class="btn primary" data-open-delivery="${esc(r.code)}">${exists?'APRI CONSEGNA':'RECUPERA CONSEGNA'}</button>`
+      }</div>
+    </article>`;
   }).join('');
 }
 
@@ -1071,8 +961,8 @@ async function reconcileRemoteTerminalStates(){
 function currentShift(){return state.shifts.find(s=>s.id===state.currentShiftId && s.status!=='closed')||null}
 function startShift(name,fund){const s={id:uid('SHIFT'),name:name||`${new Date().toLocaleDateString('it-IT')} sera`,startAt:nowIso(),endAt:null,fundStart:num(fund),status:'open'};state.shifts.push(s);state.currentShiftId=s.id;saveState();renderDeliveries();return s;}
 function ensureShiftThen(done){if(currentShift()){done();return;}openModal('Apri turno per accettare',`<p class="muted">La richiesta può essere accettata appena apri il turno.</p><label>Nome turno<input id="mShiftName" value="${esc(new Date().toLocaleDateString('it-IT',{weekday:'long',day:'2-digit',month:'2-digit'})+' sera')}"></label><label style="margin-top:8px">Fondo resto<input id="mFund" type="number" min="0" value="100"></label>`,[{label:'ANNULLA',cls:'ghost'},{label:'APRI TURNO E CONTINUA',cls:'primary',fn:()=>{startShift($('mShiftName').value.trim(),num($('mFund').value));closeModal();done();}}]);}
-function normalizeRemote(r){return{code:r.code,requesterName:r.requesterName||r.requester_name,requesterPhone:r.requesterPhone||r.requester_phone,pickupAddress:r.pickupAddress||r.pickup_address,pickupLat:Number(r.pickupLat??r.pickup_lat),pickupLon:Number(r.pickupLon??r.pickup_lon),readyTime:r.readyTime||r.ready_time,recipientName:r.recipientName||r.recipient_name,recipientPhone:r.recipientPhone||r.recipient_phone,deliveryAddress:r.deliveryAddress||r.delivery_address,deliveryLat:Number(r.deliveryLat??r.delivery_lat),deliveryLon:Number(r.deliveryLon??r.delivery_lon),service:r.service,payment:r.payment,orderTotal:Number(r.orderTotal??r.order_total)||0,notes:r.notes||'',distanceKm:Number(r.distanceKm??r.distance_km)||0,durationMin:Number(r.durationMin??r.duration_min)||0,baseFee:Number(r.baseFee??r.base_fee)||0,lateFee:Number(r.lateFee??r.late_fee)||0,weatherFee:Number(r.weatherFee??r.weather_fee)||0,weatherAdverse:!!(r.weatherAdverse??((Number(r.weather_fee)||0)>0)),totalFee:Number(r.totalFee??r.total_fee)||0,microDelivery:!!(r.microDelivery??r.micro_delivery),createdAt:r.createdAt||r.created_at||nowIso(),status:r.status,eta:r.eta||null,batchId:r.batchId||null,batchStopIndex:Number(r.batchStopIndex)||null,batchSize:Number(r.batchSize)||0,batchTotalFee:Number(r.batchTotalFee)||0,batchExtraStopFee:Number(r.batchExtraStopFee)||0,batchWeatherFee:Number(r.batchWeatherFee)||0,batchTotalDistanceKm:Number(r.batchTotalDistanceKm)||0,batchPickupAddress:r.batchPickupAddress||null,batchPickupLat:Number(r.batchPickupLat),batchPickupLon:Number(r.batchPickupLon)};}
-function createLocalOrderFromRemote(raw){const r=normalizeRemote(raw);let o=state.orders.find(o=>o.remoteCode===r.code);if(o)return o;const s=currentShift(),localStatus=localStatusFromRemote(r.status);o={id:uid('ORD'),remoteCode:r.code,shiftId:s?.id||null,code:r.code,restaurant:r.requesterName,pickupAddress:r.pickupAddress,readyTime:r.readyTime,customer:r.recipientName,phone:r.recipientPhone,address:r.deliveryAddress,total:r.orderTotal,fee:r.totalFee,payment:r.payment,vehicle:r.service,distanceKm:r.distanceKm,durationMin:r.durationMin,baseFee:r.baseFee,lateFee:r.lateFee,weatherFee:r.weatherFee||0,weatherAdverse:!!r.weatherAdverse,microDelivery:r.microDelivery,pickupLat:r.pickupLat,pickupLon:r.pickupLon,lat:r.deliveryLat,lon:r.deliveryLon,received:0,change:0,status:localStatus,outcome:localStatus==='delivered'?'success':localStatus==='cancelled'?'cancelled':null,problemNote:'',cashSorted:false,restaurantSettled:false,createdAt:r.createdAt,pickedAt:['picked','arrived','delivered'].includes(localStatus)?nowIso():null,arrivedAt:['arrived','delivered'].includes(localStatus)?nowIso():null,deliveredAt:localStatus==='delivered'?nowIso():null,notes:r.notes||'',batchId:r.batchId||null,batchStopIndex:r.batchStopIndex||null,batchSize:r.batchSize||0,batchTotalFee:r.batchTotalFee||0,batchExtraStopFee:r.batchExtraStopFee||0,batchWeatherFee:r.batchWeatherFee||0,batchTotalDistanceKm:r.batchTotalDistanceKm||0};state.orders.push(o);state.settings.restaurantAddresses[o.restaurant]={label:o.pickupAddress,lat:o.pickupLat,lon:o.pickupLon};saveState();renderRiderAll();return o;}
+function normalizeRemote(r){return{code:r.code,requesterName:r.requesterName||r.requester_name,requesterPhone:r.requesterPhone||r.requester_phone,pickupAddress:r.pickupAddress||r.pickup_address,pickupLat:Number(r.pickupLat??r.pickup_lat),pickupLon:Number(r.pickupLon??r.pickup_lon),readyTime:r.readyTime||r.ready_time,recipientName:r.recipientName||r.recipient_name,recipientPhone:r.recipientPhone||r.recipient_phone,deliveryAddress:r.deliveryAddress||r.delivery_address,deliveryLat:Number(r.deliveryLat??r.delivery_lat),deliveryLon:Number(r.deliveryLon??r.delivery_lon),service:r.service,payment:r.payment,orderTotal:Number(r.orderTotal??r.order_total)||0,notes:r.notes||'',distanceKm:Number(r.distanceKm??r.distance_km)||0,durationMin:Number(r.durationMin??r.duration_min)||0,baseFee:Number(r.baseFee??r.base_fee)||0,lateFee:Number(r.lateFee??r.late_fee)||0,totalFee:Number(r.totalFee??r.total_fee)||0,microDelivery:!!(r.microDelivery??r.micro_delivery),createdAt:r.createdAt||r.created_at||nowIso(),status:r.status,eta:r.eta||null};}
+function createLocalOrderFromRemote(raw){const r=normalizeRemote(raw);let o=state.orders.find(o=>o.remoteCode===r.code);if(o)return o;const s=currentShift(),localStatus=localStatusFromRemote(r.status);o={id:uid('ORD'),remoteCode:r.code,shiftId:s?.id||null,code:r.code,restaurant:r.requesterName,pickupAddress:r.pickupAddress,readyTime:r.readyTime,customer:r.recipientName,phone:r.recipientPhone,address:r.deliveryAddress,total:r.orderTotal,fee:r.totalFee,payment:r.payment,vehicle:r.service,distanceKm:r.distanceKm,durationMin:r.durationMin,baseFee:r.baseFee,lateFee:r.lateFee,microDelivery:r.microDelivery,pickupLat:r.pickupLat,pickupLon:r.pickupLon,lat:r.deliveryLat,lon:r.deliveryLon,received:0,change:0,status:localStatus,outcome:localStatus==='delivered'?'success':localStatus==='cancelled'?'cancelled':null,problemNote:'',cashSorted:false,restaurantSettled:false,createdAt:r.createdAt,pickedAt:['picked','arrived','delivered'].includes(localStatus)?nowIso():null,arrivedAt:['arrived','delivered'].includes(localStatus)?nowIso():null,deliveredAt:localStatus==='delivered'?nowIso():null,notes:r.notes||''};state.orders.push(o);state.settings.restaurantAddresses[o.restaurant]={label:o.pickupAddress,lat:o.pickupLat,lon:o.pickupLon};saveState();renderRiderAll();return o;}
 async function acceptRemote(code){
   const r=findRemote(code);if(!r)return;
   const dsc=r.dispatch;
@@ -1086,22 +976,6 @@ async function acceptRemote(code){
       switchRiderPage('deliveries');
     }catch(e){alert('Non sono riuscito ad accettare la richiesta: '+e.message)}
   });
-}
-async function patchRemoteBatch(batchId,body){
-  if(['accepted','picked'].includes(body?.status))captureRiderLocationOnce(true).catch(()=>{});
-  return fetchJson(apiBase()+`/api/rider/batches/${encodeURIComponent(batchId)}`,{method:'PATCH',headers:riderHeaders(),body:JSON.stringify(body)},10000);
-}
-async function acceptRemoteBatch(batchId){
-  const rows=remoteRequests.filter(r=>r.batchId===batchId);if(!rows.length)return;const dsc=rows[0]?.dispatch;
-  if(dsc?.level==='red'&&!confirm(`⚠ ${dsc.label||'NON CONSIGLIATO'}\n\n${dsc.reason||''}\n\nInviare comunque il giro in accettazione?`))return;
-  stopAlarm();ensureShiftThen(async()=>{try{const d=await patchRemoteBatch(batchId,{status:'accepted'});(d.batch?.items||[]).forEach(createLocalOrderFromRemote);await refreshRemoteRequests();switchRiderPage('deliveries');}catch(e){alert('Non sono riuscito ad accettare il giro: '+e.message)}});
-}
-async function rejectRemoteBatch(batchId){if(!confirm('Rifiutare entrambe le consegne di questo giro?'))return;try{await patchRemoteBatch(batchId,{status:'rejected'});await refreshRemoteRequests();}catch(e){alert('Errore: '+e.message)}}
-async function markBatchPicked(batchId){
-  const locals=state.orders.filter(o=>o.batchId===batchId&&!['delivered','cancelled'].includes(o.status));const before=locals.map(o=>({o,status:o.status,pickedAt:o.pickedAt}));
-  locals.forEach(o=>{o.status='picked';o.pickedAt=nowIso()});saveState();renderRiderAll();
-  try{const d=await patchRemoteBatch(batchId,{status:'picked'});(d.batch?.items||[]).forEach(raw=>{const o=state.orders.find(x=>x.remoteCode===raw.code);if(o){o.status='picked';o.pickedAt=o.pickedAt||nowIso();}});saveState();await refreshRemoteRequests();renderRiderAll();}
-  catch(e){before.forEach(x=>{x.o.status=x.status;x.o.pickedAt=x.pickedAt});saveState();renderRiderAll();alert('Giro non sincronizzato: '+e.message)}
 }
 async function rejectRemote(code){if(!confirm(`Rifiutare ${code}? Il cliente vedrà che la richiesta non è disponibile.`))return;stopAlarm(code);try{await patchRemote(code,{status:'rejected'});await refreshRemoteRequests();}catch(e){alert('Errore: '+e.message)}}
 
@@ -1138,19 +1012,12 @@ function editInitialFund(){
     }}
   ]);
 }
-function batchOrderCard(arr){
-  const rows=arr.slice().sort((a,b)=>(a.batchStopIndex||1)-(b.batchStopIndex||1));const active=rows.filter(o=>!['delivered','cancelled'].includes(o.status));if(!active.length)return'';const first=rows[0],next=active[0];
-  const allPickup=active.every(o=>o.status==='to_pickup');
-  if(allPickup){const pickup={label:first.pickupAddress,lat:first.pickupLat,lon:first.pickupLon};return `<article class="order-card batch-order"><div class="order-top"><div><div class="code">${esc(first.batchId)}</div><div class="tiny">GIRO · 2 CONSEGNE · pronto ${esc(first.readyTime||'—')}</div></div><span class="pill yellow">DA RITIRARE</span></div><div class="batch-pickup"><b>${icon('store','mini-inline-icon')} RITIRO UNICO · 2 ORDINI</b><span>${esc(first.pickupAddress)}</span></div><div class="batch-stop-list">${rows.map(o=>`<div><b>${o.batchStopIndex}️⃣ ${esc(o.customer)}</b><span>${esc(o.address)}</span></div>`).join('')}</div><div class="order-grid"><div class="kv"><small>TARIFFA GIRO</small><b>${money(first.batchTotalFee)}</b></div><div class="kv"><small>DISTANZA GIRO</small><b>${num(first.batchTotalDistanceKm).toFixed(1)} km</b></div></div><div class="order-actions"><a class="btn ghost" href="${mapsNavigate(pickup,first.vehicle)}" target="_blank" rel="noopener">${icon('pin','btn-icon')} VAI AL RITIRO</a><button class="btn primary" data-batch-order-action="picked" data-batch-id="${esc(first.batchId)}">${icon('check','btn-icon')} RITIRATI 2 ORDINI</button></div></article>`;}
-  const del={label:next.address,lat:next.lat,lon:next.lon};let actions='',cash='';if(next.status==='picked')actions=`<a class="btn ghost" href="${mapsNavigate(del,next.vehicle)}" target="_blank" rel="noopener">${icon('navigation','btn-icon')} NAVIGA STOP ${next.batchStopIndex}</a><button class="btn primary" data-order-action="arrived" data-order-id="${next.id}">${icon('pin','btn-icon')} ARRIVATO</button>`;else if(next.status==='arrived'){actions=`<button class="btn primary" data-order-action="delivered" data-order-id="${next.id}">${icon('check','btn-icon')} CONSEGNATO STOP ${next.batchStopIndex}</button>`;cash=next.payment==='cash'?cashPanel(next):'';}
-  const done=rows.filter(o=>o.status==='delivered').length;const live=next.remoteCode?findRemote(next.remoteCode):null;return `<article class="order-card batch-order"><div class="order-top"><div><div class="code">${esc(first.batchId)}</div><div class="tiny">GIRO 2 STOP · ${done}/2 consegnate</div></div><span class="pill green">STOP ${next.batchStopIndex}/2</span></div><div class="batch-next-stop"><small>PROSSIMA CONSEGNA</small><b>${next.batchStopIndex}️⃣ ${esc(next.customer)}</b><span>${esc(next.phone||'')} · ${esc(next.address)}</span></div><div class="order-grid"><div class="kv"><small>PAGAMENTO</small><b>${esc(paymentLabel(next.payment))}</b></div>${next.payment==='cash'?`<div class="kv"><small>DA INCASSARE</small><b>${money(next.total)}</b></div>`:''}<div class="kv"><small>TARIFFA GIRO</small><b>${money(first.batchTotalFee)}</b></div></div>${riderEtaMarkup(live?.eta||null,next.status)}${cash}<div class="order-actions">${actions}</div><div class="batch-stop-list compact">${rows.map(o=>`<div class="${o.status==='delivered'?'done':''}"><b>${o.batchStopIndex}️⃣ ${esc(o.customer)}</b><small>${o.status==='delivered'?'✓ CONSEGNATA':o===next?'IN CORSO':'SUCCESSIVA'}</small></div>`).join('')}</div></article>`;
-}
 function renderDeliveries(){
-  const s=currentShift(),has=!!s;$('noShiftCard').classList.toggle('hidden',has);$('shiftWork').classList.toggle('hidden',!has);if(!has)return;
-  const orders=state.orders.filter(o=>o.shiftId===s.id),cash=cashTotals(s.id),delivered=orders.filter(o=>o.status==='delivered'&&o.outcome!=='cancelled');$('statFund').textContent=money(s.fundStart);$('statAvailable').textContent=money(Math.max(0,s.fundStart-cash.change));$('statUnsorted').textContent=money(cash.unsorted);$('statDue').textContent=money(cash.due);$('statFees').textContent=money(delivered.reduce((a,o)=>a+num(o.fee),0));$('shiftName').textContent=s.name;$('shiftMeta').textContent=`Iniziato ${fmtDateTime(s.startAt)} · ${orders.length} consegne registrate`;
-  const active=orders.filter(o=>!['delivered','cancelled'].includes(o.status)&&o.outcome!=='cancelled');$('activeCount').textContent=active.length;const units=[];const seen=new Set();for(const o of active){if(o.batchId){if(seen.has(o.batchId))continue;seen.add(o.batchId);units.push(active.filter(x=>x.batchId===o.batchId));}else units.push([o]);}$('activeOrders').innerHTML=units.length?units.slice().reverse().map(u=>u[0].batchId?batchOrderCard(u):orderCard(u[0])).join(''):'<p class="muted">Nessuna consegna attiva.</p>';renderRestaurantCash(s.id);
+  const s=currentShift(), has=!!s;$('noShiftCard').classList.toggle('hidden',has);$('shiftWork').classList.toggle('hidden',!has);if(!has)return;
+  const orders=state.orders.filter(o=>o.shiftId===s.id), cash=cashTotals(s.id), delivered=orders.filter(o=>o.status==='delivered'&&o.outcome!=='cancelled');
+  $('statFund').textContent=money(s.fundStart);$('statAvailable').textContent=money(Math.max(0,s.fundStart-cash.change));$('statUnsorted').textContent=money(cash.unsorted);$('statDue').textContent=money(cash.due);$('statFees').textContent=money(delivered.reduce((a,o)=>a+num(o.fee),0));$('shiftName').textContent=s.name;$('shiftMeta').textContent=`Iniziato ${fmtDateTime(s.startAt)} · ${orders.length} consegne registrate`;
+  const active=orders.filter(o=>!['delivered','cancelled'].includes(o.status)&&o.outcome!=='cancelled');$('activeCount').textContent=active.length;$('activeOrders').innerHTML=active.length?active.slice().reverse().map(orderCard).join(''):'<p class="muted">Nessuna consegna attiva.</p>';renderRestaurantCash(s.id);
 }
-
 function cashPanel(o){
   const rec=num(o.received);
   const missing=Math.max(0,roundHalf(num(o.total)-rec));
@@ -1441,34 +1308,27 @@ function switchRiderPage(name){
   const map={requests:'riderPageRequests',deliveries:'riderPageDeliveries',history:'riderPageHistory',analytics:'riderPageAnalytics'};Object.values(map).forEach(id=>$(id).classList.remove('active'));$(map[name]).classList.add('active');document.querySelectorAll('[data-rider-page]').forEach(b=>b.classList.toggle('active',b.dataset.riderPage===name));if(name==='requests')refreshRemoteRequests();if(name==='history')renderHistory();if(name==='analytics')renderAnalytics();window.scrollTo({top:0,behavior:'instant'});
 }
 
-function setBatchMode(on){
-  clientBatchMode=!!on;clientDelivery2=null;$('clientSecondDelivery')?.classList.toggle('hidden',!clientBatchMode);if($('clientAddSecond'))$('clientAddSecond').textContent=clientBatchMode?'− RIMUOVI SECONDA CONSEGNA':'+ AGGIUNGI SECONDA CONSEGNA';invalidateClientQuote();saveClientDraft();
-}
-function toggleOrderTotal2(){if(!$('cOrderTotalWrap2'))return;$('cOrderTotalWrap2').classList.toggle('hidden',$('cPayment2').value!=='cash');if($('cPayment2').value!=='cash')$('cOrderTotal2').value='';}
-
 // ---------- Events ----------
 function bindEvents(){
   $('openClientHub').onclick=openClient;$('openLoginHub').onclick=openLogin;if($('openRiderHome'))$('openRiderHome').onclick=openRider;$('riderGoLoginBtn').onclick=openLogin;$('guestLoginBtn').onclick=openLogin;document.querySelectorAll('[data-back-home]').forEach(b=>b.onclick=openHome);document.querySelectorAll('[data-theme-toggle]').forEach(b=>b.onclick=cycleTheme);
   $('authLoginBtn').onclick=loginEmail;$('authPassword').addEventListener('keydown',e=>{if(e.key==='Enter')loginEmail()});if($('authPasswordToggle'))$('authPasswordToggle').onclick=()=>{const input=$('authPassword'),btn=$('authPasswordToggle'),show=input.type==='password';input.type=show?'text':'password';btn.classList.toggle('is-visible',show);btn.setAttribute('aria-pressed',show?'true':'false');btn.setAttribute('aria-label',show?'Nascondi password':'Mostra password');btn.title=show?'Nascondi password':'Mostra password';};$('authPasskeyLoginBtn').onclick=loginPasskey;$('authForgotBtn').onclick=forgotPassword;$('authShowSignupBtn').onclick=()=>{$('signupCard').classList.remove('hidden');$('signupCard').scrollIntoView({behavior:'smooth'})};$('authHideSignupBtn').onclick=()=>$('signupCard').classList.add('hidden');$('authSignupBtn').onclick=signupClient;
   $('clientLogoutBtn').onclick=logoutAccount;$('clientRegisterPasskey').onclick=registerPasskey;
-  if($('clientAddSecond'))$('clientAddSecond').onclick=()=>setBatchMode(!clientBatchMode);if($('cPayment2'))$('cPayment2').addEventListener('change',()=>{toggleOrderTotal2();invalidateClientQuote();saveClientDraft()});
   $('directWhatsapp').href=waLink('Ciao Marcello, avrei bisogno di una consegna SOS.');$('clientStatusWhatsapp').href=waLink('Ciao Marcello, avrei bisogno di informazioni sulla mia richiesta SOS Rider.');
   document.querySelectorAll('[data-client-vehicle]').forEach(b=>b.onclick=()=>setClientVehicle(b.dataset.clientVehicle));
   $('cReadyTime').addEventListener('input',()=>{updateLateHint();invalidateClientQuote();saveClientDraft()});$('cPayment').addEventListener('change',()=>{toggleOrderTotal();invalidateClientQuote();saveClientDraft()});
   $('clientRequestForm').addEventListener('input',e=>{if(!['cReadyTime','cPayment'].includes(e.target.id)){invalidateClientQuote();saveClientDraft()}});
   $('clientCalcQuote').onclick=calculateClientQuote;$('clientEditQuote').onclick=()=>{$('clientQuoteSection').classList.add('hidden');$('clientFormCard').scrollIntoView({behavior:'smooth',block:'start'})};$('clientSendRequest').onclick=submitClientRequest;
-  $('clientNewRequest').onclick=()=>{localStorage.removeItem(CLIENT_ACTIVE_KEY);stopClientPolling();stopClientBatchPolling();lastClientStatus=null;setBatchMode(false);$('clientRequestStatus').classList.add('hidden');$('clientFormCard').classList.remove('hidden');clearClientDeliveryFields();$('clientFormCard').scrollIntoView({behavior:'smooth'})};
+  $('clientNewRequest').onclick=()=>{localStorage.removeItem(CLIENT_ACTIVE_KEY);stopClientPolling();lastClientStatus=null;$('clientRequestStatus').classList.add('hidden');$('clientFormCard').classList.remove('hidden');clearClientDeliveryFields();$('clientFormCard').scrollIntoView({behavior:'smooth'})};
   $('clientRecentList').addEventListener('click',e=>{const b=e.target.closest('[data-repeat-client]');if(b)repeatClientRequest(b.dataset.repeatClient)});
-  $('riderRefresh').onclick=manualRiderRefresh;$('openSettings').onclick=openSettings;$('riderAvailableBtn').onclick=()=>setRiderAvailability(true);$('riderOfflineBtn').onclick=()=>setRiderAvailability(false);if($('riderWeatherOnBtn'))$('riderWeatherOnBtn').onclick=()=>setRiderWeather(true);if($('riderWeatherOffBtn'))$('riderWeatherOffBtn').onclick=()=>setRiderWeather(false);$('riderEtaSelect').onchange=()=>{if(currentAvailability)setRiderAvailability(!!currentAvailability.enabled)};if($('riderGpsRefresh'))$('riderGpsRefresh').onclick=()=>{riderLocationError='';renderRiderGpsStatus();captureRiderLocationOnce(true).catch(e=>{riderLocationError=e?.message||'GPS non disponibile';renderRiderGpsStatus()})};
+  $('riderRefresh').onclick=manualRiderRefresh;$('openSettings').onclick=openSettings;$('riderAvailableBtn').onclick=()=>setRiderAvailability(true);$('riderOfflineBtn').onclick=()=>setRiderAvailability(false);$('riderEtaSelect').onchange=()=>{if(currentAvailability)setRiderAvailability(!!currentAvailability.enabled)};if($('riderGpsRefresh'))$('riderGpsRefresh').onclick=()=>{riderLocationError='';renderRiderGpsStatus();captureRiderLocationOnce(true).catch(e=>{riderLocationError=e?.message||'GPS non disponibile';renderRiderGpsStatus()})};
   document.querySelectorAll('[data-rider-page]').forEach(b=>b.onclick=()=>switchRiderPage(b.dataset.riderPage));
-  $('remoteRequestsList').addEventListener('click',e=>{const ab=e.target.closest('[data-accept-batch]');if(ab)return acceptRemoteBatch(ab.dataset.acceptBatch);const rb=e.target.closest('[data-reject-batch]');if(rb)return rejectRemoteBatch(rb.dataset.rejectBatch);const ob=e.target.closest('[data-open-batch]');if(ob){const rows=remoteRequests.filter(x=>x.batchId===ob.dataset.openBatch);ensureShiftThen(()=>rows.forEach(createLocalOrderFromRemote));switchRiderPage('deliveries');return;}const a=e.target.closest('[data-accept]');if(a)return acceptRemote(a.dataset.accept);const r=e.target.closest('[data-reject]');if(r)return rejectRemote(r.dataset.reject);const m=e.target.closest('[data-map-remote]');if(m){const x=normalizeRemote(findRemote(m.dataset.mapRemote));window.open(mapsRoute({label:x.pickupAddress,lat:x.pickupLat,lon:x.pickupLon},{label:x.deliveryAddress,lat:x.deliveryLat,lon:x.deliveryLon},x.service),'_blank','noopener');return}const o=e.target.closest('[data-open-delivery]');if(o){const rr=findRemote(o.dataset.openDelivery);if(rr&&!state.orders.some(x=>x.remoteCode===rr.code))ensureShiftThen(()=>createLocalOrderFromRemote(rr));switchRiderPage('deliveries')}});
+  $('remoteRequestsList').addEventListener('click',e=>{const a=e.target.closest('[data-accept]');if(a)return acceptRemote(a.dataset.accept);const r=e.target.closest('[data-reject]');if(r)return rejectRemote(r.dataset.reject);const m=e.target.closest('[data-map-remote]');if(m){const x=normalizeRemote(findRemote(m.dataset.mapRemote));window.open(mapsRoute({label:x.pickupAddress,lat:x.pickupLat,lon:x.pickupLon},{label:x.deliveryAddress,lat:x.deliveryLat,lon:x.deliveryLon},x.service),'_blank','noopener');return}const o=e.target.closest('[data-open-delivery]');if(o){const rr=findRemote(o.dataset.openDelivery);if(rr&&!state.orders.some(x=>x.remoteCode===rr.code))ensureShiftThen(()=>createLocalOrderFromRemote(rr));switchRiderPage('deliveries')}});
   $('openWaImporter').onclick=openWhatsAppImporter;$('newManualOrder').onclick=openWhatsAppImporter;
   $('startShiftBtn').onclick=()=>openModal('Inizia turno',`<label>Nome turno<input id="mShiftName" value="${esc(new Date().toLocaleDateString('it-IT',{weekday:'long',day:'2-digit',month:'2-digit'})+' sera')}"></label><label style="margin-top:8px">Fondo resto<input id="mFund" type="number" min="0" value="100"></label>`,[{label:'ANNULLA',cls:'ghost'},{label:'INIZIA',cls:'primary',keep:true,fn:()=>{startShift($('mShiftName').value.trim(),num($('mFund').value));closeModal()}}]);
   $('closeShiftBtn').onclick=closeCurrentShift;
   $('statFund')?.closest('.stat-card')?.addEventListener('click',editInitialFund);
   $('statAvailable')?.closest('.stat-card')?.addEventListener('click',editCurrentFund);
   $('activeOrders').addEventListener('click',e=>{
-    const batchBtn=e.target.closest('[data-batch-order-action]');if(batchBtn&&batchBtn.dataset.batchOrderAction==='picked')return markBatchPicked(batchBtn.dataset.batchId);
     const cashBtn=e.target.closest('[data-cash-action]');
     if(cashBtn){
       const o=state.orders.find(x=>x.id===cashBtn.dataset.orderId);if(!o)return;
@@ -1492,7 +1352,6 @@ function bindEvents(){
 function initAutocomplete(){
   wireAutocomplete({inputId:'cPickup',boxId:'cPickupSuggestions',statusId:'cPickupStatus',mapsId:'cPickupMaps',slotKey:'client-pickup',onSelect:v=>{clientPickup=v;saveClientDraft()}});
   wireAutocomplete({inputId:'cDelivery',boxId:'cDeliverySuggestions',statusId:'cDeliveryStatus',mapsId:'cDeliveryMaps',slotKey:'client-delivery',onSelect:v=>{clientDelivery=v;saveClientDraft()}});
-  wireAutocomplete({inputId:'cDelivery2',boxId:'cDelivery2Suggestions',statusId:'cDelivery2Status',mapsId:'cDelivery2Maps',slotKey:'client-delivery2',onSelect:v=>{clientDelivery2=v;saveClientDraft()}});
 }
 
 async function bootRoute(){

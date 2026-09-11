@@ -1,4 +1,4 @@
-const CACHE='sos-rider-v11-20260911-weather-1120';
+const CACHE='sos-rider-v11-20260908-staging-1102';
 const ASSETS=['./','./index.html','./styles.css','./app.js','./config.js','./manifest.webmanifest','./icon-192.png','./icon-512.png','./logo-sos-rider.png','./rider-banner-v2-live.png','./icons.svg'];
 
 self.addEventListener('install',e=>{
