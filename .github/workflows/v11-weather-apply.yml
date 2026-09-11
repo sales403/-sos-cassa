@@ -1,0 +1,51 @@
+name: V11 Weather Adverse Apply
+
+on:
+  push:
+    branches:
+      - v11-dispatch-engine
+    paths:
+      - .github/workflows/v11-weather-apply.yml
+
+permissions:
+  contents: write
+
+jobs:
+  apply-weather:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout V11 branch
+        uses: actions/checkout@v4
+        with:
+          ref: v11-dispatch-engine
+          fetch-depth: 0
+
+      - name: Apply weather adverse patch
+        run: python3 .github/scripts/apply_v11_weather.py
+
+      - name: Syntax and feature checks
+        run: |
+          node --check worker-v11.0.0-dispatch.js
+          node --check app.js
+          node --check preview-v11/app.js
+          node --check sw.js
+          node --check preview-v11/sw.js
+          grep -q "SOS Rider API 11.2.0-weather" worker-v11.0.0-dispatch.js
+          grep -q "weatherAdverse: !!env.DB" worker-v11.0.0-dispatch.js
+          grep -q "riderWeatherOnBtn" index.html
+          grep -q "cqWeatherRow" index.html
+          grep -q "Supplemento meteo avverso" app.js
+          grep -q "Meteo avverso:" site/index.html
+          grep -q "I supplementi vengono applicati solo quando effettivamente necessari" site/index.html
+
+      - name: Commit V11 staging weather changes
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add worker-v11.0.0-dispatch.js app.js index.html sw.js preview-v11/app.js preview-v11/index.html preview-v11/sw.js site/index.html
+          if git diff --cached --quiet; then
+            echo "No generated changes"
+            exit 0
+          fi
+          git commit -m "V11.2 weather: operator toggle and automatic +3 surcharge"
+          git push origin HEAD:v11-dispatch-engine
