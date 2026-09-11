@@ -20,6 +20,19 @@ jobs:
           ref: v11-dispatch-engine
           fetch-depth: 0
 
+      - name: Repair compact batch anchor
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('.github/scripts/apply_v11_weather.py')
+          s=p.read_text(encoding='utf-8')
+          old='a = replace_once(a, "batchExtraStopFee:r.batchExtraStopFee||0};state.orders.push", "batchExtraStopFee:r.batchExtraStopFee||0,batchWeatherFee:r.batchWeatherFee||0};state.orders.push", f\'{path} local batch weather\')'
+          new='a = replace_once(a, "batchExtraStopFee:r.batchExtraStopFee||0,batchTotalDistanceKm:r.batchTotalDistanceKm||0};state.orders.push", "batchExtraStopFee:r.batchExtraStopFee||0,batchWeatherFee:r.batchWeatherFee||0,batchTotalDistanceKm:r.batchTotalDistanceKm||0};state.orders.push", f\'{path} local batch weather\')'
+          if old not in s:
+              raise SystemExit('weather patch compact batch anchor source not found')
+          p.write_text(s.replace(old,new,1),encoding='utf-8')
+          PY
+
       - name: Apply weather adverse patch
         run: python3 .github/scripts/apply_v11_weather.py
 
