@@ -1495,7 +1495,20 @@ function parseWa(raw){
 function openWhatsAppImporter(){
   openModal('Importa da WhatsApp',`<p class="muted"><b>Modalità rapida:</b> bastano nome, telefono, servizio, indirizzo e <b>orario indicativo di ritiro</b>. Può scrivere anche “20:30”, “verso le 20:30”, “tra 20 min” o “subito”. I dati del locale puoi completarli tu.</p><label>Incolla messaggio<textarea id="mWaText" rows="8" placeholder="Marcello\n3495153092\nEconomy E-bike\nVia Malpighi 5 Carpi\n20:30 circa"></textarea></label><div id="mWaResult" class="status-line"></div>`,[
     {label:'ANNULLA',cls:'ghost'},
-    {label:'ANALIZZA',cls:'primary',keep:true,fn:()=>{const d=parseWa($('mWaText').value);renderWaParsed(d)}}
+    {label:'ANALIZZA',cls:'primary',keep:true,fn:()=>{
+      const input=$('mWaText');
+      if(input?.dataset.waAnalyzed==='1')return; // Non riscrivere mai campi già modificati a mano.
+      if(!input?.value.trim()){
+        alert('Incolla prima il messaggio WhatsApp da analizzare.');
+        return;
+      }
+      const parsed=parseWa(input.value);
+      renderWaParsed(parsed);
+      // Analisi eseguita: il modulo resta modificabile, ma non può essere rigenerato per errore.
+      input.dataset.waAnalyzed='1';
+      const analyzeBtn=[...$('modalActions').querySelectorAll('button')].find(b=>b.textContent.trim()==='ANALIZZA');
+      analyzeBtn?.remove();
+    }}
   ]);
 }
 
