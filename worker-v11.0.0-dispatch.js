@@ -280,9 +280,7 @@ function json(data, status = 200, extra = {}) {
 }
 
 function fail(message, status = 400) {
-  const e = new Error(message);
-  e.status = status;
-  throw e;
+  throw Object.assign(new Error(message), { status });
 }
 
 function requireDb(env) {
@@ -1540,7 +1538,7 @@ async function computeAvailability(env) {
 async function buildPickupAvailabilityPreview(env, input) {
   const state = await buildEtaState(env);
   const a = state.availability;
-  const ctx = state.queueContext || {};
+  const ctx = state.queueContext;
   const pickupLat = Number(input.pickupLat);
   const pickupLon = Number(input.pickupLon);
   const service = ['ebike','moto','auto'].includes(input.service) ? input.service : 'ebike';
