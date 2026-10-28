@@ -1111,6 +1111,9 @@ async function createBatchRequest(request, env, ctx, cors) {
   const availability = await computeAvailability(env);
   if (availability.mode === 'offline') fail('Rider non disponibile in questo momento. Usa WhatsApp per richieste particolari.', 409);
   const x = await calculateBatchData(env, p);
+  if (Number.isFinite(Number(p.quotedTotal)) && Math.abs(Number(p.quotedTotal)-x.totalFee)>0.001) {
+    fail('Preventivo giro aggiornato: il locale deve accettare il nuovo prezzo',409);
+  }
   const batchId = makeBatchId();
   const clientToken = token();
   const codes = [makeCode(), makeCode()];
@@ -2321,6 +2324,10 @@ async function createRequest(request, env, ctx, cors) {
     d.readyTime,
     weather.adverse
   );
+  if (p.clientQuote && Number.isFinite(Number(p.clientQuote.total)) &&
+      Math.abs(Number(p.clientQuote.total)-fee.totalFee)>0.001) {
+    fail('Preventivo aggiornato: il cliente deve approvare il nuovo prezzo',409);
+  }
 
   const clientToken = token();
 
