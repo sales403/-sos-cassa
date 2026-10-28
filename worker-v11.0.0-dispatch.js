@@ -1109,7 +1109,7 @@ async function createBatchRequest(request, env, ctx, cors) {
   }
 
   const availability = await computeAvailability(env);
-  if (availability.mode === 'offline') fail('Rider non disponibile in questo momento. Usa WhatsApp per richieste particolari.', 409);
+  if (availability.mode === 'offline' || availability.mode === 'full') fail('Rider non disponibile: OFF o limite di 3 consegne raggiunto.', 409);
   const x = await calculateBatchData(env, p);
   if (Number.isFinite(Number(p.quotedTotal)) && Math.abs(Number(p.quotedTotal)-x.totalFee)>0.001) {
     fail('Preventivo giro aggiornato: il locale deve accettare il nuovo prezzo',409);
@@ -1508,6 +1508,10 @@ async function buildEtaState(env) {
   const availability = !enabled ? {
     mode:'offline',enabled:false,pending,active,firstPickupEtaMin,etaMin:null,nextAvailableAt:null,availableEtaMin:5,availableEtaMax:10,location:publicLocation,
     etaModel:{automatic:true,ebikeKmh:ETA_MODEL.ebikeKmh,windowMin:ETA_MODEL.windowMin},updatedAt:p.updated_at
+  } : active >= MAX_ACTIVE_ORDERS ? {
+    mode:'full',enabled:true,pending,active,firstPickupEtaMin,
+    etaMin:nextFreeMin,nextAvailableAt:isoPlusMinutes(nextFreeMin),availableEtaMin:5,availableEtaMax:10,location:publicLocation,
+    etaModel:{automatic:true,ebikeKmh:ETA_MODEL.ebikeKmh,windowMin:ETA_MODEL.windowMin},updatedAt:p.updated_at
   } : active ? {
     mode:'busy',enabled:true,pending,active,firstPickupEtaMin,etaMin:nextFreeMin,nextAvailableAt:isoPlusMinutes(nextFreeMin),availableEtaMin:5,availableEtaMax:10,location:publicLocation,
     etaModel:{automatic:true,ebikeKmh:ETA_MODEL.ebikeKmh,windowMin:ETA_MODEL.windowMin},updatedAt:p.updated_at
@@ -1559,6 +1563,14 @@ async function buildPickupAvailabilityPreview(env, input) {
       locationFresh: !!state.liveLocation?.fresh,
       updatedAt: a?.updatedAt || new Date().toISOString()
     };
+  }
+
+  if (a?.mode === 'full') {
+    return {mode:'full',enabled:true,canSubmit:false,level:'red',
+      title:'Rider al completo',text:'3 consegne attive: nessuna nuova richiesta fino a quando si libera un posto.',
+      active:Number(ctx.active)||3,pending:Number(ctx.pending)||0,queueAhead:Number(ctx.active)||3,
+      pickupEta:null,pickupEtaMin:null,locationFresh:!!state.liveLocation?.fresh,
+      updatedAt:new Date().toISOString()};
   }
 
   let pickupMin = Math.max(0, Number(ctx.cursorMin) || 0);
@@ -2208,7 +2220,7 @@ async function confirmWhatsappRequest(request,env,ctx,cors) {
   if (saved.status!=='awaiting_confirmation') fail('Preventivo non confermabile',409);
   if (Date.now()>Date.parse(saved.expires_at)) fail('Preventivo scaduto: ricalcola',409);
   const av=await computeAvailability(env);
-  if (av.mode==='offline') fail('Rider OFF: riattiva disponibilità prima di confermare',409);
+  if (av.mode==='offline' || av.mode==='full') fail('Rider non disponibile: OFF manuale o 3 ordini attivi',409);
   const d=validatePayload(JSON.parse(saved.payload_json));
   const old=JSON.parse(saved.quote_json);
   const current=await pricedWhatsappData(env,d);
@@ -2304,7 +2316,7 @@ async function createRequest(request, env, ctx, cors) {
 
   const availability = await computeAvailability(env);
 
-  if (availability.mode === 'offline') {
+  if (availability.mode === 'offline' || availability.mode === 'full') {
     fail(
       'Rider non disponibile in questo momento. Usa WhatsApp per richieste particolari.',
       409
