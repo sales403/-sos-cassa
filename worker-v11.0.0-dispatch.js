@@ -386,7 +386,7 @@ async function ensureWeatherSchema(env) {
 
 /* Automatic rain and adverse-condition surcharge. Forecast provider:
  * MET Norway Locationforecast (CC BY 4.0, commercial permitted; attribution required).
- * Manual control is AUTO (default) or FORCE ON; never left OFF unknowingly.
+ * Default AUTO; optional manual FORCE ON or FORCE OFF override.
  */
 const MET_SOURCE='MET Norway (api.met.no)';
 async function automaticWeatherForecast(lat,lon,readyTime=''){
@@ -439,16 +439,22 @@ async function automaticWeatherForecast(lat,lon,readyTime=''){
 async function getWeatherState(env,lat=44.783,lon=10.884,readyTime='') {
   await ensureWeatherSchema(env);
   const row=await env.DB.prepare('SELECT weather_adverse,updated_at,weather_mode FROM operator_settings WHERE id=1').first();
-  const mode=row?.weather_mode==='force_on'?'force_on':'auto';
-  const forecast=await automaticWeatherForecast(lat,lon,readyTime);
-  const adverse=mode==='force_on'?true:forecast.adverse;
+  const mode=['auto','force_on','force_off'].includes(row?.weather_mode)?row.weather_mode:'auto';
+  const forced=mode!=='auto';
+  const forecast=forced
+    ? {verified:true,source:'Manuale Rider',reason:mode==='force_on'?'Supplemento imposto dal Rider':'Supplemento escluso dal Rider'}
+    : await automaticWeatherForecast(lat,lon,readyTime);
+  const adverse=mode==='force_on'?true:mode==='force_off'?false:forecast.adverse===true;
   return {...forecast,mode,adverse,fee:adverse?WEATHER_FEE_EUR:0,
-    verified:mode==='force_on'||forecast.verified,
+    verified:forced||forecast.verified===true,
     updatedAt:row?.updated_at||new Date().toISOString()};
 }
 async function updateWeatherState(request,env,cors) {
   const p=await request.json().catch(()=>fail('JSON non valido'));
-  const mode=p.mode==='force_on'||p.adverse===true?'force_on':'auto';
+  const mode=String(p.mode||'');
+  if(!['auto','force_on','force_off'].includes(mode)){
+    fail('Modalità meteo non valida: scegli AUTO, FORZA +3 oppure NO +3',400);
+  }
   await ensureWeatherSchema(env);
   await env.DB.prepare('UPDATE operator_settings SET weather_mode=?,weather_adverse=?,updated_at=? WHERE id=1')
     .bind(mode,mode==='force_on'?1:0,new Date().toISOString()).run();
