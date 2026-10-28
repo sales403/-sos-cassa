@@ -1299,6 +1299,8 @@ function parseWa(raw){
   const labelled=Object.keys(rows).length>0;
 
   let restaurant=get('Nome locale','Locale','Ristorante','Pizzeria');
+  let requesterPhone=digits(get('Telefono locale','Tel locale'));
+
   let pickupAddress=get('Indirizzo locale','Indirizzo ritiro','Ritiro');
   let customer=get('Nome destinatario','Destinatario','Nome cliente','Cliente');
   let phone=digits(get('Tel destinatario','Telefono destinatario','Tel cliente','Telefono cliente','Telefono'));
@@ -1323,6 +1325,7 @@ function parseWa(raw){
   const ready=waPickupTime(get('Ordine pronto','Orario ritiro','Ritiro previsto','Pronto alle')||clean);
   return {
     restaurant,
+    requesterPhone,
     pickupAddress,
     readyTime:ready,
     customer,
@@ -1342,30 +1345,179 @@ function openWhatsAppImporter(){
     {label:'ANALIZZA',cls:'primary',keep:true,fn:()=>{const d=parseWa($('mWaText').value);renderWaParsed(d)}}
   ]);
 }
-function renderWaParsed(d){
-  const r=$('mWaResult');
-  r.innerHTML=`<div class="notice blue"><b>Controlla i campi prima di creare la consegna.</b><br>Il parser non sovrascrive dati nascosti: qui vedi esattamente cosa verrà registrato.</div>
-  <div class="form-grid" style="margin-top:9px">
-    <label>Locale<input id="mPRestaurant" value="${esc(d.restaurant||'')}"></label>
-    <label>Ordine pronto<input id="mPReady" type="time" value="${esc(d.readyTime||'')}"></label>
-    <label class="full">Indirizzo ritiro<input id="mPPickup" value="${esc(d.pickupAddress||'')}"></label>
-    <label>Cliente<input id="mPCustomer" value="${esc(d.customer||'')}"></label>
-    <label>Telefono<input id="mPPhone" inputmode="tel" value="${esc(d.phone||'')}"></label>
-    <label class="full">Indirizzo consegna<input id="mPAddress" value="${esc(d.address||'')}"></label>
-    <label>Servizio<select id="mPVehicle"><option value="ebike" ${d.vehicle==='ebike'?'selected':''}>Economy E-bike</option><option value="moto" ${d.vehicle==='moto'?'selected':''}>Moto Express</option><option value="auto" ${d.vehicle==='auto'?'selected':''}>Auto Cargo</option></select></label>
-    <label>Pagamento<select id="mPPayment"><option value="paid" ${d.payment==='paid'?'selected':''}>Già pagato</option><option value="cash" ${d.payment==='cash'?'selected':''}>Contanti da incassare</option><option value="pos" ${d.payment==='pos'?'selected':''}>POS locale</option></select></label>
-    <label>Importo ordine<input id="mPOrderTotal" type="number" min="0" step="0.01" value="${num(d.orderTotal)||''}"></label>
-    <label>Tariffa SOS<input id="mPFee" type="number" min="0" step="0.01" value="${num(d.fee)||''}"></label>
-    <label class="full">Note<textarea id="mPNotes" rows="2">${esc(d.notes||'')}</textarea></label>
-  </div>
-  <button id="mCreateParsed" class="btn primary full" style="margin-top:8px">CREA CONSEGNA</button>`;
-  $('mCreateParsed').onclick=()=>createManualFromParsed({restaurant:$('mPRestaurant').value.trim(),pickupAddress:$('mPPickup').value.trim(),readyTime:$('mPReady').value,customer:$('mPCustomer').value.trim(),phone:digits($('mPPhone').value),address:$('mPAddress').value.trim(),vehicle:$('mPVehicle').value,payment:$('mPPayment').value,orderTotal:num($('mPOrderTotal').value),fee:num($('mPFee').value),notes:$('mPNotes').value.trim()});
+
+let waQuoteDraft = null;
+let waResolvedLocations = null;
+
+function waImportedPayload(){
+  const pickupIndex=Number($('mPVerifiedPickup')?.value),dropIndex=Number($('mPVerifiedDelivery')?.value);
+  const pickup=waResolvedLocations?.pickup?.[pickupIndex];
+  const drop=waResolvedLocations?.drop?.[dropIndex];
+  if (!pickup||!drop) throw Error('Seleziona entrambi gli indirizzi verificati (ritiro e consegna).');
+  const coords=f=>({lat:Number(f.geometry.coordinates[1]),lon:Number(f.geometry.coordinates[0])});
+  const a=coords(pickup),b=coords(drop);
+  const result={
+    requesterName:$('mPRestaurant').value.trim(),requesterPhone:digits($('mPRestaurantPhone').value),
+    pickupAddress:featureLabel(pickup),pickupLat:a.lat,pickupLon:a.lon,
+    readyTime:$('mPReady').value,
+    recipientName:$('mPCustomer').value.trim(),recipientPhone:digits($('mPPhone').value),
+    deliveryAddress:featureLabel(drop),deliveryLat:b.lat,deliveryLon:b.lon,
+    service:$('mPVehicle').value,payment:$('mPPayment').value,
+    orderTotal:num($('mPOrderTotal').value),notes:$('mPNotes').value.trim()
+  };
+  if (!result.requesterName||result.requesterPhone.length<9||!result.recipientName||result.recipientPhone.length<9||
+      !result.readyTime) throw Error('Completa locale, telefono locale, destinatario, telefono cliente e orario pronto.');
+  if(result.payment==='cash'&&result.orderTotal<=0)throw Error('Inserisci il denaro da incassare per il locale.');
+  return result;
 }
-function createManualFromParsed(d){
-  ensureShiftThen(()=>{
-    if(!d.restaurant||!d.pickupAddress||!d.customer||!d.address){alert('Completa almeno locale, ritiro, cliente e indirizzo di consegna.');return;}
-    const o={id:uid('ORD'),remoteCode:null,shiftId:currentShift().id,code:`SOS-${String(state.orders.length+1).padStart(3,'0')}`,restaurant:d.restaurant,pickupAddress:d.pickupAddress,readyTime:d.readyTime,customer:d.customer,phone:d.phone,address:d.address,total:num(d.orderTotal),fee:num(d.fee),payment:d.payment,vehicle:d.vehicle,distanceKm:0,durationMin:0,baseFee:num(d.fee),lateFee:isLateTime(d.readyTime)?2:0,pickupLat:null,pickupLon:null,lat:null,lon:null,received:0,change:0,status:'to_pickup',outcome:null,problemNote:'',cashSorted:false,restaurantSettled:false,createdAt:nowIso(),pickedAt:null,arrivedAt:null,deliveredAt:null,notes:d.notes||''};state.orders.push(o);saveState();closeModal();renderRiderAll();switchRiderPage('deliveries');
-  });
+
+async function resolveWaAddresses(){
+  const status=$('mWaQuoteStatus');status.className='status-line';status.textContent='Cerco indirizzi reali: selezionali entrambi…';
+  waQuoteDraft=null;waResolvedLocations=null;$('mWaQuoteResult').innerHTML='';
+  const get=async value=>{
+    if(value.trim().length<4)throw Error('Inserisci via, civico e città per entrambi gli indirizzi.');
+    const u=new URL(apiBase()+'/api/address');u.searchParams.set('q',value.trim());
+    const d=await fetchJson(u.toString(),{headers:{Accept:'application/json'}},12000);
+    return (d.features||[]).filter(f=>Array.isArray(f?.geometry?.coordinates)&&f.geometry.coordinates.length===2);
+  };
+  try{
+    const [pickup,drop]=await Promise.all([get($('mPPickup').value),get($('mPAddress').value)]);
+    if(!pickup.length||!drop.length)throw Error('Indirizzo non trovato. Controlla via e civico e ripeti la ricerca.');
+    waResolvedLocations={pickup,drop};
+    const options=arr=>'<option value="">SELEZIONA INDIRIZZO ESATTO</option>'+arr.map((f,i)=>'<option value="'+i+'">'+esc(featureLabel(f))+'</option>').join('');
+    $('mWaAddressChoices').innerHTML='<label class="full">Ritiro verificato<select id="mPVerifiedPickup">'+options(pickup)+'</select></label>'+
+      '<label class="full">Consegna verificata<select id="mPVerifiedDelivery">'+options(drop)+'</select></label>';
+    status.className='status-line ok';status.textContent='✓ Seleziona la via e il civico corretti dai risultati.';
+    $('mWaQuoteBtn').classList.remove('hidden');
+  }catch(e){status.className='status-line error';status.textContent='⚠ '+e.message;}
+}
+
+async function quoteWhatsappFromParsed(){
+  const status=$('mWaQuoteStatus');
+  try{
+    const payload=waImportedPayload();
+    status.className='status-line';status.textContent='Calcolo tariffa server e salvo preventivo in D1…';
+    const d=await fetchJson(apiBase()+'/api/rider/whatsapp/quote',{
+      method:'POST',headers:riderHeaders(),body:JSON.stringify(payload)
+    },18000);
+    if(!d.quoteId||!d.quote)throw Error('Preventivo server incompleto.');
+    waQuoteDraft={...d,payload};
+    $('mWaQuoteResult').innerHTML='<div class="notice yellow"><b>PREVENTIVO IN ATTESA DI CONFERMA</b><br>'+
+      'Preventivo '+esc(d.quoteId)+' · '+esc(vehicleLabel(payload.service))+' · '+
+      Number(d.quote.distanceKm).toFixed(1)+' km · <b>'+money(d.quote.totalFee)+'</b>'+
+      (d.quote.weatherFee?'<br>☔ Supplemento meteo avverso '+money(d.quote.weatherFee):'')+
+      '<br><small>Il locale deve confermare il preventivo prima di creare la missione.</small></div>'+
+      '<button type="button" id="mWaDownloadPdf" class="btn ghost full" style="margin-top:8px">⬇ SCARICA PREVENTIVO PDF</button>'+
+      '<button type="button" id="mWaConfirm" class="btn primary full" style="margin-top:8px">✓ CONFERMA RICEVUTA DAL LOCALE · CREA ORDINE IN D1</button>';
+    $('mWaDownloadPdf').onclick=()=>downloadWaQuotePdf(waQuoteDraft);
+    $('mWaConfirm').onclick=confirmWhatsappQuote;
+    status.className='status-line ok';status.textContent='✓ Preventivo salvato, in attesa della conferma del locale.';
+  }catch(e){status.className='status-line error';status.textContent='⚠ '+e.message;}
+}
+
+function downloadWaQuotePdf(draft){
+  if(!draft?.quoteId)throw Error('Calcola prima il preventivo.');
+  const d=draft.payload,q=draft.quote;
+  const items=[
+    'SOS RIDER CARPI-SOLIERA',
+    'IL TUO RIDER DI EMERGENZA',
+    'PREVENTIVO '+draft.quoteId,
+    'STATO: IN ATTESA DI CONFERMA DEL LOCALE',
+    '----------------------------------------------',
+    'Locale: '+d.requesterName,
+    'Telefono locale: '+d.requesterPhone,
+    'Ritiro: '+d.pickupAddress,
+    'Ordine pronto: '+d.readyTime,
+    'Destinatario: '+d.recipientName,
+    'Consegna: '+d.deliveryAddress,
+    'Servizio: '+vehicleLabel(d.service),
+    'Distanza: '+Number(q.distanceKm).toFixed(1)+' km',
+    'Ordine del ristorante: '+money(d.orderTotal),
+    'Pagamento: '+paymentLabel(d.payment),
+    '----------------------------------------------',
+    'Tariffa base Rider: '+money(q.baseFee),
+    'Supplemento serale: '+money(q.lateFee||0),
+    'Supplemento meteo avverso: '+money(q.weatherFee||0),
+    'TOTALE CONSEGNA SOS RIDER: '+money(q.totalFee),
+    '----------------------------------------------',
+    'La tariffa Rider e distinta dal valore dell ordine.',
+    'L ordine viene attivato solo dopo tua conferma.',
+    'Validita preventivo: 45 minuti.',
+    'Previsioni meteo ove presenti: MET Norway / met.no.'
+  ];
+  // File PDF standard senza CDN o librerie esterne; ISO WinAnsi/Helvetica.
+  const literal=v=>String(v).normalize('NFD').replace(/[\u0300-\u036f]/g,'')
+    .replace(/[^\x20-\x7e€]/g,' ')
+    .replace(/\\/g,'\\\\').replace(/\(/g,'\\(').replace(/\)/g,'\\)')
+    .replace(/€/g,'\\200');
+  const stream='BT /F1 11 Tf 47 795 Td 16 TL '+items.map((line,i)=>'('+literal(line)+') Tj'+(i<items.length-1?' T*':'')).join('\n')+' ET';
+  const objects=[
+    '<< /Type /Catalog /Pages 2 0 R >>',
+    '<< /Type /Pages /Kids [3 0 R] /Count 1 >>',
+    '<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 5 0 R >> >> /Contents 4 0 R >>',
+    '<< /Length '+stream.length+' >>\nstream\n'+stream+'\nendstream',
+    '<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>'
+  ];
+  let content='%PDF-1.4\n',offsets=[0];
+  for(let i=0;i<objects.length;i++){offsets.push(content.length);content+=(i+1)+' 0 obj\n'+objects[i]+'\nendobj\n';}
+  const start=content.length;
+  content+='xref\n0 '+(objects.length+1)+'\n0000000000 65535 f \n';
+  for(let i=1;i<offsets.length;i++)content+=String(offsets[i]).padStart(10,'0')+' 00000 n \n';
+  content+='trailer\n<< /Size '+(objects.length+1)+' /Root 1 0 R >>\nstartxref\n'+start+'\n%%EOF';
+  const uri=URL.createObjectURL(new Blob([content],{type:'application/pdf'}));
+  const a=document.createElement('a');a.href=uri;a.download='SOS-Rider-Preventivo-'+draft.quoteId+'.pdf';
+  document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(uri),3000);
+}
+
+async function confirmWhatsappQuote(){
+  const status=$('mWaQuoteStatus');if(!waQuoteDraft)return;
+  if(!confirm('Il locale ha confermato esplicitamente il prezzo '+money(waQuoteDraft.quote.totalFee)+'? Solo ora verrà creato l’ordine in D1.'))return;
+  try{
+    status.className='status-line';status.textContent='Registro la consegna confermata nel sistema…';
+    const d=await fetchJson(apiBase()+'/api/rider/whatsapp/confirm',{
+      method:'POST',headers:riderHeaders(),body:JSON.stringify({quoteId:waQuoteDraft.quoteId})
+    },18000);
+    status.className='status-line ok';status.textContent='✓ Ordine '+d.request.code+' registrato in D1, inviato alla coda Rider.';
+    $('mWaConfirm').disabled=true;
+    $('mWaQuoteResult').insertAdjacentHTML('beforeend','<div class="notice green">✓ Richiesta '+esc(d.request.code)+' in coda Rider condivisa.</div>');
+    refreshRemoteRequests();
+  }catch(e){status.className='status-line error';status.textContent='⚠ '+e.message;}
+}
+function renderWaParsed(d){
+  waQuoteDraft=null;waResolvedLocations=null;
+  const r=$('mWaResult');
+  r.innerHTML='<div class="notice blue"><b>WhatsApp → preventivo → conferma → D1.</b><br>'+
+    'Completa i dati, verifica entrambi gli indirizzi, genera PDF e crea l’ordine SOLO dopo la conferma.</div>'+
+    '<div class="form-grid" style="margin-top:9px">'+
+    '<label>Locale<input id="mPRestaurant" value="'+esc(d.restaurant||'')+'"></label>'+
+    '<label>Telefono locale<input id="mPRestaurantPhone" inputmode="tel" value="'+esc(d.requesterPhone||'')+'"></label>'+
+    '<label>Ordine pronto<input id="mPReady" type="time" value="'+esc(d.readyTime||'')+'"></label>'+
+    '<label class="full">Indirizzo ritiro<input id="mPPickup" value="'+esc(d.pickupAddress||'')+'"></label>'+
+    '<label>Cliente<input id="mPCustomer" value="'+esc(d.customer||'')+'"></label>'+
+    '<label>Telefono cliente<input id="mPPhone" inputmode="tel" value="'+esc(d.phone||'')+'"></label>'+
+    '<label class="full">Indirizzo consegna<input id="mPAddress" value="'+esc(d.address||'')+'"></label>'+
+    '<label>Veicolo<select id="mPVehicle"><option value="ebike" '+(d.vehicle==='ebike'?'selected':'')+'>Economy E-bike</option>'+
+    '<option value="moto" '+(d.vehicle==='moto'?'selected':'')+'>Moto Express</option>'+
+    '<option value="auto" '+(d.vehicle==='auto'?'selected':'')+'>Auto Cargo</option></select></label>'+
+    '<label>Pagamento<select id="mPPayment"><option value="paid" '+(d.payment==='paid'?'selected':'')+'>Già pagato</option>'+
+    '<option value="cash" '+(d.payment==='cash'?'selected':'')+'>Contanti da incassare</option>'+
+    '<option value="pos" '+(d.payment==='pos'?'selected':'')+'>POS locale</option></select></label>'+
+    '<label>Importo ordine da incassare per locale<input id="mPOrderTotal" type="number" min="0" step="0.01" value="'+(num(d.orderTotal)||'')+'"></label>'+
+    '<label class="full">Note / tipo cibo<textarea id="mPNotes" rows="2">'+esc(d.notes||'')+'</textarea></label>'+
+    '<div id="mWaAddressChoices" class="full form-grid"></div></div>'+
+    '<button id="mWaResolve" class="btn ghost full" type="button" style="margin-top:8px">📍 VERIFICA INDIRIZZI</button>'+
+    '<button id="mWaQuoteBtn" class="btn primary full hidden" type="button" style="margin-top:8px">🧮 CALCOLA PREVENTIVO SERVER</button>'+
+    '<div id="mWaQuoteStatus" class="status-line"></div><div id="mWaQuoteResult"></div>';
+  $('mWaResolve').onclick=resolveWaAddresses;
+  $('mWaQuoteBtn').onclick=quoteWhatsappFromParsed;
+  for(const id of ['mPPickup','mPAddress']){
+    $(id).addEventListener('input',()=>{
+      waQuoteDraft=null;waResolvedLocations=null;
+      $('mWaQuoteResult').innerHTML='';
+      $('mWaAddressChoices').innerHTML='';
+      $('mWaQuoteBtn').classList.add('hidden');
+    });
+  }
 }
 
 // ---------- Storico / analytics ----------
@@ -1452,7 +1604,7 @@ function bindEvents(){
   $('authLoginBtn').onclick=loginEmail;$('authPassword').addEventListener('keydown',e=>{if(e.key==='Enter')loginEmail()});if($('authPasswordToggle'))$('authPasswordToggle').onclick=()=>{const input=$('authPassword'),btn=$('authPasswordToggle'),show=input.type==='password';input.type=show?'text':'password';btn.classList.toggle('is-visible',show);btn.setAttribute('aria-pressed',show?'true':'false');btn.setAttribute('aria-label',show?'Nascondi password':'Mostra password');btn.title=show?'Nascondi password':'Mostra password';};$('authPasskeyLoginBtn').onclick=loginPasskey;$('authForgotBtn').onclick=forgotPassword;$('authShowSignupBtn').onclick=()=>{$('signupCard').classList.remove('hidden');$('signupCard').scrollIntoView({behavior:'smooth'})};$('authHideSignupBtn').onclick=()=>$('signupCard').classList.add('hidden');$('authSignupBtn').onclick=signupClient;
   $('clientLogoutBtn').onclick=logoutAccount;$('clientRegisterPasskey').onclick=registerPasskey;
   if($('clientAddSecond'))$('clientAddSecond').onclick=()=>setBatchMode(!clientBatchMode);if($('cPayment2'))$('cPayment2').addEventListener('change',()=>{toggleOrderTotal2();invalidateClientQuote();saveClientDraft()});
-  $('directWhatsapp').href=waLink('Ciao Marcello, avrei bisogno di una consegna SOS.');$('clientStatusWhatsapp').href=waLink('Ciao Marcello, avrei bisogno di informazioni sulla mia richiesta SOS Rider.');
+  $('directWhatsapp').href=waLink('Ciao Marcello, avrei bisogno di una consegna SOS.\n\n*Nome locale:* \n*Telefono locale:* \n*Indirizzo ritiro:* \n*Nome cliente:* \n*Telefono cliente:* \n*Indirizzo consegna:* \n*Ordine pronto:* \n*Servizio (E-bike/Moto/Auto):* \n*Importo ordine:* \n*Pagamento (già pagato/contanti/POS):* \n*Contenuto:* \n*Note:* ');$('clientStatusWhatsapp').href=waLink('Ciao Marcello, avrei bisogno di informazioni sulla mia richiesta SOS Rider.');
   document.querySelectorAll('[data-client-vehicle]').forEach(b=>b.onclick=()=>setClientVehicle(b.dataset.clientVehicle));
   $('cReadyTime').addEventListener('input',()=>{updateLateHint();invalidateClientQuote();saveClientDraft()});$('cPayment').addEventListener('change',()=>{toggleOrderTotal();invalidateClientQuote();saveClientDraft()});
   $('clientRequestForm').addEventListener('input',e=>{if(!['cReadyTime','cPayment'].includes(e.target.id)){invalidateClientQuote();saveClientDraft()}});
