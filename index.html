@@ -163,6 +163,13 @@
             <input id="cReadyTime" type="time" required>
             <small id="cLateHint" class="field-help">Il supplemento serale si applica automaticamente dopo le 22:30.</small>
           </label>
+          <div id="clientRecipientBookWrap" class="full hidden">
+            <label>Rubrica clienti abituali
+              <select id="clientRecipientBookSelect"><option value="">Seleziona destinatario salvato...</option></select>
+            </label>
+            <button type="button" id="clientRecipientBookSave" class="btn ghost small">+ SALVA DESTINATARIO ATTUALE</button>
+            <div id="clientRecipientBookStatus" class="status-line"></div>
+          </div>
           <label>Destinatario
             <input id="cRecipient" autocomplete="name" required placeholder="Nome cliente">
           </label>
@@ -264,6 +271,7 @@
       <p id="clientStatusText">La richiesta è arrivata nell'Area Rider. Attendi la conferma di disponibilità.</p>
       <div id="clientEtaBox" class="live-eta-box hidden"></div>
       <div id="clientConfirmedPrice" class="confirmed-price"></div>
+      <div id="clientLiveMap" class="live-eta-box hidden"></div>
       <div class="dual-actions">
         <button id="clientNewRequest" type="button" class="btn ghost">NUOVA RICHIESTA</button>
         <a id="clientStatusWhatsapp" class="btn whatsapp-btn" href="#" target="_blank" rel="noopener">WHATSAPP</a>
@@ -311,8 +319,8 @@
       <div class="rider-gps-row">
         <div id="riderWeatherStatus" class="rider-gps-status idle">☔ Meteo avverso: controllo stato…</div>
         <div class="operator-toggle" aria-label="Supplemento meteo avverso">
-          <button id="riderWeatherOnBtn" class="btn status-on small" type="button" aria-pressed="false">METEO ON +€3</button>
-          <button id="riderWeatherOffBtn" class="btn status-off small" type="button" aria-pressed="true">METEO OFF</button>
+          <button id="riderWeatherOnBtn" class="btn status-on small" type="button" aria-pressed="false">FORZA METEO +€3</button>
+          <button id="riderWeatherOffBtn" class="btn status-off small" type="button" aria-pressed="true">METEO AUTO</button>
         </div>
       </div>
     </section>
@@ -381,6 +389,6 @@
   </div>
 
   <script src="config.js?v=11.0.2-staging"></script>
-  <script type="module" src="app.js?v=11.2.0-weather"></script>
+  <script type="module" src="app.js?v=11.3.0-ops"></script>
 </body>
 </html>
