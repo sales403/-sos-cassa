@@ -1161,6 +1161,7 @@ async function createBatchRequest(request, env, ctx, cors) {
       x.base.requesterName,x.base.requesterPhone,x.base.pickupAddress,x.base.pickupLat,x.base.pickupLon,now,auth.user.id
     ).run();
   }
+  if (userId) for(const stop of x.stops) await rememberRecipientAfterOrder(env,userId,stop);
   for (const code of codes) await safeLogEvent(env, code, 'request_created', '', 'new', 'app-batch', { batchId, batchSize: 2 });
 
   const notify = async () => { await Promise.allSettled([sendPushToAll(env)]); };
@@ -2461,6 +2462,7 @@ async function createRequest(request, env, ctx, cors) {
     ).run();
   }
 
+  if(userId) await rememberRecipientAfterOrder(env,userId,d);
   const row = await getByCode(
     env,
     code
@@ -2568,6 +2570,22 @@ function recipientPublic(r){
     deliveryAddress:r.delivery_address,deliveryLat:Number(r.delivery_lat),deliveryLon:Number(r.delivery_lon),
     notes:r.notes,lastUsedAt:r.last_used_at};
 }
+
+async function rememberRecipientAfterOrder(env,userId,data){
+  if(!userId)return;
+  try{
+    await ensureRecipients(env);
+    const name=cleanText(data.recipientName,80),phone=cleanPhone(data.recipientPhone);
+    const addr=cleanText(data.deliveryAddress,180),lat=Number(data.deliveryLat),lon=Number(data.deliveryLon);
+    if(!name||phone.length<9||!addr||!validCoord(lat,lon))return;
+    const old=await env.DB.prepare('SELECT id FROM client_recipients WHERE user_id=? AND recipient_phone=? ORDER BY last_used_at DESC LIMIT 1')
+      .bind(userId,phone).first();
+    const id=old?.id||'RCP-'+token().slice(0,14),now=new Date().toISOString();
+    await env.DB.prepare('INSERT INTO client_recipients (id,user_id,recipient_name,recipient_phone,delivery_address,delivery_lat,delivery_lon,notes,last_used_at,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET recipient_name=excluded.recipient_name,recipient_phone=excluded.recipient_phone,delivery_address=excluded.delivery_address,delivery_lat=excluded.delivery_lat,delivery_lon=excluded.delivery_lon,notes=excluded.notes,last_used_at=excluded.last_used_at,updated_at=excluded.updated_at')
+      .bind(id,userId,name,phone,addr,lat,lon,cleanText(data.notes,400),now,now,now).run();
+  }catch(e){console.warn('Unable to save recipient after order',e);}
+}
+
 async function listSavedRecipients(env,a,cors){
   await ensureRecipients(env);
   const q=await env.DB.prepare('SELECT * FROM client_recipients WHERE user_id=? ORDER BY last_used_at DESC LIMIT 100')
