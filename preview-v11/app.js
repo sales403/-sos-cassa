@@ -784,8 +784,8 @@ function renderClientPickupAvailability(){
 
   box.className='pickup-availability '+level;
 
-  if(a.mode==='offline'||a.enabled===false){
-    box.innerHTML=`<div class="pickup-availability-icon">⛔</div><div><b>RIDER NON DISPONIBILE</b><small>Marcello ha messo il servizio OFF. In questo momento non accetta nuove consegne.</small></div>`;
+  if(a.mode==='offline'||a.mode==='full'||a.enabled===false){
+    box.innerHTML=a.mode==='full'?'<div class="pickup-availability-icon">⛔</div><div><b>RIDER AL COMPLETO</b><small>3 consegne attive. Non è possibile inviare altre richieste.</small></div>':`<div class="pickup-availability-icon">⛔</div><div><b>RIDER NON DISPONIBILE</b><small>Marcello ha impostato OFF.</small></div>`;
     if($('clientSendRequest'))$('clientSendRequest').disabled=true;
     return;
   }
@@ -1005,7 +1005,7 @@ async function submitClientRequest(){
       await calculateClientQuote();
       throw Error('Il prezzo è cambiato da '+money(oldTotal)+' a '+money(newTotal)+'. Controlla il nuovo preventivo e premi INVIA RICHIESTA per accettarlo.');
     }
-    const av=await refreshAvailability();if(av?.mode==='offline')throw new Error('Il rider è segnato come non disponibile. Puoi contattarlo su WhatsApp.');
+    const av=await refreshAvailability();if(av?.mode==='offline'||av?.mode==='full')throw new Error('Rider OFF o 3 consegne già attive: richiesta non inviabile ora.');
     if(!clientBatchMode&&av?.mode==='busy'&&!confirm(`Il rider è attualmente occupato. Nuova partenza stimata ~${av.etaMin||25} min. Vuoi comunque inviare la richiesta?`))return;
     if(clientBatchMode&&clientQuote?.pickupAvailability?.canAcceptNow===false&&!confirm('Il giro usa 2 slot e al momento non può essere accettato subito. Vuoi inviarlo comunque in attesa?'))return;
     status.textContent=clientBatchMode?'Invio giro da 2 consegne all’Area Rider…':'Invio automatico all’Area Rider…';
