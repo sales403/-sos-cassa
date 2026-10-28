@@ -333,7 +333,7 @@ function renderRiderWeather(){
 async function refreshRiderWeather(){
   if(authProfile?.role!=='rider'||!authSession)return null;
   try{
-    const d=await fetchJson(apiBase()+'/api/rider/weather',{headers:riderHeaders()},7000);
+    const d=await fetchJson(apiBase()+'/api/rider/weather',{headers:riderHeaders()},12000);
     currentWeatherAdverse=d.weather||null;renderRiderWeather();return currentWeatherAdverse;
   }catch(e){console.warn('Stato meteo non disponibile',e);return null}
 }
@@ -745,11 +745,11 @@ async function calculateClientQuote(){
   try{
     const d=validateClientForm(true);
     if(clientBatchMode){
-      const res=await fetchJson(apiBase()+'/api/batch/quote',{method:'POST',headers:{'Accept':'application/json','Content-Type':'application/json'},body:JSON.stringify(batchPayload(d))},14000);
+      const res=await fetchJson(apiBase()+'/api/batch/quote',{method:'POST',headers:{'Accept':'application/json','Content-Type':'application/json'},body:JSON.stringify(batchPayload(d))},30000);
       const q=res.quote;if(!q||!Number.isFinite(Number(q.totalFee)))throw new Error('Preventivo giro non disponibile.');
       clientQuote={batch:true,distanceKm:Number(q.totalDistanceKm)||0,durationMin:Number(q.totalDurationMin)||0,base:Number(q.baseFee)||0,extraStopFee:Number(q.extraStopFee)||3.5,lateFee:Number(q.lateFee)||0,weatherFee:Number(q.weatherFee)||0,weatherAdverse:!!q.weatherAdverse,total:Number(q.totalFee),service:d.service,readyTime:d.readyTime,routeOrder:q.routeOrder||[0,1],stops:q.stops||[],pickupAvailability:q.pickupAvailability||res.availability||null,createdAt:Date.now()};
     }else{
-      const res=await fetchJson(apiBase()+'/api/quote',{method:'POST',headers:{'Accept':'application/json','Content-Type':'application/json'},body:JSON.stringify({pickupLat:d.pickupLat,pickupLon:d.pickupLon,deliveryLat:d.deliveryLat,deliveryLon:d.deliveryLon,service:d.service,readyTime:d.readyTime})},10000);
+      const res=await fetchJson(apiBase()+'/api/quote',{method:'POST',headers:{'Accept':'application/json','Content-Type':'application/json'},body:JSON.stringify({pickupLat:d.pickupLat,pickupLon:d.pickupLon,deliveryLat:d.deliveryLat,deliveryLon:d.deliveryLon,service:d.service,readyTime:d.readyTime})},28000);
       const q=res.quote;if(!q||!Number.isFinite(Number(q.totalFee)))throw new Error('Preventivo server non disponibile.');
       clientQuote={distanceKm:Number(q.distanceKm),durationMin:Number(q.durationMin)||0,source:q.routeSource||'server',base:Number(q.baseFee),lateFee:Number(q.lateFee)||0,weatherFee:Number(q.weatherFee)||0,weatherAdverse:!!q.weatherAdverse,total:Number(q.totalFee),micro:!!q.microDelivery,service:d.service,readyTime:d.readyTime,createdAt:Date.now(),pickupAvailability:res.pickupAvailability||null};
       currentAvailability=res.availability||currentAvailability;
@@ -992,7 +992,7 @@ async function submitClientRequest(){
     const fresh=await fetchJson(quoteEndpoint,{
       method:'POST',headers:{'Accept':'application/json','Content-Type':'application/json'},
       body:JSON.stringify(quotePayload)
-    },16000);
+    },35000);
     const newTotal=Number(fresh?.quote?.totalFee),oldTotal=Number(clientQuote.total);
     if(!Number.isFinite(newTotal))throw Error('Non riesco a verificare il preventivo aggiornato.');
     if(Math.abs(newTotal-oldTotal)>0.001){
@@ -1012,7 +1012,7 @@ async function submitClientRequest(){
       clientSubmissionId=null;showClientBatchStatus(res.batch,res.clientToken);status.className='status-line ok';status.textContent='✓ Giro con 2 consegne inviato.';
     }else{
       const payload={...d,second:undefined,submissionId:clientSubmissionId,clientQuote:{distanceKm:clientQuote.distanceKm,total:clientQuote.total},formStartedAt:Number(sessionStorage.getItem('sosClientStartedAt')||Date.now()),website:'sos-rider-v11'};
-      const res=await fetchJson(apiBase()+'/api/requests',{method:'POST',headers,body:JSON.stringify(payload)},12000);
+      const res=await fetchJson(apiBase()+'/api/requests',{method:'POST',headers,body:JSON.stringify(payload)},35000);
       if(!res?.request?.code||!res?.clientToken)throw new Error('Risposta server incompleta.');
       const r=res.request;clientQuote={service:r.service,distanceKm:Number(r.distanceKm),durationMin:Number(r.durationMin)||0,source:r.routeSource||'server',base:Number(r.baseFee),lateFee:Number(r.lateFee),weatherFee:Number(r.weatherFee)||0,weatherAdverse:!!r.weatherAdverse,total:Number(r.totalFee),micro:!!r.microDelivery,readyTime:r.readyTime,pickupAvailability:clientQuote?.pickupAvailability||null};renderClientQuote();await generateClientQuoteImage();
       localStorage.setItem(CLIENT_ACTIVE_KEY,JSON.stringify({code:r.code,token:res.clientToken,owned:!!(authSession&&authProfile?.role==='client')}));addClientHistory(r.code);saveClientDraft();clientSubmissionId=null;
@@ -1488,7 +1488,7 @@ async function quoteWhatsappFromParsed(){
     status.className='status-line';status.textContent='Calcolo tariffa server e salvo preventivo in D1…';
     const d=await fetchJson(apiBase()+'/api/rider/whatsapp/quote',{
       method:'POST',headers:riderHeaders(),body:JSON.stringify(payload)
-    },18000);
+    },35000);
     if(!d.quoteId||!d.quote)throw Error('Preventivo server incompleto.');
     waQuoteDraft={...d,payload};
     $('mWaQuoteResult').innerHTML='<div class="notice yellow"><b>PREVENTIVO IN ATTESA DI CONFERMA</b><br>'+
@@ -1565,7 +1565,7 @@ async function confirmWhatsappQuote(){
     status.className='status-line';status.textContent='Registro la consegna confermata nel sistema…';
     const d=await fetchJson(apiBase()+'/api/rider/whatsapp/confirm',{
       method:'POST',headers:riderHeaders(),body:JSON.stringify({quoteId:waQuoteDraft.quoteId})
-    },18000);
+    },35000);
     status.className='status-line ok';status.textContent='✓ Ordine '+d.request.code+' registrato in D1, inviato alla coda Rider.';
     $('mWaConfirm').disabled=true;
     $('mWaQuoteResult').insertAdjacentHTML('beforeend','<div class="notice green">✓ Richiesta '+esc(d.request.code)+' in coda Rider condivisa.</div>');
