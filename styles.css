@@ -445,3 +445,240 @@ html[data-theme="day"] .bottom-nav-v2 .nav-btn.active{background:#fff3b1;color:#
   .live-eta-grid b,.rider-eta-grid b{font-size:13px}
   .eta-inline span{font-size:7px}
 }
+
+
+/* =========================================================
+   SOS RIDER V11 · DISPATCH + GPS
+   ========================================================= */
+.rider-gps-row{grid-column:1/-1;display:flex;align-items:center;justify-content:space-between;gap:8px;padding-top:9px;margin-top:1px;border-top:1px solid rgba(255,255,255,.08)}
+.rider-gps-status{min-width:0;font-size:10px;font-weight:850;letter-spacing:.01em;display:flex;align-items:center;gap:5px}
+.rider-gps-status.ok{color:var(--green)}
+.rider-gps-status.warn{color:#ffd76a}
+.rider-gps-status.idle{color:#aab0b5}
+.rider-gps-row .btn{min-height:32px;padding:6px 9px;font-size:9px;white-space:nowrap}
+
+.dispatch-decision{margin-top:9px;padding:10px 11px;border-radius:13px;border:1px solid #4a4a4a;background:#121212}
+.dispatch-decision.green{border-color:#2d6541;background:#102419}
+.dispatch-decision.yellow{border-color:#6f5c00;background:#211b00}
+.dispatch-decision.red{border-color:#7b3232;background:#2b1111}
+.dispatch-decision-head{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.dispatch-decision-head b{font-size:12px;letter-spacing:.035em}
+.dispatch-decision-head span{font-size:10px;font-weight:900;white-space:nowrap}
+.dispatch-decision p{margin:6px 0 3px!important;color:var(--text)!important;font-size:11px;line-height:1.4}
+.dispatch-decision small{display:block;color:#b8b8b8;font-size:9px;line-height:1.45}
+.dispatch-decision.green .dispatch-decision-head{color:#b9efca}
+.dispatch-decision.yellow .dispatch-decision-head{color:#ffe36d}
+.dispatch-decision.red .dispatch-decision-head{color:#ffb0b0}
+
+html[data-theme="day"] .rider-gps-row{border-top-color:rgba(255,255,255,.13)}
+html[data-theme="day"] .dispatch-decision p{color:#fff!important}
+
+@media(max-width:520px){
+  .rider-gps-row{align-items:flex-start}
+  .rider-gps-status{font-size:9px;line-height:1.35}
+  .dispatch-decision-head{align-items:flex-start}
+  .dispatch-decision-head span{font-size:9px}
+}
+
+/* V11 staging safety banner */
+.staging-banner{
+  position:fixed;top:0;left:0;right:0;z-index:10050;
+  min-height:24px;padding:5px 10px;
+  display:flex;align-items:center;justify-content:center;
+  background:#7a130f;color:#fff;
+  border-bottom:1px solid rgba(255,255,255,.25);
+  font-size:10px;font-weight:1000;letter-spacing:.10em;text-align:center;
+}
+body{padding-top:24px}
+@media(max-width:520px){
+  .staging-banner{font-size:9px;letter-spacing:.06em}
+}
+
+/* V11 login password visibility */
+.password-field{
+  position:relative;
+  display:block;
+}
+.password-field input{
+  width:100%;
+  padding-right:58px;
+}
+.password-toggle{
+  position:absolute;
+  right:10px;
+  top:50%;
+  transform:translateY(-50%);
+  width:44px;
+  height:44px;
+  display:grid;
+  place-items:center;
+  border:0;
+  border-radius:12px;
+  background:transparent;
+  color:currentColor;
+  cursor:pointer;
+  -webkit-tap-highlight-color:transparent;
+}
+.password-toggle:focus-visible{
+  outline:2px solid currentColor;
+  outline-offset:2px;
+}
+.password-eye{
+  width:24px;
+  height:24px;
+  fill:none;
+  stroke:currentColor;
+  stroke-width:1.9;
+  stroke-linecap:round;
+  stroke-linejoin:round;
+}
+.password-eye-off{display:none}
+.password-toggle.is-visible .password-eye-open{display:none}
+.password-toggle.is-visible .password-eye-off{display:block}
+
+
+/* V11 client pickup availability preview */
+.pickup-availability{
+  margin:14px 0;
+  padding:14px 15px;
+  border:1px solid var(--line,#2f2f2f);
+  border-radius:16px;
+  display:flex;
+  gap:10px;
+  align-items:flex-start;
+}
+.pickup-availability b{
+  display:block;
+  font-weight:900;
+  margin-bottom:5px;
+}
+.pickup-availability small{
+  display:block;
+  line-height:1.35;
+  opacity:.9;
+}
+.pickup-availability small + small{
+  margin-top:4px;
+  opacity:.72;
+}
+.pickup-availability.green{
+  border-color:rgba(57,190,110,.55);
+  background:rgba(57,190,110,.08);
+}
+.pickup-availability.yellow{
+  border-color:rgba(255,208,0,.65);
+  background:rgba(255,208,0,.08);
+}
+.pickup-availability.red{
+  border-color:rgba(255,78,78,.65);
+  background:rgba(255,78,78,.08);
+}
+.pickup-availability.unknown{
+  border-color:rgba(160,160,160,.35);
+  background:rgba(160,160,160,.05);
+}
+.pickup-availability-icon{
+  font-size:22px;
+  line-height:1;
+}
+
+
+/* V11 batch / multi-stop */
+.batch-add-wrap{margin-top:6px;padding:13px;border:1px dashed rgba(255,208,0,.55);border-radius:16px;background:rgba(255,208,0,.045)}
+.batch-add-wrap small{display:block;margin-top:7px;opacity:.72;line-height:1.35}.batch-add-btn{width:100%;border-color:rgba(255,208,0,.75)!important;color:var(--accent,#ffd000)!important;background:rgba(255,208,0,.08)!important;font-weight:900}
+.second-delivery-panel{padding:14px;border:1px solid rgba(255,208,0,.45);border-radius:18px;background:rgba(255,208,0,.04)}.second-delivery-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}.second-delivery-head b{font-size:1.05rem}.batch-route-preview{margin:12px 0;padding:13px;border:1px solid rgba(255,208,0,.42);border-radius:15px;background:rgba(255,208,0,.055)}.batch-route-preview>b{display:block;color:var(--accent,#ffd000);margin-bottom:8px}.batch-route-preview span{display:block;padding:6px 0;border-top:1px solid rgba(255,255,255,.07);font-size:.9rem}.batch-request,.batch-order{border-color:rgba(255,208,0,.6)!important}.batch-pickup,.batch-next-stop{display:flex;flex-direction:column;gap:4px;margin:10px 0;padding:12px;border-radius:13px;background:rgba(255,208,0,.07);border:1px solid rgba(255,208,0,.26)}.batch-pickup b,.batch-next-stop small{color:var(--accent,#ffd000);font-weight:900}.batch-stop-list{display:grid;gap:8px;margin:10px 0}.batch-stop-list>div{display:flex;flex-direction:column;gap:2px;padding:10px 11px;border-radius:12px;background:rgba(127,127,127,.08);border:1px solid rgba(127,127,127,.14)}.batch-stop-list small,.batch-stop-list span{opacity:.75}.batch-stop-list.compact>div{padding:7px 9px}.batch-stop-list .done{opacity:.55}.batch-status-stops{display:grid;gap:8px;margin-top:8px}.batch-status-stops>div{display:flex;flex-direction:column;gap:3px;padding:9px;border-radius:10px;background:rgba(127,127,127,.08)}
+
+
+/* V11.3 · Suggerimenti indirizzi in tempo reale nell'importatore WhatsApp.
+   Elenco nel flusso del modale, non sovrapposto né tagliato dall'overflow. */
+.modal .wa-import-address-field{min-width:0;position:relative}
+.modal .wa-import-suggestions{
+  position:relative;left:auto;right:auto;z-index:1;
+  margin-top:5px;max-height:224px;overflow:auto;
+  overscroll-behavior:contain;box-shadow:0 9px 20px rgba(0,0,0,.20)
+}
+.modal .wa-import-suggestions .suggestion{cursor:pointer}
+.modal .wa-import-suggestions .suggestion.is-active,
+.modal .wa-import-suggestions .suggestion:focus-visible{
+  outline:2px solid var(--yellow);outline-offset:-2px;
+  background:#403600
+}
+.modal .wa-autocomplete-message{
+  padding:13px;font-size:12px;line-height:1.5;color:#dedede
+}
+.modal .wa-address-feedback{
+  margin-top:6px;font-size:12px;line-height:1.45;color:#afafaf
+}
+.modal .wa-civic-ack{
+  display:flex;align-items:flex-start;gap:9px;margin-top:7px;
+  padding:11px;border:1px solid #e5b333;border-radius:10px;
+  color:#f8d875;background:rgba(255,208,0,.10);font-size:12px;line-height:1.35
+}
+.modal .wa-civic-ack input{
+  flex:0 0 18px;width:18px;height:18px;min-height:18px;margin:1px 0 0;
+  accent-color:#ffd000
+}
+html[data-theme="day"] .modal .wa-autocomplete-message,
+html[data-theme="day"] .modal .wa-address-feedback{color:#5f6671}
+html[data-theme="day"] .modal .wa-civic-ack{
+  color:#5d4b00;background:#fff8dd;border-color:#d5b642
+}
+html[data-theme="day"] .modal .wa-import-suggestions .suggestion.is-active,
+html[data-theme="day"] .modal .wa-import-suggestions .suggestion:focus-visible{
+  background:#fff1ac;color:#17191c
+}
+
+/* V11.3 · Logout Rider sempre visibile nell'intestazione */
+.rider-topbar .rider-exit-btn{
+  width:auto;min-width:62px;height:44px;padding:0 12px;
+  font-size:12px;font-weight:900;letter-spacing:.045em;
+  color:var(--yellow);white-space:nowrap;line-height:1;
+}
+.rider-topbar .rider-exit-btn:focus-visible{
+  outline:3px solid var(--yellow);outline-offset:2px;
+}
+html[data-theme="day"] .rider-topbar .rider-exit-btn{
+  color:#493a00;background:#fff8e0;border-color:#d2b84b;
+}
+@media(max-width:460px){
+  .rider-topbar .top-actions{gap:4px;flex-shrink:0}
+  .rider-topbar .top-actions .icon-btn:not(.rider-exit-btn){width:35px;height:38px}
+  .rider-topbar .rider-exit-btn{min-width:48px;height:38px;padding:0 6px;font-size:11px}
+  .rider-topbar .compact-brand img{width:42px;height:42px}
+  .rider-topbar .compact-brand b{font-size:12px}
+  .rider-topbar .compact-brand small{font-size:9px}
+}
+
+/* V11.3.3 · Stato selezionato riconoscibile: DISPONIBILE/OFF, meteo AUTO/FORZA/NO.
+   Solo Area Rider: il colore segue il valore confermato dal server. */
+#riderAvailabilityControl .operator-toggle .btn[aria-pressed="true"],
+html[data-theme="day"] #riderAvailabilityControl .operator-toggle .btn[aria-pressed="true"]{
+  background:var(--yellow)!important;
+  border:1px solid var(--yellow)!important;
+  color:#111!important;
+  box-shadow:inset 0 0 0 1px rgba(0,0,0,.06);
+}
+#riderAvailabilityControl .operator-toggle .btn[aria-pressed="false"]{
+  background:var(--surface2,#141414)!important;
+  border:1px solid var(--line2)!important;
+  color:var(--text)!important;
+  box-shadow:none;
+}
+html[data-theme="day"] #riderAvailabilityControl .operator-toggle .btn[aria-pressed="false"]{
+  background:#fff!important;
+  border:1px solid #cfd3d8!important;
+  color:#24272b!important;
+}
+#riderAvailabilityControl .weather-mode-toggle .btn:disabled{
+  opacity:.55;cursor:not-allowed;
+}
+#riderAvailabilityControl .weather-mode-toggle{flex-wrap:wrap;justify-content:flex-end}
+@media(max-width:660px){
+  #riderAvailabilityControl .rider-gps-row:has(.weather-mode-toggle){
+    flex-wrap:wrap;align-items:flex-start;
+  }
+  #riderAvailabilityControl .weather-mode-toggle{
+    justify-content:flex-start;width:100%;gap:5px;
+  }
+  #riderAvailabilityControl .weather-mode-toggle .btn{flex:1 1 auto}
+}
