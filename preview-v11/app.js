@@ -1447,7 +1447,8 @@ function waResetCalculatedQuote(){
   const quote=$('mWaQuoteResult'),status=$('mWaQuoteStatus');
   if(quote)quote.innerHTML='';
   if(status){status.className='status-line';status.textContent='';}
-  $('mWaQuoteBtn')?.classList.add('hidden');
+  // Dopo una modifica di importo/telefono, consenti di ricalcolare se le tappe sono ancora selezionate.
+  waShowVerifyReadiness();
 }
 
 function waFeatureCoords(f){
@@ -1605,12 +1606,10 @@ function resolveWaAddresses(){
     waShowVerifyReadiness();
     return;
   }
-  for(const slot of ['pickup','drop']){
-    if(!waSelectedLocations[slot]){
-      const input=$(waAddressSlots[slot].input);
-      input.dispatchEvent(new Event('focus'));
-      input.focus();
-    }
+  const firstMissing=['pickup','drop'].find(slot=>!waSelectedLocations[slot]);
+  if(firstMissing){
+    const input=$(waAddressSlots[firstMissing].input);
+    input.focus();
   }
   status.className='status-line';
   status.textContent='Seleziona ogni indirizzo dall’elenco sotto al campo corrispondente.';
