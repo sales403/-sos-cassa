@@ -136,21 +136,15 @@ function isLateTime(t){
   return h*60+m >= 22*60+30;
 }
 function tariffFor(km, vehicle, readyTime){
-  km = Math.max(0, Number(km)||0);
-  const tables = {
-    ebike:[[1,2.50],[2,3.50],[3,4.00],[5,6.00],[8,8.50]],
-    moto:[[1,4.50],[2,5.50],[3,6.50],[5,8.50],[8,11.00]],
-    auto:[[1,5.50],[2,6.50],[3,7.50],[5,10.00],[8,13.00]]
-  };
-  const slopes = {ebike:1.00,moto:1.20,auto:1.50};
-  const table = tables[vehicle] || tables.ebike;
-  let base = table[table.length-1][1];
-  for(const [limit,price] of table){ if(km<=limit){ base=price; break; } }
-  if(km>8) base = table[table.length-1][1] + (km-8)*(slopes[vehicle] || 1.00);
-  const micro = vehicle==='ebike' && km<=1;
-  base = roundHalf(base);
-  const lateFee = isLateTime(readyTime) ? 2 : 0;
-  return {base, lateFee, total:roundHalf(base+lateFee), micro};
+  // Solo fallback locale: stessa tariffa base del Worker. Preventivi ufficiali sempre server.
+  km=Math.max(0,Number(km)||0);
+  const micro=vehicle==='ebike'&&km<=1;
+  let base=vehicle==='moto'?(km<=5?9:9+(km-5)*1.20):
+    vehicle==='auto'?(km<=5?12:12+(km-5)*1.50):
+    micro?2.50:(km<=3?6.50:6.50+(km-3)*1.00);
+  base=roundHalf(base);
+  const lateFee=isLateTime(readyTime)?2:0;
+  return {base,lateFee,total:roundHalf(base+lateFee),micro};
 }
 
 async function routeBetween(a,b,vehicle){
