@@ -9,7 +9,7 @@
   <meta name="apple-mobile-web-app-title" content="SOS Rider V11 STAGING">
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="apple-touch-icon" href="icon-192.png">
-  <link rel="stylesheet" href="styles.css?v=11.3.2-rider-exit">
+  <link rel="stylesheet" href="styles.css?v=11.3.3-status-meteo">
   <title>SOS Rider Carpi-Soliera · V11 STAGING</title>
 </head>
 <body>
@@ -308,8 +308,8 @@
       <div class="operator-status-actions">
         <label class="eta-inline"><span>1° RITIRO</span><select id="riderEtaSelect" title="Tempo stimato per raggiungere il primo locale quando non c'è una consegna già in corso"><option value="5">5 min</option><option value="10">10 min</option><option value="15" selected>15 min</option><option value="20">20 min</option><option value="25">25 min</option><option value="30">30 min</option><option value="40">40 min</option><option value="50">50 min</option><option value="60">60 min</option></select></label>
         <div class="operator-toggle">
-          <button id="riderAvailableBtn" class="btn status-on small" type="button"><span class="status-led green"></span>DISPONIBILE</button>
-          <button id="riderOfflineBtn" class="btn status-off small" type="button"><span class="status-led red"></span>OFF</button>
+          <button id="riderAvailableBtn" class="btn status-on small" type="button" aria-pressed="false"><span class="status-led green"></span>DISPONIBILE</button>
+          <button id="riderOfflineBtn" class="btn status-off small" type="button" aria-pressed="false"><span class="status-led red"></span>OFF</button>
         </div>
       </div>
       <div class="rider-gps-row">
@@ -318,9 +318,10 @@
       </div>
       <div class="rider-gps-row">
         <div id="riderWeatherStatus" class="rider-gps-status idle">☔ Meteo avverso: controllo stato…</div>
-        <div class="operator-toggle" aria-label="Supplemento meteo avverso">
-          <button id="riderWeatherOnBtn" class="btn status-on small" type="button" aria-pressed="false">FORZA METEO +€3</button>
-          <button id="riderWeatherOffBtn" class="btn status-off small" type="button" aria-pressed="true">METEO AUTO</button>
+        <div class="operator-toggle weather-mode-toggle" role="group" aria-label="Modalità supplemento meteo">
+          <button id="riderWeatherAutoBtn" class="btn status-off small" type="button" aria-pressed="false" disabled>METEO AUTO</button>
+          <button id="riderWeatherOnBtn" class="btn status-on small" type="button" aria-pressed="false" disabled>FORZA +€3</button>
+          <button id="riderWeatherOffBtn" class="btn status-off small" type="button" aria-pressed="false" disabled>NO +€3</button>
         </div>
       </div>
     </section>
@@ -389,6 +390,6 @@
   </div>
 
   <script src="config.js?v=11.0.2-staging"></script>
-  <script type="module" src="app.js?v=11.3.2-rider-exit"></script>
+  <script type="module" src="app.js?v=11.3.3-status-meteo"></script>
 </body>
 </html>
