@@ -363,28 +363,83 @@ async function ensureWeatherSchema(env) {
     await env.DB.prepare('ALTER TABLE requests ADD COLUMN weather_fee REAL NOT NULL DEFAULT 0').run();
   }
 
+  const sCols = await env.DB.prepare('PRAGMA table_info(operator_settings)').all();
+  if (!(sCols.results||[]).some(c=>c.name==='weather_mode')) {
+    await env.DB.prepare("ALTER TABLE operator_settings ADD COLUMN weather_mode TEXT NOT NULL DEFAULT 'auto'").run();
+  }
   weatherSchemaReady = true;
 }
 
-async function getWeatherState(env) {
-  await ensureWeatherSchema(env);
-  const row = await env.DB.prepare('SELECT weather_adverse,updated_at FROM operator_settings WHERE id=1').first();
-  const adverse = Number(row?.weather_adverse) === 1;
-  return {
-    adverse,
-    fee: adverse ? WEATHER_FEE_EUR : 0,
-    updatedAt: row?.updated_at || new Date().toISOString()
-  };
-}
 
-async function updateWeatherState(request, env, cors) {
-  const p = await request.json().catch(() => fail('JSON non valido'));
-  const adverse = !!p.adverse;
+/* Automatic rain and adverse-condition surcharge. Forecast provider:
+ * MET Norway Locationforecast (CC BY 4.0, commercial permitted; attribution required).
+ * Manual control is AUTO (default) or FORCE ON; never left OFF unknowingly.
+ */
+const MET_SOURCE='MET Norway (api.met.no)';
+async function automaticWeatherForecast(lat,lon,readyTime=''){
+  const pointLat=Math.round(Number(lat)*100)/100,pointLon=Math.round(Number(lon)*100)/100;
+  if(!validCoord(pointLat,pointLon))return {verified:false,adverse:false,reason:'coordinate mancanti'};
+  const url='https://api.met.no/weatherapi/locationforecast/2.0/compact?lat='+pointLat+'&lon='+pointLon;
+  try {
+    const response=await fetch(url,{
+      headers:{'User-Agent':'SOS-Rider-Carpi-Soliera/1.0 (https://sales403.github.io/-sos-cassa/site/)','Accept':'application/json'},
+      cf:{cacheEverything:true,cacheTtl:900},
+      signal:AbortSignal.timeout(6000)
+    });
+    if(!response.ok)throw Error('MET Norway HTTP '+response.status);
+    const data=await response.json();
+    const arr=data?.properties?.timeseries||[];
+    if(!arr.length)throw Error('Previsioni mancanti');
+    const localParts=(dt)=>Object.fromEntries(new Intl.DateTimeFormat('en-GB',{
+      timeZone:'Europe/Rome',year:'numeric',month:'2-digit',day:'2-digit',
+      hour:'2-digit',minute:'2-digit',hourCycle:'h23'
+    }).formatToParts(dt).filter(x=>x.type!=='literal').map(x=>[x.type,x.value]));
+    const now=localParts(new Date());
+    const hasReady=/^\d{2}:\d{2}$/.test(readyTime);
+    const desiredMin=hasReady?Number(readyTime.slice(0,2))*60+Number(readyTime.slice(3)):Number(now.hour)*60+Number(now.minute);
+    const nowMin=Number(now.hour)*60+Number(now.minute);
+    const date=new Date(Date.UTC(Number(now.year),Number(now.month)-1,Number(now.day)+(hasReady&&desiredMin+120<nowMin?1:0)));
+    const targetDay=date.toISOString().slice(0,10);
+    const localDate=p=>p.year+'-'+p.month+'-'+p.day;
+    const candidates=arr.map(x=>{
+      const t=new Date(x.time),p=localParts(t);
+      const min=Number(p.hour)*60+Number(p.minute);
+      return {x,score:Math.abs(min-desiredMin)+ (localDate(p)===targetDay?0:10000)};
+    }).sort((a,b)=>a.score-b.score);
+    const forecast=candidates[0]?.x;
+    if(!forecast||candidates[0].score>190)throw Error('Orario previsione non coperto');
+    const rain=Number(forecast.data?.next_1_hours?.details?.precipitation_amount)||0;
+    const prob=Number(forecast.data?.next_1_hours?.details?.probability_of_precipitation)||0;
+    const symbol=String(forecast.data?.next_1_hours?.summary?.symbol_code||'');
+    const wind=Number(forecast.data?.instant?.details?.wind_speed)||0;
+    const gust=Number(forecast.data?.instant?.details?.wind_speed_of_gust)||0;
+    // Flag only adverse precipitation or strong wind, not ordinary cloudiness.
+    const adverse=rain>=0.2||prob>=65||/(rain|snow|sleet|thunder)/i.test(symbol)||wind>=12||gust>=16;
+    return {verified:true,adverse,reason:adverse?'Previste precipitazioni o vento forte':'Nessun meteo avverso previsto',
+      precipitationMm:rain,rainProbability:prob,windMs:wind,gustMs:gust,icon:symbol,
+      forecastFor:forecast.time,source:MET_SOURCE,mode:'auto'};
+  }catch(e){
+    console.warn('MET forecast unavailable',e);
+    return {verified:false,adverse:false,reason:'Previsioni non disponibili: controllare il meteo manualmente',source:MET_SOURCE,mode:'auto'};
+  }
+}
+async function getWeatherState(env,lat=44.783,lon=10.884,readyTime='') {
   await ensureWeatherSchema(env);
-  await env.DB.prepare(
-    'UPDATE operator_settings SET weather_adverse=?,updated_at=? WHERE id=1'
-  ).bind(adverse ? 1 : 0, new Date().toISOString()).run();
-  return json({ ok: true, weather: await getWeatherState(env) }, 200, cors);
+  const row=await env.DB.prepare('SELECT weather_adverse,updated_at,weather_mode FROM operator_settings WHERE id=1').first();
+  const mode=row?.weather_mode==='force_on'?'force_on':'auto';
+  const forecast=await automaticWeatherForecast(lat,lon,readyTime);
+  const adverse=mode==='force_on'?true:forecast.adverse;
+  return {...forecast,mode,adverse,fee:adverse?WEATHER_FEE_EUR:0,
+    verified:mode==='force_on'||forecast.verified,
+    updatedAt:row?.updated_at||new Date().toISOString()};
+}
+async function updateWeatherState(request,env,cors) {
+  const p=await request.json().catch(()=>fail('JSON non valido'));
+  const mode=p.mode==='force_on'||p.adverse===true?'force_on':'auto';
+  await ensureWeatherSchema(env);
+  await env.DB.prepare('UPDATE operator_settings SET weather_mode=?,weather_adverse=?,updated_at=? WHERE id=1')
+    .bind(mode,mode==='force_on'?1:0,new Date().toISOString()).run();
+  return json({ok:true,weather:await getWeatherState(env)},200,cors);
 }
 
 // ---------- Auth Supabase ----------
@@ -769,7 +824,7 @@ async function handleQuote(request, env, cors) {
     service
   );
 
-  const weather = env.DB ? await getWeatherState(env) : { adverse: false, fee: 0 };
+  const weather = env.DB ? await getWeatherState(env,a.lat,a.lon,readyTime) : { adverse: false, fee: 0 };
   const fee = tariffFor(
     route.distanceKm,
     service,
@@ -917,7 +972,7 @@ async function calculateBatchData(env, p) {
   const secondLeg = useAB ? aB : bA;
   const totalDistanceKm = firstLeg.distanceKm + secondLeg.distanceKm;
   const totalDurationMin = firstLeg.durationMin + secondLeg.durationMin;
-  const weather = await getWeatherState(env);
+  const weather = await getWeatherState(env,base.pickupLat,base.pickupLon,base.readyTime);
   const routeFee = tariffFor(totalDistanceKm, base.service, base.readyTime, weather.adverse);
   const extraStopFee = 3.50;
   const totalFee = roundHalf(routeFee.totalFee + extraStopFee);
@@ -2260,7 +2315,7 @@ async function createRequest(request, env, ctx, cors) {
     d.service
   );
 
-  const weather = await getWeatherState(env);
+  const weather = await getWeatherState(env,d.pickupLat,d.pickupLon,d.readyTime);
   const fee = tariffFor(
     route.distanceKm,
     d.service,
