@@ -285,7 +285,34 @@ async function loginPasskey(){
 async function registerPasskey(){
   try{if(!authSession)throw new Error('Accedi prima al tuo account.');if(!PUBLIC_CONFIG.enablePasskeys)throw new Error('Passkey disattivata.');const sb=await getSupabase();const {error}=await sb.auth.registerPasskey();if(error)throw error;alert('Passkey registrata su questo account. Puoi usarla dal login.');}catch(e){alert('Passkey non registrata: '+(e.message||e))}
 }
-async function logoutAccount(){try{const sb=await getSupabase();await sb.auth.signOut()}catch{}authSession=null;authUser=null;authProfile=null;stopAlarm();openHome();}
+async function logoutAccount(){
+  try{
+    const sb=await getSupabase();
+    // Logout limitato a questo browser: non disconnette l'iPhone Rider.
+    const {error}=await sb.auth.signOut({scope:'local'});
+    if(error)throw error;
+  }catch(e){
+    alert('Impossibile uscire da questo dispositivo: '+(e.message||e)+'. Verifica la connessione e riprova.');
+    return false;
+  }
+  authSession=null;authUser=null;authProfile=null;
+  stopAlarm();
+  openHome();
+  return true;
+}
+async function exitRiderToHome(){
+  const active=Number(currentAvailability?.active)||0;
+  const online=!!currentAvailability?.enabled;
+  let message='Vuoi uscire dall’account Rider su questo dispositivo e tornare alla schermata iniziale?';
+  if(online){
+    message+='\n\nATTENZIONE: la disponibilità resta ON anche dopo l’uscita. Se hai finito il turno, premi prima OFF. Le nuove richieste possono continuare ad arrivare.';
+  }
+  if(active>0){
+    message+='\n\nHai '+active+' consegna'+(active===1?'':'e')+' attiva'+(active===1?'':'e')+'; uscendo non verranno cancellate né completate.';
+  }
+  if(!confirm(message))return;
+  await logoutAccount();
+}
 async function updateMyProfile(body){if(!authSession)return;const d=await fetchJson(apiBase()+'/api/me',{method:'PATCH',headers:authHeaders(),body:JSON.stringify(body)},8000);authProfile=d.profile||authProfile;updateClientAccountUI();}
 function updateClientAccountUI(){
   const signed=authProfile?.role==='client';$('clientAccountCard')?.classList.toggle('hidden',!signed);$('clientGuestCard')?.classList.toggle('hidden',signed);
@@ -1834,7 +1861,9 @@ function toggleOrderTotal2(){if(!$('cOrderTotalWrap2'))return;$('cOrderTotalWrap
 function bindEvents(){
   $('openClientHub').onclick=openClient;$('openLoginHub').onclick=openLogin;if($('openRiderHome'))$('openRiderHome').onclick=openRider;$('riderGoLoginBtn').onclick=openLogin;$('guestLoginBtn').onclick=openLogin;document.querySelectorAll('[data-back-home]').forEach(b=>b.onclick=openHome);document.querySelectorAll('[data-theme-toggle]').forEach(b=>b.onclick=cycleTheme);
   $('authLoginBtn').onclick=loginEmail;$('authPassword').addEventListener('keydown',e=>{if(e.key==='Enter')loginEmail()});if($('authPasswordToggle'))$('authPasswordToggle').onclick=()=>{const input=$('authPassword'),btn=$('authPasswordToggle'),show=input.type==='password';input.type=show?'text':'password';btn.classList.toggle('is-visible',show);btn.setAttribute('aria-pressed',show?'true':'false');btn.setAttribute('aria-label',show?'Nascondi password':'Mostra password');btn.title=show?'Nascondi password':'Mostra password';};$('authPasskeyLoginBtn').onclick=loginPasskey;$('authForgotBtn').onclick=forgotPassword;$('authShowSignupBtn').onclick=()=>{$('signupCard').classList.remove('hidden');$('signupCard').scrollIntoView({behavior:'smooth'})};$('authHideSignupBtn').onclick=()=>$('signupCard').classList.add('hidden');$('authSignupBtn').onclick=signupClient;
-  $('clientLogoutBtn').onclick=logoutAccount;$('clientRegisterPasskey').onclick=registerPasskey;
+  $('clientLogoutBtn').onclick=logoutAccount;
+  if($('riderLogoutBtn'))$('riderLogoutBtn').onclick=exitRiderToHome;
+  $('clientRegisterPasskey').onclick=registerPasskey;
   if($('clientAddSecond'))$('clientAddSecond').onclick=()=>setBatchMode(!clientBatchMode);if($('cPayment2'))$('cPayment2').addEventListener('change',()=>{toggleOrderTotal2();invalidateClientQuote();saveClientDraft()});
   $('clientRecipientBookSelect')?.addEventListener('change',e=>useSavedClientRecipient(e.target.value));
   if($('clientRecipientBookSave'))$('clientRecipientBookSave').onclick=saveCurrentClientRecipient;
