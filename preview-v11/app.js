@@ -1,7 +1,7 @@
 (() => {
 'use strict';
 
-const APP_VERSION = '11.2.0-weather';
+const APP_VERSION = '11.3.0-ops';
 const V11_BATCH_UI = true;
 const KEY = 'sosRiderUnifiedV10';
 const V9_KEY = 'sosRiderUnifiedV9';
@@ -204,6 +204,7 @@ async function openClient(){
   updateClientAccountUI();
   restoreClientDraft();
   await loadClientRecent();
+  await loadClientRecipients();
   restoreActiveClientRequest();
   refreshAvailability(); startAvailabilityPolling();
 }
@@ -327,11 +328,13 @@ async function setRiderAvailability(enabled){
 
 function renderRiderWeather(){
   const el=$('riderWeatherStatus');if(!el)return;
-  const on=!!currentWeatherAdverse?.adverse;
-  el.className='rider-gps-status '+(on?'warn':'ok');
-  el.textContent=on?'☔ Meteo avverso: ON · +3 € su tutti i nuovi preventivi':'☔ Meteo avverso: OFF · nessun supplemento';
-  if($('riderWeatherOnBtn'))$('riderWeatherOnBtn').setAttribute('aria-pressed',on?'true':'false');
-  if($('riderWeatherOffBtn'))$('riderWeatherOffBtn').setAttribute('aria-pressed',on?'false':'true');
+  const w=currentWeatherAdverse||{},automatic=w.mode!=='force_on',on=!!w.adverse;
+  el.className='rider-gps-status '+(!w.verified?'warn':on?'warn':'ok');
+  el.textContent=!w.verified?'☔ METEO AUTO · previsione non disponibile: verifica prima di partire':
+    automatic?(on?'☔ METEO AUTO · maltempo previsto · +€3':'☀ METEO AUTO · nessun supplemento'):
+    '☔ METEO FORZATO · +€3';
+  $('riderWeatherOnBtn')?.setAttribute('aria-pressed',automatic?'false':'true');
+  $('riderWeatherOffBtn')?.setAttribute('aria-pressed',automatic?'true':'false');
 }
 async function refreshRiderWeather(){
   if(authProfile?.role!=='rider'||!authSession)return null;
@@ -841,6 +844,82 @@ async function generateClientQuoteImage(){
   x.fillStyle=muted;x.font='20px Arial';x.fillText(`${clientQuote.micro?'Micro E-bike':'Tariffa base'} ${money(clientQuote.base)}${clientQuote.lateFee?'  +  serale €2,00':''}${clientQuote.weatherFee?'  +  meteo avverso €3,00':''}`,110,y);y+=38;x.fillStyle=text;x.font='700 20px Arial';x.fillText('Tariffa verificata dal server · richiesta soggetta a disponibilità rider.',110,y);y+=45;x.fillStyle=muted;x.font='20px Arial';x.fillText('WhatsApp Marcello · 349 515 3092',110,1240);$('clientQuoteImage').src=c.toDataURL('image/png');
 }
 
+
+/* Rubrica privata del locale e tracking opzionale solo durante ordini confermati. */
+let savedClientRecipients=[];
+let clientLiveMapOpen=false, clientLiveLastFrameAt=0;
+async function loadClientRecipients(){
+  const wrap=$('clientRecipientBookWrap');
+  if(!wrap)return;
+  wrap.classList.toggle('hidden',!(authSession&&authProfile?.role==='client'));
+  if(authProfile?.role!=='client'||!authSession)return;
+  try{
+    const x=await fetchJson(apiBase()+'/api/client/recipients',{headers:authHeaders()},8000);
+    savedClientRecipients=x.recipients||[];
+    $('clientRecipientBookSelect').innerHTML='<option value="">Seleziona destinatario salvato...</option>'+
+      savedClientRecipients.map((r,i)=>'<option value="'+i+'">'+esc(r.recipientName+' · '+r.deliveryAddress)+'</option>').join('');
+  }catch(e){$('clientRecipientBookStatus').textContent='Rubrica non disponibile: '+e.message;}
+}
+function useSavedClientRecipient(i){
+  const r=savedClientRecipients[Number(i)];
+  if(!r)return;
+  $('cRecipient').value=r.recipientName;$('cRecipientPhone').value=r.recipientPhone;
+  $('cDelivery').value=r.deliveryAddress;
+  clientDelivery={lat:r.deliveryLat,lon:r.deliveryLon,label:r.deliveryAddress};
+  $('cNotes').value=r.notes||'';
+  $('cDeliveryStatus').textContent='✓ Indirizzo verificato dalla rubrica';
+  invalidateClientQuote();saveClientDraft();
+}
+async function saveCurrentClientRecipient(){
+  const msg=$('clientRecipientBookStatus');
+  try{
+    if(!clientDelivery?.lat||!clientDelivery?.lon)throw Error('Seleziona prima un indirizzo reale.');
+    const recipientName=$('cRecipient').value.trim(),recipientPhone=digits($('cRecipientPhone').value);
+    if(!recipientName||recipientPhone.length<9)throw Error('Completa nome e telefono destinatario.');
+    const existing=savedClientRecipients.find(x=>x.recipientPhone===recipientPhone);
+    await fetchJson(apiBase()+'/api/client/recipients',{
+      method:'POST',headers:authHeaders(),
+      body:JSON.stringify({id:existing?.id,recipientName,recipientPhone,
+        deliveryAddress:$('cDelivery').value,deliveryLat:clientDelivery.lat,deliveryLon:clientDelivery.lon,
+        notes:$('cNotes').value})
+    },9000);
+    await loadClientRecipients();
+    msg.className='status-line ok';msg.textContent='✓ Destinatario salvato nella tua rubrica privata.';
+  }catch(e){msg.className='status-line error';msg.textContent='⚠ '+e.message;}
+}
+
+async function updateClientLivePosition(code,token,status){
+  const box=$('clientLiveMap');if(!box)return;
+  if(!['accepted','picked','arrived'].includes(status)||!token){
+    box.classList.add('hidden');box.innerHTML='';clientLiveMapOpen=false;return;
+  }
+  box.classList.remove('hidden');
+  if(!clientLiveMapOpen){
+    box.innerHTML='<button type="button" class="btn ghost full" id="openClientLiveGps">📍 VEDI POSIZIONE RIDER LIVE</button>'+
+      '<small>La posizione viene condivisa solo durante la consegna confermata. GPS aggiornato quando disponibile.</small>';
+    $('openClientLiveGps').onclick=()=>{clientLiveMapOpen=true;updateClientLivePosition(code,token,status);};
+    return;
+  }
+  try {
+    const u=new URL(apiBase()+'/api/track/'+encodeURIComponent(code));u.searchParams.set('token',token);
+    const d=await fetchJson(u.toString(),{headers:{Accept:'application/json'}},8000);
+    if(!d.sharing){box.innerHTML='<small>Posizione Rider non condivisa in questo stato.</small>';return;}
+    if(!d.fresh){box.innerHTML='<div class="notice yellow">GPS temporaneamente non aggiornato. Resta valido lo stato della consegna.</div>';return;}
+    const now=Date.now(),lat=Number(d.lat),lon=Number(d.lon);
+    if(!box.querySelector('iframe')||now-clientLiveLastFrameAt>20000){
+      const extent=0.01;
+      const src='https://www.openstreetmap.org/export/embed.html?bbox='+
+        [lon-extent,lat-extent,lon+extent,lat+extent].join('%2C')+'&layer=mapnik&marker='+lat+'%2C'+lon;
+      box.innerHTML='<b>📍 POSIZIONE RIDER LIVE</b><small>Aggiornamento GPS: '+esc(new Date(d.updatedAt).toLocaleTimeString('it-IT'))+'</small>'+
+        '<iframe title="Posizione attuale del Rider" loading="lazy" src="'+src+'" style="width:100%;height:250px;border:0;border-radius:12px;margin-top:8px"></iframe>'+
+        '<small>La mappa si aggiorna circa ogni 20 secondi. Dati non garantiti a telefono spento o senza rete.</small>';
+      clientLiveLastFrameAt=now;
+    }else {
+      const text=box.querySelector('small');if(text)text.textContent='GPS aggiornato alle '+new Date(d.updatedAt).toLocaleTimeString('it-IT');
+    }
+  }catch(e){box.innerHTML='<small>Tracking temporaneamente non raggiungibile.</small>';}
+}
+
 function clientHistory(){try{return JSON.parse(localStorage.getItem(CLIENT_HISTORY_KEY)||'[]')}catch{return[]}}
 function addClientHistory(code){
   const d=clientFormData();const item={code,at:nowIso(),...d,pickupGeo:clientPickup,deliveryGeo:clientDelivery,quote:clientQuote};
@@ -943,7 +1022,7 @@ function updateClientBatchStatusUI(b){
   else if(s==='rejected'||s==='cancelled'){badge.classList.add('rejected');badge.textContent='GIRO NON ATTIVO';$('clientStatusText').textContent='Il giro non è stato preso in carico.';localStorage.removeItem(CLIENT_ACTIVE_KEY);stopClientBatchPolling();}
   const items=(b.items||[]).slice().sort((x,y)=>x.batchStopIndex-y.batchStopIndex);$('clientEtaBox').innerHTML=`<div class="live-eta-title">⚡ GIRO 2 CONSEGNE</div><div class="batch-status-stops">${items.map(x=>`<div><b>${x.batchStopIndex}️⃣ ${esc(x.recipientName)}</b><span>${esc(x.deliveryAddress)}</span><small>${x.status==='delivered'?'✓ CONSEGNATA':x.eta?.delivery?'ETA '+esc(etaRange(x.eta.delivery)):remoteStatusLabel(x.status)}</small></div>`).join('')}</div>`;$('clientEtaBox').classList.remove('hidden');
 }
-function startClientBatchPolling(batchId,token){stopClientBatchPolling();const go=async()=>{try{const u=new URL(apiBase()+`/api/batches/${encodeURIComponent(batchId)}`);u.searchParams.set('token',token);const d=await fetchJson(u.toString(),{headers:{Accept:'application/json'}},7000);if(d?.batch)updateClientBatchStatusUI(d.batch)}catch(e){console.warn('Status giro non disponibile',e)}};go();clientBatchPolling=setInterval(go,4000);}
+function startClientBatchPolling(batchId,token){stopClientBatchPolling();const go=async()=>{try{const u=new URL(apiBase()+`/api/batches/${encodeURIComponent(batchId)}`);u.searchParams.set('token',token);const d=await fetchJson(u.toString(),{headers:{Accept:'application/json'}},7000);if(d?.batch){updateClientBatchStatusUI(d.batch);if(d.batch.items?.[0])updateClientLivePosition(d.batch.items[0].code,token,d.batch.status)}}catch(e){console.warn('Status giro non disponibile',e)}};go();clientBatchPolling=setInterval(go,4000);}
 function stopClientBatchPolling(){if(clientBatchPolling){clearInterval(clientBatchPolling);clientBatchPolling=null;}}
 function showClientRequestStatus(r,token,owned=false){
   $('clientFormCard').classList.add('hidden');$('clientQuoteSection').classList.add('hidden');$('clientRequestStatus').classList.remove('hidden');$('clientRequestCode').textContent=r.code;$('clientStatusWhatsapp').href=waLink(`Ciao Marcello, ho inviato la richiesta SOS Rider ${r.code}.`);lastClientStatus=null;updateClientStatusUI(r);startClientPolling(r.code,token,owned);$('clientRequestStatus').scrollIntoView({behavior:'smooth',block:'start'});
@@ -980,7 +1059,7 @@ function restoreActiveClientRequest(){
 }
 
 function startClientPolling(code,token,owned=false,immediate=false){
-  stopClientPolling();const go=async()=>{try{let url,headers;if(owned&&authSession&&authProfile?.role==='client'){url=apiBase()+`/api/client/requests/${encodeURIComponent(code)}`;headers=authHeaders()}else{const u=new URL(apiBase()+`/api/requests/${encodeURIComponent(code)}`);u.searchParams.set('token',token);url=u.toString();headers={Accept:'application/json'}}const d=await fetchJson(url,{headers},7000);if(d?.request)updateClientStatusUI(d.request)}catch(e){console.warn('Status client non disponibile',e)}};if(immediate)go();clientPolling=setInterval(go,4000);
+  stopClientPolling();const go=async()=>{try{let url,headers;if(owned&&authSession&&authProfile?.role==='client'){url=apiBase()+`/api/client/requests/${encodeURIComponent(code)}`;headers=authHeaders()}else{const u=new URL(apiBase()+`/api/requests/${encodeURIComponent(code)}`);u.searchParams.set('token',token);url=u.toString();headers={Accept:'application/json'}}const d=await fetchJson(url,{headers},7000);if(d?.request){updateClientStatusUI(d.request);updateClientLivePosition(code,token,d.request.status)}}catch(e){console.warn('Status client non disponibile',e)}};if(immediate)go();clientPolling=setInterval(go,4000);
 }
 function stopClientPolling(){if(clientPolling){clearInterval(clientPolling);clientPolling=null;}}
 
@@ -1604,6 +1683,8 @@ function bindEvents(){
   $('authLoginBtn').onclick=loginEmail;$('authPassword').addEventListener('keydown',e=>{if(e.key==='Enter')loginEmail()});if($('authPasswordToggle'))$('authPasswordToggle').onclick=()=>{const input=$('authPassword'),btn=$('authPasswordToggle'),show=input.type==='password';input.type=show?'text':'password';btn.classList.toggle('is-visible',show);btn.setAttribute('aria-pressed',show?'true':'false');btn.setAttribute('aria-label',show?'Nascondi password':'Mostra password');btn.title=show?'Nascondi password':'Mostra password';};$('authPasskeyLoginBtn').onclick=loginPasskey;$('authForgotBtn').onclick=forgotPassword;$('authShowSignupBtn').onclick=()=>{$('signupCard').classList.remove('hidden');$('signupCard').scrollIntoView({behavior:'smooth'})};$('authHideSignupBtn').onclick=()=>$('signupCard').classList.add('hidden');$('authSignupBtn').onclick=signupClient;
   $('clientLogoutBtn').onclick=logoutAccount;$('clientRegisterPasskey').onclick=registerPasskey;
   if($('clientAddSecond'))$('clientAddSecond').onclick=()=>setBatchMode(!clientBatchMode);if($('cPayment2'))$('cPayment2').addEventListener('change',()=>{toggleOrderTotal2();invalidateClientQuote();saveClientDraft()});
+  $('clientRecipientBookSelect')?.addEventListener('change',e=>useSavedClientRecipient(e.target.value));
+  if($('clientRecipientBookSave'))$('clientRecipientBookSave').onclick=saveCurrentClientRecipient;
   $('directWhatsapp').href=waLink('Ciao Marcello, avrei bisogno di una consegna SOS.\n\n*Nome locale:* \n*Telefono locale:* \n*Indirizzo ritiro:* \n*Nome cliente:* \n*Telefono cliente:* \n*Indirizzo consegna:* \n*Ordine pronto:* \n*Servizio (E-bike/Moto/Auto):* \n*Importo ordine:* \n*Pagamento (già pagato/contanti/POS):* \n*Contenuto:* \n*Note:* ');$('clientStatusWhatsapp').href=waLink('Ciao Marcello, avrei bisogno di informazioni sulla mia richiesta SOS Rider.');
   document.querySelectorAll('[data-client-vehicle]').forEach(b=>b.onclick=()=>setClientVehicle(b.dataset.clientVehicle));
   $('cReadyTime').addEventListener('input',()=>{updateLateHint();invalidateClientQuote();saveClientDraft()});$('cPayment').addEventListener('change',()=>{toggleOrderTotal();invalidateClientQuote();saveClientDraft()});
