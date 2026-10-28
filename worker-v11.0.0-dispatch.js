@@ -1,4 +1,4 @@
-const VERSION = 'SOS Rider API 11.2.0-weather';
+const VERSION = 'SOS Rider API 11.3.0-ops-staging';
 const V11_BATCH_FEATURE = true;
 const WEATHER_FEE_EUR = 3;
 let batchSchemaReady = false;
@@ -49,12 +49,27 @@ export default {
             etaEbikeKmh: ETA_MODEL.ebikeKmh,
             riderLocation: !!env.DB,
             dispatchDecision: !!env.DB,
-            maxConcurrentOrders: 2,
+            maxConcurrentOrders: 3,
+            nativeTracker: !!(env.TRACKER_BASIC_USER && env.TRACKER_BASIC_PASSWORD),
+            liveTracking: !!env.DB,
+            whatsappQuote: !!env.DB,
             batch: !!env.DB,
             weatherAdverse: !!env.DB,
             push: !!(env.DB && env.VAPID_PRIVATE_JWK)
           }
         }, 200, cors);
+      }
+
+      // OwnTracks iOS: endpoint HTTPS con Basic Auth. Non viene esposto al cliente.
+      if (url.pathname === '/api/tracker/owntracks' && request.method === 'POST') {
+        requireDb(env);
+        return handleOwnTracks(request, env);
+      }
+
+      const liveMatch = url.pathname.match(/^\/api\/track\/([^/]+)$/);
+      if (liveMatch && request.method === 'GET') {
+        requireDb(env);
+        return getClientLivePosition(liveMatch[1], url, env, cors);
       }
 
       if (url.pathname === '/api/address' && request.method === 'GET') {
@@ -1587,7 +1602,66 @@ async function updateAvailability(request, env, cors) {
 
 
 const RIDER_LOCATION_MAX_AGE_SEC = 90;
-const MAX_ACTIVE_ORDERS = 2;
+const MAX_ACTIVE_ORDERS = 3;
+
+
+/* SOS Rider native location: OwnTracks iOS app HTTP output */
+async function handleOwnTracks(request, env) {
+  const expectedUser = String(env.TRACKER_BASIC_USER || '');
+  const expectedPass = String(env.TRACKER_BASIC_PASSWORD || '');
+  if (!expectedUser || expectedPass.length < 20) fail('Tracker non configurato', 503);
+  const header = String(request.headers.get('Authorization') || '');
+  const token = header.match(/^Basic\\s+(.+)$/i);
+  if (!token) fail('Autenticazione tracker richiesta', 401);
+  let credential = '';
+  try { credential = atob(token[1]); } catch { fail('Credenziali tracker non valide', 401); }
+  if (credential !== expectedUser + ':' + expectedPass) fail('Credenziali tracker non valide', 403);
+  const body = await request.text();
+  if (!body.trim()) return new Response('[]', {status:200,headers:{'Content-Type':'application/json'}});
+  if (body.length > 5000) fail('Payload tracker eccessivo', 413);
+  let p;
+  try { p = JSON.parse(body); } catch { fail('GPS JSON non valido', 400); }
+  if (p?._type !== 'location') return new Response('[]', {status:200,headers:{'Content-Type':'application/json'}});
+  const lat=Number(p.lat), lon=Number(p.lon), accuracy=Number(p.acc);
+  if (!validCoord(lat,lon)) fail('Coordinate non valide',400);
+  if (Number.isFinite(accuracy) && accuracy > 250) return new Response('[]', {status:200,headers:{'Content-Type':'application/json'}});
+  const tst=Number(p.tst);
+  const captured=Number.isFinite(tst) ? new Date(tst*1000) : new Date();
+  if (Math.abs(Date.now()-captured.getTime()) > 10*60*1000) {
+    // Dati arretrati durante assenza di rete: non sovrascrivere il live.
+    return new Response('[]', {status:200,headers:{'Content-Type':'application/json'}});
+  }
+  const prior=await getRiderLocation(env);
+  if (prior && Date.parse(prior.capturedAt)>captured.getTime()) return new Response('[]',{status:200,headers:{'Content-Type':'application/json'}});
+  const now=new Date().toISOString();
+  await env.DB.prepare(`INSERT INTO rider_location(id,lat,lon,accuracy_m,speed_mps,heading_deg,source,captured_at,updated_at)
+    VALUES(1,?,?,?,?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET
+    lat=excluded.lat,lon=excluded.lon,accuracy_m=excluded.accuracy_m,
+    speed_mps=excluded.speed_mps,heading_deg=excluded.heading_deg,source=excluded.source,
+    captured_at=excluded.captured_at,updated_at=excluded.updated_at`)
+    .bind(lat,lon,Number.isFinite(accuracy)?accuracy:null,Number.isFinite(Number(p.vel))?Number(p.vel)/3.6:null,
+      Number.isFinite(Number(p.cog))?Number(p.cog):null,'owntracks-ios',captured.toISOString(),now).run();
+  return new Response('[]', {status:200,headers:{'Content-Type':'application/json'}});
+}
+
+/* Position limited to confirmed, still-active order and holder of order token. */
+async function getClientLivePosition(code,url,env,cors) {
+  const t=String(url.searchParams.get('token')||'');
+  if (!t || t.length<15) fail('Token tracking richiesto',403);
+  const row=await getByCode(env,code);
+  if (!row || row.client_token!==t) fail('Tracking non trovato',404);
+  if (!['accepted','picked','arrived'].includes(row.status)) {
+    return json({ok:true,sharing:false,reason:row.status==='delivered'?'completed':'not_accepted'},200,cors);
+  }
+  const presence=await ensurePresence(env);
+  if (!Number(presence.enabled)) return json({ok:true,sharing:false,reason:'rider_offline'},200,cors);
+  const loc=await getRiderLocation(env);
+  if (!loc || !loc.fresh || (loc.accuracyM && loc.accuracyM>150)) {
+    return json({ok:true,sharing:true,fresh:false,updatedAt:loc?.capturedAt||null},200,cors);
+  }
+  return json({ok:true,sharing:true,fresh:true,lat:loc.lat,lon:loc.lon,
+    accuracyM:loc.accuracyM,updatedAt:loc.capturedAt},200,cors);
+}
 
 async function getRiderLocation(env) {
   try {
