@@ -1271,7 +1271,11 @@ async function updateRiderBatch(batchId, request, env, cors) {
     const q = await env.DB.prepare("SELECT code FROM requests WHERE status IN ('accepted','picked','arrived')").all();
     const activeOther = (q.results || []).filter(r => !codes.has(r.code)).length;
     if (activeOther + rows.length > MAX_ACTIVE_ORDERS) fail('Limite sicurezza: il giro richiede 2 slot liberi.', 409);
-    await env.DB.batch(rows.map(r => env.DB.prepare("UPDATE requests SET status='accepted',updated_at=? WHERE code=? AND status='new'").bind(now,r.code)));
+    // Group reservation is atomic: both slots are taken or none.
+    const applied=await env.DB.prepare(
+      "UPDATE requests SET status='accepted',updated_at=? WHERE code IN (?,?) AND status='new' AND (SELECT COUNT(*) FROM requests WHERE status IN ('accepted','picked','arrived')) <= ?"
+    ).bind(now,rows[0].code,rows[1].code,MAX_ACTIVE_ORDERS-rows.length).run();
+    if(Number(applied.meta?.changes)!==rows.length)fail('Spazio non disponibile per il giro: nessun ordine accettato',409);
   } else if (status === 'picked') {
     if (!rows.every(r => ['accepted','picked'].includes(r.status))) fail('Accetta prima il giro completo', 409);
     await env.DB.batch(rows.map(r => env.DB.prepare("UPDATE requests SET status='picked',updated_at=? WHERE code=? AND status='accepted'").bind(now,r.code)));
@@ -2710,24 +2714,18 @@ async function updateRiderRequest(code, request, env, cors) {
     }, 200, cors);
   }
 
-  if (row.status === 'new' && status === 'accepted') {
-    const countRow = await env.DB.prepare(
-      "SELECT COUNT(*) AS n FROM requests WHERE status IN ('accepted','picked','arrived') AND code<>?"
-    ).bind(code).first();
-    const activeNow = Number(countRow?.n) || 0;
-    if (activeNow >= MAX_ACTIVE_ORDERS) {
-      fail('Limite sicurezza: massimo 3 ordini attivi contemporaneamente.', 409);
-    }
+  if (row.status==='new' && status==='accepted') {
+    // One atomic D1 statement reserves a slot, even with simultaneous acceptances.
+    const applied=await env.DB.prepare(
+      "UPDATE requests SET status='accepted',rejection_reason=?,updated_at=? WHERE code=? AND status='new' AND (SELECT COUNT(*) FROM requests WHERE status IN ('accepted','picked','arrived')) < ?"
+    ).bind(reason||'',new Date().toISOString(),code,MAX_ACTIVE_ORDERS).run();
+    if(Number(applied.meta?.changes)!==1)fail('3 slot già occupati: accettazione non confermata',409);
+  } else {
+    const applied=await env.DB.prepare(
+      'UPDATE requests SET status=?,rejection_reason=?,updated_at=? WHERE code=? AND status=?'
+    ).bind(status,reason||row.rejection_reason||'',new Date().toISOString(),code,row.status).run();
+    if(Number(applied.meta?.changes)!==1)fail('La consegna è stata modificata: aggiorna e riprova',409);
   }
-
-  await env.DB.prepare(
-    'UPDATE requests SET status=?,rejection_reason=?,updated_at=? WHERE code=?'
-  ).bind(
-    status,
-    reason || row.rejection_reason || '',
-    new Date().toISOString(),
-    code
-  ).run();
 
   await safeLogEvent(env, code, 'status_changed', row.status, status, 'rider', { rejectionReason: reason || '' });
   await syncBatchStatusForCode(env, code);
