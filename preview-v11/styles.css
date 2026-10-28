@@ -587,3 +587,43 @@ body{padding-top:24px}
 .batch-add-wrap{margin-top:6px;padding:13px;border:1px dashed rgba(255,208,0,.55);border-radius:16px;background:rgba(255,208,0,.045)}
 .batch-add-wrap small{display:block;margin-top:7px;opacity:.72;line-height:1.35}.batch-add-btn{width:100%;border-color:rgba(255,208,0,.75)!important;color:var(--accent,#ffd000)!important;background:rgba(255,208,0,.08)!important;font-weight:900}
 .second-delivery-panel{padding:14px;border:1px solid rgba(255,208,0,.45);border-radius:18px;background:rgba(255,208,0,.04)}.second-delivery-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}.second-delivery-head b{font-size:1.05rem}.batch-route-preview{margin:12px 0;padding:13px;border:1px solid rgba(255,208,0,.42);border-radius:15px;background:rgba(255,208,0,.055)}.batch-route-preview>b{display:block;color:var(--accent,#ffd000);margin-bottom:8px}.batch-route-preview span{display:block;padding:6px 0;border-top:1px solid rgba(255,255,255,.07);font-size:.9rem}.batch-request,.batch-order{border-color:rgba(255,208,0,.6)!important}.batch-pickup,.batch-next-stop{display:flex;flex-direction:column;gap:4px;margin:10px 0;padding:12px;border-radius:13px;background:rgba(255,208,0,.07);border:1px solid rgba(255,208,0,.26)}.batch-pickup b,.batch-next-stop small{color:var(--accent,#ffd000);font-weight:900}.batch-stop-list{display:grid;gap:8px;margin:10px 0}.batch-stop-list>div{display:flex;flex-direction:column;gap:2px;padding:10px 11px;border-radius:12px;background:rgba(127,127,127,.08);border:1px solid rgba(127,127,127,.14)}.batch-stop-list small,.batch-stop-list span{opacity:.75}.batch-stop-list.compact>div{padding:7px 9px}.batch-stop-list .done{opacity:.55}.batch-status-stops{display:grid;gap:8px;margin-top:8px}.batch-status-stops>div{display:flex;flex-direction:column;gap:3px;padding:9px;border-radius:10px;background:rgba(127,127,127,.08)}
+
+
+/* V11.3 · Suggerimenti indirizzi in tempo reale nell'importatore WhatsApp.
+   Elenco nel flusso del modale, non sovrapposto né tagliato dall'overflow. */
+.modal .wa-import-address-field{min-width:0;position:relative}
+.modal .wa-import-suggestions{
+  position:relative;left:auto;right:auto;z-index:1;
+  margin-top:5px;max-height:224px;overflow:auto;
+  overscroll-behavior:contain;box-shadow:0 9px 20px rgba(0,0,0,.20)
+}
+.modal .wa-import-suggestions .suggestion{cursor:pointer}
+.modal .wa-import-suggestions .suggestion.is-active,
+.modal .wa-import-suggestions .suggestion:focus-visible{
+  outline:2px solid var(--yellow);outline-offset:-2px;
+  background:#403600
+}
+.modal .wa-autocomplete-message{
+  padding:13px;font-size:12px;line-height:1.5;color:#dedede
+}
+.modal .wa-address-feedback{
+  margin-top:6px;font-size:12px;line-height:1.45;color:#afafaf
+}
+.modal .wa-civic-ack{
+  display:flex;align-items:flex-start;gap:9px;margin-top:7px;
+  padding:11px;border:1px solid #e5b333;border-radius:10px;
+  color:#f8d875;background:rgba(255,208,0,.10);font-size:12px;line-height:1.35
+}
+.modal .wa-civic-ack input{
+  flex:0 0 18px;width:18px;height:18px;min-height:18px;margin:1px 0 0;
+  accent-color:#ffd000
+}
+html[data-theme="day"] .modal .wa-autocomplete-message,
+html[data-theme="day"] .modal .wa-address-feedback{color:#5f6671}
+html[data-theme="day"] .modal .wa-civic-ack{
+  color:#5d4b00;background:#fff8dd;border-color:#d5b642
+}
+html[data-theme="day"] .modal .wa-import-suggestions .suggestion.is-active,
+html[data-theme="day"] .modal .wa-import-suggestions .suggestion:focus-visible{
+  background:#fff1ac;color:#17191c
+}
