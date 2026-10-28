@@ -329,6 +329,12 @@ function availabilityCopy(a){if(!a)return{mode:'loading',title:'Stato rider non 
 function renderAvailability(){
   const c=availabilityCopy(currentAvailability);['homeAvailability','clientAvailability'].forEach(id=>{const el=$(id);if(!el)return;el.className='availability-card '+c.mode;el.querySelector('b').textContent=c.title;el.querySelector('small').textContent=c.text;});
   if($('riderAvailabilityTitle')){const dot=$('riderAvailabilityDot');dot.className='availability-dot '+c.mode;$('riderAvailabilityTitle').textContent=c.title;$('riderAvailabilityText').textContent=c.text;const anchor=currentAvailability?.firstPickupEtaMin??currentAvailability?.etaPerJob;if(anchor)$('riderEtaSelect').value=String(anchor);}
+  // L'evidenza gialla segue lo stato salvato sul server, non l'ultimo pulsante premuto.
+  const known=typeof currentAvailability?.enabled==='boolean';
+  const online=known&&currentAvailability.enabled;
+  const offline=known&&!currentAvailability.enabled;
+  $('riderAvailableBtn')?.setAttribute('aria-pressed',online?'true':'false');
+  $('riderOfflineBtn')?.setAttribute('aria-pressed',offline?'true':'false');
 }
 function startAvailabilityPolling(){stopAvailabilityPolling();availabilityPolling=setInterval(refreshAvailability,8000)}
 function stopAvailabilityPolling(){if(availabilityPolling){clearInterval(availabilityPolling);availabilityPolling=null}}
@@ -347,28 +353,57 @@ async function setRiderAvailability(enabled){
   }catch(e){alert('Stato rider non aggiornato: '+e.message)}
 }
 
+let weatherControlSupported=false;
+let weatherSaving=false;
 function renderRiderWeather(){
   const el=$('riderWeatherStatus');if(!el)return;
-  const w=currentWeatherAdverse||{},automatic=w.mode!=='force_on',on=!!w.adverse;
-  el.className='rider-gps-status '+(!w.verified?'warn':on?'warn':'ok');
-  el.textContent=!w.verified?'☔ METEO AUTO · previsione non disponibile: verifica prima di partire':
-    automatic?(on?'☔ METEO AUTO · maltempo previsto · +€3':'☀ METEO AUTO · nessun supplemento'):
-    '☔ METEO FORZATO · +€3';
-  $('riderWeatherOnBtn')?.setAttribute('aria-pressed',automatic?'false':'true');
-  $('riderWeatherOffBtn')?.setAttribute('aria-pressed',automatic?'true':'false');
+  const w=currentWeatherAdverse||{},mode=w.mode||'auto';
+  const controls={auto:$('riderWeatherAutoBtn'),force_on:$('riderWeatherOnBtn'),force_off:$('riderWeatherOffBtn')};
+  for(const [value,btn] of Object.entries(controls)){
+    if(!btn)continue;
+    btn.disabled=!weatherControlSupported||weatherSaving;
+    btn.setAttribute('aria-pressed',weatherControlSupported&&mode===value?'true':'false');
+  }
+  if(!weatherControlSupported){
+    el.className='rider-gps-status warn';
+    el.textContent='☔ Controllo meteo non ancora disponibile: serve il deploy del Worker V11.3. Nessun supplemento manuale attivabile da questa versione.';
+    return;
+  }
+  const bad=!!w.adverse;
+  el.className='rider-gps-status '+(!w.verified?'warn':bad?'warn':'ok');
+  if(mode==='force_on')el.textContent='☔ METEO MANUALE · supplemento +€3 attivo';
+  else if(mode==='force_off')el.textContent='☀ METEO MANUALE · supplemento escluso (0€)';
+  else el.textContent=!w.verified?'☔ METEO AUTO · previsione non disponibile, verifica il meteo':
+    bad?'☔ METEO AUTO · maltempo previsto · +€3':'☀ METEO AUTO · nessun supplemento';
 }
 async function refreshRiderWeather(){
   if(authProfile?.role!=='rider'||!authSession)return null;
   try{
-    const d=await fetchJson(apiBase()+'/api/rider/weather',{headers:riderHeaders()},12000);
-    currentWeatherAdverse=d.weather||null;renderRiderWeather();return currentWeatherAdverse;
-  }catch(e){console.warn('Stato meteo non disponibile',e);return null}
+    const d=await fetchJson(apiBase()+'/api/rider/weather',{headers:riderHeaders()},14000);
+    if(!d?.weather || !['auto','force_on','force_off'].includes(d.weather.mode))throw Error('Risposta meteo non valida');
+    weatherControlSupported=true;
+    currentWeatherAdverse=d.weather;renderRiderWeather();return currentWeatherAdverse;
+  }catch(e){
+    weatherControlSupported=false;currentWeatherAdverse=null;
+    renderRiderWeather();console.warn('Controllo meteo non disponibile sul Worker attuale',e);
+    return null;
+  }
 }
-async function setRiderWeather(adverse){
+async function setRiderWeather(mode){
+  if(!weatherControlSupported||weatherSaving)return;
+  weatherSaving=true;renderRiderWeather();
   try{
-    const d=await fetchJson(apiBase()+'/api/rider/weather',{method:'PATCH',headers:riderHeaders(),body:JSON.stringify({adverse:!!adverse})},7000);
-    currentWeatherAdverse=d.weather||null;renderRiderWeather();
-  }catch(e){alert('Meteo avverso non aggiornato: '+e.message)}
+    const d=await fetchJson(apiBase()+'/api/rider/weather',{
+      method:'PATCH',headers:riderHeaders(),body:JSON.stringify({mode})
+    },14000);
+    if(!d?.weather || d.weather.mode!==mode)throw Error('Conferma modalità meteo non ricevuta');
+    currentWeatherAdverse=d.weather;
+  }catch(e){
+    if(e.status===404)weatherControlSupported=false;
+    alert('Meteo non aggiornato sul server: '+e.message+'. Riprova dopo il deploy V11.3.');
+  }finally{
+    weatherSaving=false;renderRiderWeather();
+  }
 }
 
 // ---------- Posizione Rider / Dispatch ----------
@@ -434,7 +469,7 @@ function onRiderPosition(pos){
   });
 }
 function onRiderPositionError(err){
-  const map={1:'permesso posizione negato',2:'posizione non disponibile',3:'timeout GPS'};
+  const map={1:'permesso GPS negato sul dispositivo: consenti Posizione al sito e nelle impostazioni del sistema',2:'posizione non disponibile: controlla GPS e rete del dispositivo',3:'tempo di attesa GPS scaduto: riprova'};
   riderLocationError=map[err?.code]||'GPS non disponibile';
   renderRiderGpsStatus();
 }
@@ -1874,7 +1909,7 @@ function bindEvents(){
   $('clientCalcQuote').onclick=calculateClientQuote;$('clientEditQuote').onclick=()=>{$('clientQuoteSection').classList.add('hidden');$('clientFormCard').scrollIntoView({behavior:'smooth',block:'start'})};$('clientSendRequest').onclick=submitClientRequest;
   $('clientNewRequest').onclick=()=>{localStorage.removeItem(CLIENT_ACTIVE_KEY);stopClientPolling();stopClientBatchPolling();lastClientStatus=null;setBatchMode(false);$('clientRequestStatus').classList.add('hidden');$('clientFormCard').classList.remove('hidden');clearClientDeliveryFields();$('clientFormCard').scrollIntoView({behavior:'smooth'})};
   $('clientRecentList').addEventListener('click',e=>{const b=e.target.closest('[data-repeat-client]');if(b)repeatClientRequest(b.dataset.repeatClient)});
-  $('riderRefresh').onclick=manualRiderRefresh;$('openSettings').onclick=openSettings;$('riderAvailableBtn').onclick=()=>setRiderAvailability(true);$('riderOfflineBtn').onclick=()=>setRiderAvailability(false);if($('riderWeatherOnBtn'))$('riderWeatherOnBtn').onclick=()=>setRiderWeather(true);if($('riderWeatherOffBtn'))$('riderWeatherOffBtn').onclick=()=>setRiderWeather(false);$('riderEtaSelect').onchange=()=>{if(currentAvailability)setRiderAvailability(!!currentAvailability.enabled)};if($('riderGpsRefresh'))$('riderGpsRefresh').onclick=()=>{riderLocationError='';renderRiderGpsStatus();captureRiderLocationOnce(true).catch(e=>{riderLocationError=e?.message||'GPS non disponibile';renderRiderGpsStatus()})};
+  $('riderRefresh').onclick=manualRiderRefresh;$('openSettings').onclick=openSettings;$('riderAvailableBtn').onclick=()=>setRiderAvailability(true);$('riderOfflineBtn').onclick=()=>setRiderAvailability(false);if($('riderWeatherAutoBtn'))$('riderWeatherAutoBtn').onclick=()=>setRiderWeather('auto');if($('riderWeatherOnBtn'))$('riderWeatherOnBtn').onclick=()=>setRiderWeather('force_on');if($('riderWeatherOffBtn'))$('riderWeatherOffBtn').onclick=()=>setRiderWeather('force_off');$('riderEtaSelect').onchange=()=>{if(currentAvailability)setRiderAvailability(!!currentAvailability.enabled)};if($('riderGpsRefresh'))$('riderGpsRefresh').onclick=()=>{riderLocationError='';renderRiderGpsStatus();captureRiderLocationOnce(true).catch(e=>{onRiderPositionError(e)})};
   document.querySelectorAll('[data-rider-page]').forEach(b=>b.onclick=()=>switchRiderPage(b.dataset.riderPage));
   $('remoteRequestsList').addEventListener('click',e=>{const ab=e.target.closest('[data-accept-batch]');if(ab)return acceptRemoteBatch(ab.dataset.acceptBatch);const rb=e.target.closest('[data-reject-batch]');if(rb)return rejectRemoteBatch(rb.dataset.rejectBatch);const ob=e.target.closest('[data-open-batch]');if(ob){const rows=remoteRequests.filter(x=>x.batchId===ob.dataset.openBatch);ensureShiftThen(()=>rows.forEach(createLocalOrderFromRemote));switchRiderPage('deliveries');return;}const a=e.target.closest('[data-accept]');if(a)return acceptRemote(a.dataset.accept);const r=e.target.closest('[data-reject]');if(r)return rejectRemote(r.dataset.reject);const m=e.target.closest('[data-map-remote]');if(m){const x=normalizeRemote(findRemote(m.dataset.mapRemote));window.open(mapsRoute({label:x.pickupAddress,lat:x.pickupLat,lon:x.pickupLon},{label:x.deliveryAddress,lat:x.deliveryLat,lon:x.deliveryLon},x.service),'_blank','noopener');return}const o=e.target.closest('[data-open-delivery]');if(o){const rr=findRemote(o.dataset.openDelivery);if(rr&&!state.orders.some(x=>x.remoteCode===rr.code))ensureShiftThen(()=>createLocalOrderFromRemote(rr));switchRiderPage('deliveries')}});
   $('openWaImporter').onclick=openWhatsAppImporter;$('newManualOrder').onclick=openWhatsAppImporter;
