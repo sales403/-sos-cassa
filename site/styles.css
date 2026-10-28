@@ -360,6 +360,17 @@ footer{padding:34px 0 100px;border-top:1px solid var(--line);margin-top:88px}.fo
 .operator-result-mark b{font-family:"Brush Script MT","Segoe Script",cursive;font-size:24px;line-height:1.02;font-weight:600}
 
 /* INSTALL */
+
+/* Icone guida installazione: SVG incorporati e indipendenti da servizi esterni */
+.install-os-icon svg{width:52px!important;height:52px!important;display:block;stroke:none!important;fill:#111}
+.install-steps .brand-icon svg{width:36px!important;height:36px!important;display:block;stroke:none!important;fill:initial}
+.install-browser-note{display:flex;align-items:center;gap:11px;margin-top:15px;padding:12px 14px;border:1px solid #eddb98;border-radius:14px;background:#fff8df;color:#252525}
+.install-browser-note-icon{display:grid;place-items:center;flex:0 0 30px;width:30px;height:30px}
+.install-browser-note-icon svg{width:24px!important;height:24px!important;display:block;stroke:none!important;fill:initial}
+.install-browser-note p{margin:0!important;font-size:12px;line-height:1.5}
+.install-browser-note strong{font-weight:900}
+@media(max-width:700px){.install-os-icon svg{width:40px!important;height:40px!important}}
+
 .install-editorial{padding:48px 0 105px}
 .install-editorial-grid{display:grid;grid-template-columns:1fr 1fr;gap:18px}
 .install-premium{padding:24px;border:1px solid #d8dce1;border-radius:28px;background:rgba(255,255,255,.96);box-shadow:0 16px 40px rgba(32,36,40,.06)}
