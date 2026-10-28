@@ -134,6 +134,19 @@ export default {
         return listClientRequests(url, env, a, cors);
       }
 
+      if (url.pathname === '/api/client/recipients' && request.method === 'GET') {
+        requireDb(env); const a=await requireRole(request,env,'client');
+        return listSavedRecipients(env,a,cors);
+      }
+      if (url.pathname === '/api/client/recipients' && request.method === 'POST') {
+        requireDb(env); const a=await requireRole(request,env,'client');
+        return saveRecipient(request,env,a,cors);
+      }
+      if (url.pathname === '/api/client/recipients' && request.method === 'DELETE') {
+        requireDb(env); const a=await requireRole(request,env,'client');
+        return removeRecipient(request,env,a,cors);
+      }
+
       const clientMatch = url.pathname.match(/^\/api\/client\/requests\/([^/]+)$/);
       if (clientMatch && request.method === 'GET') {
         requireDb(env);
@@ -2515,6 +2528,45 @@ async function getClientRequest(code, env, a, cors) {
     ok: true,
     request: { ...rowOwner(row), eta: etaState.etaByCode[row.code] || null }
   }, 200, cors);
+}
+
+
+/* Rubrica destinazioni riservata al singolo locale autenticato. */
+async function ensureRecipients(env){
+  await env.DB.prepare('CREATE TABLE IF NOT EXISTS client_recipients (id TEXT PRIMARY KEY,user_id TEXT NOT NULL,recipient_name TEXT NOT NULL,recipient_phone TEXT NOT NULL,delivery_address TEXT NOT NULL,delivery_lat REAL NOT NULL,delivery_lon REAL NOT NULL,notes TEXT NOT NULL DEFAULT \'\',last_used_at TEXT NOT NULL,created_at TEXT NOT NULL,updated_at TEXT NOT NULL)').run();
+  await env.DB.prepare('CREATE INDEX IF NOT EXISTS idx_client_recipient_user ON client_recipients(user_id,last_used_at DESC)').run();
+}
+function recipientPublic(r){
+  return {id:r.id,recipientName:r.recipient_name,recipientPhone:r.recipient_phone,
+    deliveryAddress:r.delivery_address,deliveryLat:Number(r.delivery_lat),deliveryLon:Number(r.delivery_lon),
+    notes:r.notes,lastUsedAt:r.last_used_at};
+}
+async function listSavedRecipients(env,a,cors){
+  await ensureRecipients(env);
+  const q=await env.DB.prepare('SELECT * FROM client_recipients WHERE user_id=? ORDER BY last_used_at DESC LIMIT 100')
+    .bind(a.user.id).all();
+  return json({ok:true,recipients:(q.results||[]).map(recipientPublic)},200,cors);
+}
+async function saveRecipient(request,env,a,cors){
+  const p=await request.json().catch(()=>fail('JSON non valido'));
+  const id=cleanText(p.id,50)||'RCP-'+token().slice(0,14);
+  const name=cleanText(p.recipientName,80),phone=cleanPhone(p.recipientPhone),address=cleanText(p.deliveryAddress,180),
+    lat=Number(p.deliveryLat),lon=Number(p.deliveryLon),notes=cleanText(p.notes,400);
+  if(!name||phone.length<9||!address||!validCoord(lat,lon))fail('Completa destinatario e indirizzo verificato',400);
+  await ensureRecipients(env);
+  const existing=await env.DB.prepare('SELECT user_id FROM client_recipients WHERE id=?').bind(id).first();
+  if(existing && existing.user_id!==a.user.id)fail('Destinatario non autorizzato',403);
+  const now=new Date().toISOString();
+  await env.DB.prepare('INSERT INTO client_recipients (id,user_id,recipient_name,recipient_phone,delivery_address,delivery_lat,delivery_lon,notes,last_used_at,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET recipient_name=excluded.recipient_name,recipient_phone=excluded.recipient_phone,delivery_address=excluded.delivery_address,delivery_lat=excluded.delivery_lat,delivery_lon=excluded.delivery_lon,notes=excluded.notes,last_used_at=excluded.last_used_at,updated_at=excluded.updated_at')
+    .bind(id,a.user.id,name,phone,address,lat,lon,notes,now,now,now).run();
+  return json({ok:true,id},200,cors);
+}
+async function removeRecipient(request,env,a,cors){
+  const p=await request.json().catch(()=>fail('JSON non valido'));
+  await ensureRecipients(env);
+  await env.DB.prepare('DELETE FROM client_recipients WHERE id=? AND user_id=?')
+    .bind(cleanText(p.id,50),a.user.id).run();
+  return json({ok:true},200,cors);
 }
 
 async function listClientRequests(url, env, a, cors) {
