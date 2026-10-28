@@ -989,13 +989,29 @@ async function submitClientRequest(){
     const d=validateClientForm(true);if(!clientQuote)throw new Error('Ricalcola prima la tariffa.');
     if(!clientSubmissionId)clientSubmissionId=(crypto.randomUUID?.()||uid('SUB'));
     getAudioCtx('client')?.resume?.();
+    // Prezzo vincolante: il cliente deve accettare il prezzo aggiornato se meteo o orario cambiano.
+    const quoteEndpoint=apiBase()+(clientBatchMode?'/api/batch/quote':'/api/quote');
+    const quotePayload=clientBatchMode?batchPayload(d):{
+      pickupLat:d.pickupLat,pickupLon:d.pickupLon,deliveryLat:d.deliveryLat,deliveryLon:d.deliveryLon,
+      service:d.service,readyTime:d.readyTime
+    };
+    const fresh=await fetchJson(quoteEndpoint,{
+      method:'POST',headers:{'Accept':'application/json','Content-Type':'application/json'},
+      body:JSON.stringify(quotePayload)
+    },16000);
+    const newTotal=Number(fresh?.quote?.totalFee),oldTotal=Number(clientQuote.total);
+    if(!Number.isFinite(newTotal))throw Error('Non riesco a verificare il preventivo aggiornato.');
+    if(Math.abs(newTotal-oldTotal)>0.001){
+      await calculateClientQuote();
+      throw Error('Il prezzo è cambiato da '+money(oldTotal)+' a '+money(newTotal)+'. Controlla il nuovo preventivo e premi INVIA RICHIESTA per accettarlo.');
+    }
     const av=await refreshAvailability();if(av?.mode==='offline')throw new Error('Il rider è segnato come non disponibile. Puoi contattarlo su WhatsApp.');
     if(!clientBatchMode&&av?.mode==='busy'&&!confirm(`Il rider è attualmente occupato. Nuova partenza stimata ~${av.etaMin||25} min. Vuoi comunque inviare la richiesta?`))return;
     if(clientBatchMode&&clientQuote?.pickupAvailability?.canAcceptNow===false&&!confirm('Il giro usa 2 slot e al momento non può essere accettato subito. Vuoi inviarlo comunque in attesa?'))return;
     status.textContent=clientBatchMode?'Invio giro da 2 consegne all’Area Rider…':'Invio automatico all’Area Rider…';
     const headers=authSession&&authProfile?.role==='client'?authHeaders():{'Accept':'application/json','Content-Type':'application/json'};
     if(clientBatchMode){
-      const payload={...batchPayload(d),submissionId:clientSubmissionId,formStartedAt:Number(sessionStorage.getItem('sosClientStartedAt')||Date.now()),website:'sos-rider-v11-batch'};
+      const payload={...batchPayload(d),quotedTotal:clientQuote.total,submissionId:clientSubmissionId,formStartedAt:Number(sessionStorage.getItem('sosClientStartedAt')||Date.now()),website:'sos-rider-v11-batch'};
       const res=await fetchJson(apiBase()+'/api/requests/batch',{method:'POST',headers,body:JSON.stringify(payload)},16000);
       if(!res?.batch?.batchId||!res?.clientToken)throw new Error('Risposta giro incompleta.');
       localStorage.setItem(CLIENT_ACTIVE_KEY,JSON.stringify({batch:true,batchId:res.batch.batchId,token:res.clientToken}));
