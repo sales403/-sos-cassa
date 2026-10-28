@@ -252,7 +252,7 @@ function corsHeaders(origin, env) {
   const allowed = new Set([...DEFAULT_ORIGINS, ...extra]);
 
   const headers = {
-    'Access-Control-Allow-Methods': 'GET,POST,PATCH,OPTIONS',
+    'Access-Control-Allow-Methods': 'GET,POST,PATCH,DELETE,OPTIONS',
     'Access-Control-Allow-Headers': 'Content-Type,Authorization',
     'Access-Control-Max-Age': '86400',
     'Vary': 'Origin'
@@ -1782,6 +1782,10 @@ async function updateRiderLocation(request, env, cors) {
   const capturedMs = Date.parse(capturedAt);
   if (!Number.isFinite(capturedMs) || capturedMs > Date.now() + 120000 || capturedMs < Date.now() - 3600000) {
     capturedAt = new Date().toISOString();
+  }
+  const previous=await getRiderLocation(env);
+  if(previous && Date.parse(previous.capturedAt)>Date.parse(capturedAt)) {
+    return json({ok:true,location:previous,staleUpdateIgnored:true},200,cors);
   }
   const now = new Date().toISOString();
 
