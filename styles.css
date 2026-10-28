@@ -682,3 +682,22 @@ html[data-theme="day"] #riderAvailabilityControl .operator-toggle .btn[aria-pres
   }
   #riderAvailabilityControl .weather-mode-toggle .btn{flex:1 1 auto}
 }
+
+/* V11.3.5 · iOS bottom navigation anchored to the visible viewport.
+   The nav is moved under <body> by app.js to avoid ancestor scroll/transform bugs. */
+.bottom-nav.bottom-nav-v2{
+  position:fixed;
+  left:0;
+  right:0;
+  bottom:0;
+  transform:none;
+  -webkit-transform:none;
+  margin-inline:auto;
+  width:min(1080px,100%);
+  max-width:100vw;
+  z-index:250;
+  touch-action:manipulation;
+}
+.rider-shell{
+  padding-bottom:calc(var(--sos-rider-nav-height, 105px) + env(safe-area-inset-bottom) + 20px);
+}
