@@ -648,3 +648,37 @@ html[data-theme="day"] .rider-topbar .rider-exit-btn{
   .rider-topbar .compact-brand b{font-size:12px}
   .rider-topbar .compact-brand small{font-size:9px}
 }
+
+/* V11.3.3 · Stato selezionato riconoscibile: DISPONIBILE/OFF, meteo AUTO/FORZA/NO.
+   Solo Area Rider: il colore segue il valore confermato dal server. */
+#riderAvailabilityControl .operator-toggle .btn[aria-pressed="true"],
+html[data-theme="day"] #riderAvailabilityControl .operator-toggle .btn[aria-pressed="true"]{
+  background:var(--yellow)!important;
+  border:1px solid var(--yellow)!important;
+  color:#111!important;
+  box-shadow:inset 0 0 0 1px rgba(0,0,0,.06);
+}
+#riderAvailabilityControl .operator-toggle .btn[aria-pressed="false"]{
+  background:var(--surface2,#141414)!important;
+  border:1px solid var(--line2)!important;
+  color:var(--text)!important;
+  box-shadow:none;
+}
+html[data-theme="day"] #riderAvailabilityControl .operator-toggle .btn[aria-pressed="false"]{
+  background:#fff!important;
+  border:1px solid #cfd3d8!important;
+  color:#24272b!important;
+}
+#riderAvailabilityControl .weather-mode-toggle .btn:disabled{
+  opacity:.55;cursor:not-allowed;
+}
+#riderAvailabilityControl .weather-mode-toggle{flex-wrap:wrap;justify-content:flex-end}
+@media(max-width:660px){
+  #riderAvailabilityControl .rider-gps-row:has(.weather-mode-toggle){
+    flex-wrap:wrap;align-items:flex-start;
+  }
+  #riderAvailabilityControl .weather-mode-toggle{
+    justify-content:flex-start;width:100%;gap:5px;
+  }
+  #riderAvailabilityControl .weather-mode-toggle .btn{flex:1 1 auto}
+}
