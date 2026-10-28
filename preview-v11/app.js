@@ -351,7 +351,7 @@ function riderLocationAgeSec(loc=riderLocation){
 }
 function renderRiderGpsStatus(){
   const el=$('riderGpsStatus'); if(!el)return;
-  const loc=riderLocation||serverRiderLocation;
+  const loc=Date.parse(serverRiderLocation?.capturedAt||'')>Date.parse(riderLocation?.capturedAt||'')?serverRiderLocation:(riderLocation||serverRiderLocation);
   const age=riderLocationAgeSec(loc);
   if(riderLocationError){
     el.className='rider-gps-status warn';
