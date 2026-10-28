@@ -170,9 +170,31 @@ function mapsNavigate(destination,vehicle){
 }
 function waLink(text){ return `https://wa.me/${SOS_WHATSAPP}?text=${encodeURIComponent(text)}`; }
 
+// iOS PWA: the navigation must live directly under <body>, not in the scrollable Rider shell.
+let riderNavLayoutFrame = null;
+function syncRiderNavViewport(){
+  if(riderNavLayoutFrame !== null) return;
+  riderNavLayoutFrame = requestAnimationFrame(() => {
+    riderNavLayoutFrame = null;
+    const nav = document.querySelector('.bottom-nav-v2');
+    if(!nav || nav.classList.contains('hidden')) return;
+    const viewport = window.visualViewport;
+    const layoutHeight = document.documentElement.clientHeight || window.innerHeight;
+    const visibleBottom = viewport ? viewport.offsetTop + viewport.height : layoutHeight;
+    const bottomOffset = Math.max(0, Math.round(layoutHeight - visibleBottom));
+    nav.style.bottom = bottomOffset + 'px';
+    document.documentElement.style.setProperty('--sos-rider-nav-height', Math.ceil(nav.getBoundingClientRect().height) + 'px');
+  });
+}
 function showOnly(view){
+  const nav = document.querySelector('.bottom-nav-v2');
+  if(nav){
+    if(nav.parentElement !== document.body) document.body.appendChild(nav);
+    nav.classList.toggle('hidden', view !== 'riderHub');
+  }
   ['hubHome','authHub','clientHub','riderLogin','riderHub'].forEach(id => $(id).classList.toggle('hidden', id!==view));
   window.scrollTo({top:0,behavior:'instant'});
+  syncRiderNavViewport();
 }
 function openHome(){
   stopClientPolling(); stopClientBatchPolling(); stopRiderPolling(); stopAvailabilityPolling(); stopAlarm(); stopRiderLocationTracking();
@@ -1967,6 +1989,10 @@ async function bootRoute(){
 
 async function boot(){
   migrateAndLoad();applyTheme();bindEvents();initAutocomplete();setDefaultReadyTime();sessionStorage.setItem('sosClientStartedAt',String(Date.now()));
+  window.addEventListener('resize', syncRiderNavViewport, {passive:true});
+  window.addEventListener('scroll', syncRiderNavViewport, {passive:true});
+  window.visualViewport?.addEventListener('resize', syncRiderNavViewport, {passive:true});
+  window.visualViewport?.addEventListener('scroll', syncRiderNavViewport, {passive:true});
   window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();deferredInstall=e;$('clientInstallBtn').classList.remove('hidden')});
   if('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js').catch(()=>{});
   await syncAuthState();
