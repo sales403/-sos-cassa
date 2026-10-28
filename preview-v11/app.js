@@ -415,7 +415,9 @@ function renderRiderGpsStatus(){
   const el=$('riderGpsStatus'); if(!el)return;
   const loc=Date.parse(serverRiderLocation?.capturedAt||'')>Date.parse(riderLocation?.capturedAt||'')?serverRiderLocation:(riderLocation||serverRiderLocation);
   const age=riderLocationAgeSec(loc);
-  if(riderLocationError){
+  // Un blocco del browser aziendale non annulla un eventuale GPS nativo recente.
+  const nativeFresh=!!serverRiderLocation && riderLocationAgeSec(serverRiderLocation)<=90;
+  if(riderLocationError && !nativeFresh){
     el.className='rider-gps-status warn';
     el.innerHTML=`${icon('warning','mini-inline-icon')} GPS: ${esc(riderLocationError)}`;
     return;
