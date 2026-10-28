@@ -141,6 +141,18 @@ export default {
         return getClientRequest(clientMatch[1], env, a, cors);
       }
 
+      if (url.pathname === '/api/rider/whatsapp/quote' && request.method === 'POST') {
+        requireDb(env);
+        await requireRole(request, env, 'rider');
+        return quoteWhatsappRequest(request, env, cors);
+      }
+
+      if (url.pathname === '/api/rider/whatsapp/confirm' && request.method === 'POST') {
+        requireDb(env);
+        await requireRole(request, env, 'rider');
+        return confirmWhatsappRequest(request, env, ctx, cors);
+      }
+
       if (url.pathname === '/api/rider/availability' && request.method === 'PATCH') {
         requireDb(env);
         await requireRole(request, env, 'rider');
@@ -1611,7 +1623,7 @@ async function handleOwnTracks(request, env) {
   const expectedPass = String(env.TRACKER_BASIC_PASSWORD || '');
   if (!expectedUser || expectedPass.length < 20) fail('Tracker non configurato', 503);
   const header = String(request.headers.get('Authorization') || '');
-  const token = header.match(/^Basic\\s+(.+)$/i);
+  const token = header.match(/^Basic\s+(.+)$/i);
   if (!token) fail('Autenticazione tracker richiesta', 401);
   let credential = '';
   try { credential = atob(token[1]); } catch { fail('Credenziali tracker non valide', 401); }
@@ -2080,6 +2092,98 @@ function validatePayload(p) {
   }
 
   return d;
+}
+
+
+/* WhatsApp manual import: SAME D1 requests engine, no fake local-only orders. */
+async function ensureWhatsappQuotes(env) {
+  await env.DB.prepare(`CREATE TABLE IF NOT EXISTS whatsapp_quotes (
+    quote_id TEXT PRIMARY KEY,
+    source TEXT NOT NULL DEFAULT 'whatsapp',
+    payload_json TEXT NOT NULL,
+    quote_json TEXT NOT NULL,
+    status TEXT NOT NULL DEFAULT 'awaiting_confirmation',
+    request_code TEXT NOT NULL DEFAULT '',
+    created_at TEXT NOT NULL,
+    expires_at TEXT NOT NULL,
+    confirmed_at TEXT
+  )`).run();
+  await env.DB.prepare('CREATE INDEX IF NOT EXISTS idx_wa_quotes_status ON whatsapp_quotes(status,created_at DESC)').run();
+}
+
+async function pricedWhatsappData(env,d) {
+  const route=await routeData(d.pickupLon+','+d.pickupLat,d.deliveryLon+','+d.deliveryLat,d.service);
+  const weather=await getWeatherState(env,d.pickupLat,d.pickupLon,d.readyTime);
+  const fees=tariffFor(route.distanceKm,d.service,d.readyTime,weather.adverse);
+  const pickupAvailability=await buildPickupAvailabilityPreview(env,d);
+  return {...route,...fees,weather, pickupAvailability,
+    orderTotal:d.orderTotal,service:d.service,readyTime:d.readyTime,
+    source:'whatsapp'};
+}
+
+async function quoteWhatsappRequest(request,env,cors) {
+  const p=await request.json().catch(()=>fail('JSON non valido'));
+  const d=validatePayload(p);
+  const quote=await pricedWhatsappData(env,d);
+  await ensureWhatsappQuotes(env);
+  const quoteId='WQ-'+token().slice(0,18).toUpperCase();
+  const now=new Date();
+  const expires=new Date(now.getTime()+45*60000).toISOString();
+  await env.DB.prepare(`INSERT INTO whatsapp_quotes
+    (quote_id,payload_json,quote_json,status,created_at,expires_at)
+    VALUES(?,?,?,'awaiting_confirmation',?,?)`)
+    .bind(quoteId,JSON.stringify(d),JSON.stringify(quote),now.toISOString(),expires).run();
+  return json({ok:true,quoteId,status:'awaiting_confirmation',quote,expiresAt:expires},201,cors);
+}
+
+async function confirmWhatsappRequest(request,env,ctx,cors) {
+  const p=await request.json().catch(()=>fail('JSON non valido'));
+  const quoteId=cleanText(p.quoteId,40);
+  if (!/^WQ-[A-Z0-9]{18}$/.test(quoteId)) fail('Identificativo preventivo non valido',400);
+  await ensureWhatsappQuotes(env);
+  const saved=await env.DB.prepare('SELECT * FROM whatsapp_quotes WHERE quote_id=?').bind(quoteId).first();
+  if (!saved) fail('Preventivo WhatsApp non trovato',404);
+  if (saved.status==='confirmed') {
+    const row=await getByCode(env,saved.request_code);
+    if (!row) fail('Consegna confermata non trovata',500);
+    return json({ok:true,idempotent:true,request:rowPublic(row)},200,cors);
+  }
+  if (saved.status!=='awaiting_confirmation') fail('Preventivo non confermabile',409);
+  if (Date.now()>Date.parse(saved.expires_at)) fail('Preventivo scaduto: ricalcola',409);
+  const av=await computeAvailability(env);
+  if (av.mode==='offline') fail('Rider OFF: riattiva disponibilità prima di confermare',409);
+  const d=validatePayload(JSON.parse(saved.payload_json));
+  const old=JSON.parse(saved.quote_json);
+  const current=await pricedWhatsappData(env,d);
+  if (Math.abs(Number(current.totalFee)-Number(old.totalFee))>.001 ||
+      Math.abs(Number(current.distanceKm)-Number(old.distanceKm))>.25) {
+    fail('Prezzo o percorso cambiato: ricalcola e invia il nuovo preventivo prima della conferma',409);
+  }
+  const id=makeCode(),clientToken=token(),now=new Date().toISOString();
+  const insert=env.DB.prepare(`INSERT INTO requests (
+    code,client_token,submission_id,user_id,created_at,updated_at,status,
+    requester_name,requester_phone,pickup_address,pickup_lat,pickup_lon,
+    ready_time,recipient_name,recipient_phone,delivery_address,delivery_lat,delivery_lon,
+    service,payment,order_total,notes,distance_km,duration_min,route_source,
+    base_fee,late_fee,weather_fee,total_fee,micro_delivery,rejection_reason
+  ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`)
+  .bind(id,clientToken,quoteId,'',now,now,'new',
+    d.requesterName,d.requesterPhone,d.pickupAddress,d.pickupLat,d.pickupLon,
+    d.readyTime,d.recipientName,d.recipientPhone,d.deliveryAddress,d.deliveryLat,d.deliveryLon,
+    d.service,d.payment,d.orderTotal,d.notes,current.distanceKm,current.durationMin,current.source,
+    current.baseFee,current.lateFee,current.weatherFee,current.totalFee,current.microDelivery?1:0,'');
+  // D1 batch is atomic: status and order cannot diverge.
+  await env.DB.batch([
+    env.DB.prepare(`UPDATE whatsapp_quotes SET status='confirmed',request_code=?,confirmed_at=?
+      WHERE quote_id=? AND status='awaiting_confirmation'`).bind(id,now,quoteId),
+    insert,
+    env.DB.prepare('INSERT OR IGNORE INTO request_sources(code,channel,external_id,created_at) VALUES(?,?,?,?)')
+      .bind(id,'whatsapp',quoteId,now)
+  ]);
+  await safeLogEvent(env,id,'request_created','','new','whatsapp',{quoteId,totalFee:current.totalFee});
+  const row=await getByCode(env,id);
+  if(ctx?.waitUntil)ctx.waitUntil(Promise.allSettled([sendPushToAll(env),sendTelegramNewOrder(env,row)]));
+  return json({ok:true,request:rowPublic(row),clientToken,quoteId},201,cors);
 }
 
 async function createRequest(request, env, ctx, cors) {
