@@ -627,3 +627,24 @@ html[data-theme="day"] .modal .wa-import-suggestions .suggestion.is-active,
 html[data-theme="day"] .modal .wa-import-suggestions .suggestion:focus-visible{
   background:#fff1ac;color:#17191c
 }
+
+/* V11.3 · Logout Rider sempre visibile nell'intestazione */
+.rider-topbar .rider-exit-btn{
+  width:auto;min-width:62px;height:44px;padding:0 12px;
+  font-size:12px;font-weight:900;letter-spacing:.045em;
+  color:var(--yellow);white-space:nowrap;line-height:1;
+}
+.rider-topbar .rider-exit-btn:focus-visible{
+  outline:3px solid var(--yellow);outline-offset:2px;
+}
+html[data-theme="day"] .rider-topbar .rider-exit-btn{
+  color:#493a00;background:#fff8e0;border-color:#d2b84b;
+}
+@media(max-width:460px){
+  .rider-topbar .top-actions{gap:4px;flex-shrink:0}
+  .rider-topbar .top-actions .icon-btn:not(.rider-exit-btn){width:35px;height:38px}
+  .rider-topbar .rider-exit-btn{min-width:48px;height:38px;padding:0 6px;font-size:11px}
+  .rider-topbar .compact-brand img{width:42px;height:42px}
+  .rider-topbar .compact-brand b{font-size:12px}
+  .rider-topbar .compact-brand small{font-size:9px}
+}
