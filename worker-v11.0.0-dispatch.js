@@ -727,48 +727,34 @@ function parsePoint(s) {
   return { lat, lon };
 }
 
-async function routeData(from, to, service) {
-  const a = parsePoint(from);
-  const b = parsePoint(to);
 
-  if (!a || !b) {
-    fail('Coordinate percorso non valide', 400);
-  }
-
-  const profile = service === 'ebike' ? 'cycling' : 'driving';
-
-  const u =
-    'https://router.project-osrm.org/route/v1/driving/' +
-    a.lon + ',' + a.lat + ';' + b.lon + ',' + b.lat +
-    '?overview=false&steps=false&alternatives=false';
-
-  const res = await fetch(
-    u,
-    {
-      headers: {
-        'User-Agent': 'SOS-Rider-Carpi-Soliera/10.0'
-      }
-    }
-  );
-
-  if (!res.ok) {
-    fail('Servizio percorso temporaneamente non disponibile', 502);
-  }
-
-  const d = await res.json();
-  const r = d.routes?.[0];
-
-  if (!r?.distance) {
-    fail('Percorso non calcolabile per questi indirizzi', 422);
-  }
-
-  const distanceKm = r.distance / 1000;
+async function routeData(from,to,service) {
+  const a=parsePoint(from),b=parsePoint(to);
+  if(!a||!b)fail('Coordinate percorso non valide',400);
+  if(!['ebike','moto','auto'].includes(service))fail('Seleziona prima il veicolo',400);
+  // V11.3 staging: separate OSM costings, not driving for bicycles.
+  // Demo Valhalla provider is for validation only, not guaranteed production SLA.
+  const profile=service==='ebike'?'bicycle':service==='moto'?'motorcycle':'auto';
+  const base='https://valhalla1.openstreetmap.de/route';
+  const payload={locations:[{lat:a.lat,lon:a.lon},{lat:b.lat,lon:b.lon}],
+    costing:profile,units:'km',language:'it'};
+  const res=await fetch(base,{
+    method:'POST',
+    headers:{'Content-Type':'application/json','Accept':'application/json',
+      'X-Client-Id':'sos-rider-carpi-soliera'},
+    body:JSON.stringify(payload),signal:AbortSignal.timeout(9500)
+  });
+  if(!res.ok)fail('Routing '+service+' temporaneamente non disponibile ('+res.status+')',502);
+  const d=await res.json();
+  const summary=d?.trip?.summary;
+  const km=Number(summary?.length),duration=Number(summary?.time);
+  if(!Number.isFinite(km)||km<=0||!Number.isFinite(duration))fail('Percorso '+service+' non calcolabile',422);
   return {
-    distanceKm,
-    durationMin: Math.max(1, Math.round(r.duration / 60)),
-    etaTravelMin: travelMinutes(distanceKm, service),
-    etaSpeedKmh: etaSpeedKmh(service),
-    source: 'osrm-road',
+    distanceKm:km,
+    durationMin:Math.max(1,Math.round(duration/60)),
+    etaTravelMin:travelMinutes(km,service),
+    etaSpeedKmh:etaSpeedKmh(service),
+    source:'valhalla-'+profile,
     profile
   };
 }
@@ -1850,7 +1836,7 @@ function buildDispatchDecision(r, ctx) {
   if (active + requestedSlots > MAX_ACTIVE_ORDERS) {
     level = 'red';
     label = 'NON ACCETTARE';
-    reason = requestedSlots > 1 ? 'Il giro richiede 2 slot liberi e supererebbe il limite operativo.' : 'Hai già raggiunto il limite iniziale di 2 ordini attivi.';
+    reason = requestedSlots > 1 ? 'Il giro richiede 2 slot liberi e supererebbe il limite operativo.' : 'Hai già raggiunto il limite operativo di 3 ordini attivi.';
     recommendation = 'Completa almeno una consegna prima di accettarne un’altra.';
   } else if (active === 0 && (!location || !location.fresh)) {
     level = 'yellow';
@@ -2655,7 +2641,7 @@ async function updateRiderRequest(code, request, env, cors) {
     ).bind(code).first();
     const activeNow = Number(countRow?.n) || 0;
     if (activeNow >= MAX_ACTIVE_ORDERS) {
-      fail('Limite sicurezza: massimo 2 ordini attivi contemporaneamente.', 409);
+      fail('Limite sicurezza: massimo 3 ordini attivi contemporaneamente.', 409);
     }
   }
 
