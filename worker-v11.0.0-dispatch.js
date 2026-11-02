@@ -915,7 +915,7 @@ function makeBatchId() {
   return 'BG-' + mo + day + '-' + rnd;
 }
 
-function validateBatchBase(p) {
+function validateBatchBase(p, { requireContacts = true } = {}) {
   const d = {
     requesterName: cleanText(p.requesterName, 80),
     requesterPhone: cleanPhone(p.requesterPhone),
@@ -925,14 +925,14 @@ function validateBatchBase(p) {
     readyTime: cleanText(p.readyTime, 5),
     service: cleanText(p.service, 10)
   };
-  if (!d.requesterName || d.requesterPhone.length < 9) fail('Dati richiedente incompleti');
+  if (requireContacts && (!d.requesterName || d.requesterPhone.length < 9)) fail('Dati richiedente incompleti');
   if (!d.pickupAddress || !validCoord(d.pickupLat, d.pickupLon)) fail('Indirizzo ritiro non verificato');
   if (!/^\d{2}:\d{2}$/.test(d.readyTime)) fail('Orario pronto non valido');
   if (!['ebike','moto','auto'].includes(d.service)) fail('Servizio non valido');
   return d;
 }
 
-function validateBatchStop(x, index) {
+function validateBatchStop(x, index, { requireContacts = true, requireCashAmount = true } = {}) {
   const d = {
     recipientName: cleanText(x?.recipientName, 80),
     recipientPhone: cleanPhone(x?.recipientPhone),
@@ -944,18 +944,18 @@ function validateBatchStop(x, index) {
     notes: cleanText(x?.notes, 400),
     originalIndex: index
   };
-  if (!d.recipientName || d.recipientPhone.length < 9) fail('Dati destinatario ' + (index + 1) + ' incompleti');
+  if (requireContacts && (!d.recipientName || d.recipientPhone.length < 9)) fail('Dati destinatario ' + (index + 1) + ' incompleti');
   if (!d.deliveryAddress || !validCoord(d.deliveryLat, d.deliveryLon)) fail('Indirizzo consegna ' + (index + 1) + ' non verificato');
   if (!['paid','cash','pos'].includes(d.payment)) fail('Pagamento consegna ' + (index + 1) + ' non valido');
-  if (d.payment === 'cash' && d.orderTotal <= 0) fail('Importo da incassare consegna ' + (index + 1) + ' non valido');
+  if (requireCashAmount && d.payment === 'cash' && d.orderTotal <= 0) fail('Importo da incassare consegna ' + (index + 1) + ' non valido');
   return d;
 }
 
-async function calculateBatchData(env, p) {
-  const base = validateBatchBase(p);
+async function calculateBatchData(env, p, opts = {}) {
+  const base = validateBatchBase(p, opts);
   const inputStops = Array.isArray(p.deliveries) ? p.deliveries : [];
   if (inputStops.length !== 2) fail('Il giro multiplo supporta esattamente 2 consegne');
-  const stops = inputStops.map(validateBatchStop);
+  const stops = inputStops.map((stop, index) => validateBatchStop(stop, index, opts));
 
   const pickupPoint = base.pickupLon + ',' + base.pickupLat;
   const aPoint = stops[0].deliveryLon + ',' + stops[0].deliveryLat;
@@ -1060,7 +1060,7 @@ function batchQuotePublic(x) {
 async function handleBatchQuote(request, env, cors) {
   await ensureBatchSchema(env);
   const p = await request.json().catch(() => fail('JSON non valido'));
-  const x = await calculateBatchData(env, p);
+  const x = await calculateBatchData(env, p, { requireContacts: false, requireCashAmount: false });
   return json({ ok: true, quote: batchQuotePublic(x), availability: x.pickupAvailability }, 200, cors);
 }
 
@@ -1257,7 +1257,12 @@ async function getGuestBatch(batchId, url, env, cors) {
   const row = await env.DB.prepare('SELECT client_token FROM request_batches WHERE batch_id=?').bind(batchId).first();
   if (!row) fail('Giro non trovato', 404);
   if (!t || t !== row.client_token) fail('Token giro non valido', 403);
-  return json({ ok: true, ...(await getBatchPayload(env, batchId, true)) }, 200, cors);
+  const data = await getBatchPayload(env, batchId, true);
+  const grouped = await Promise.all((data.batch?.items || []).map(async item =>
+    (await publicRequestTimeline(env, item.code)).map(event => ({ ...event, stopIndex: item.batchStopIndex }))
+  ));
+  const events = grouped.flat().sort((a, b) => Date.parse(a.createdAt) - Date.parse(b.createdAt));
+  return json({ ok: true, ...data, events }, 200, cors);
 }
 
 async function updateRiderBatch(batchId, request, env, cors) {
@@ -1815,8 +1820,26 @@ async function updateRiderLocation(request, env, cors) {
   return json({ ok: true, location: await getRiderLocation(env) }, 200, cors);
 }
 
+let requestEventsSchemaReady = false;
+async function ensureRequestEventsSchema(env) {
+  if (requestEventsSchemaReady) return;
+  await env.DB.prepare(`CREATE TABLE IF NOT EXISTS request_events (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    code TEXT NOT NULL,
+    event_type TEXT NOT NULL,
+    status_from TEXT NOT NULL DEFAULT '',
+    status_to TEXT NOT NULL DEFAULT '',
+    source TEXT NOT NULL DEFAULT 'system',
+    payload_json TEXT NOT NULL DEFAULT '',
+    created_at TEXT NOT NULL
+  )`).run();
+  await env.DB.prepare('CREATE INDEX IF NOT EXISTS idx_request_events_code_created ON request_events(code, created_at DESC)').run();
+  requestEventsSchemaReady = true;
+}
+
 async function safeLogEvent(env, code, eventType, statusFrom='', statusTo='', source='system', payload={}) {
   try {
+    await ensureRequestEventsSchema(env);
     await env.DB.prepare(
       'INSERT INTO request_events(code,event_type,status_from,status_to,source,payload_json,created_at) VALUES(?,?,?,?,?,?,?)'
     ).bind(
@@ -1830,6 +1853,26 @@ async function safeLogEvent(env, code, eventType, statusFrom='', statusTo='', so
     ).run();
   } catch (e) {
     console.warn('request_events unavailable', e);
+  }
+}
+
+// Store all transitions in D1; guests see only their own order with the
+// existing client token, and account holders only orders they own.
+async function publicRequestTimeline(env, code) {
+  try {
+    await ensureRequestEventsSchema(env);
+    const result = await env.DB.prepare(
+      'SELECT event_type,status_to,created_at FROM request_events WHERE code=? ORDER BY id ASC LIMIT 100'
+    ).bind(code).all();
+    const allowed = new Set(['request_created', 'status_changed', 'batch_status_changed']);
+    return (result.results || []).filter(e => allowed.has(e.event_type)).map(e => ({
+      eventType: e.event_type,
+      status: e.status_to,
+      createdAt: e.created_at
+    }));
+  } catch (e) {
+    console.warn('Timeline richiesta non disponibile', e);
+    return [];
   }
 }
 
@@ -2122,7 +2165,7 @@ function token() {
   ).join('');
 }
 
-function validatePayload(p) {
+function validatePayload(p, { requireContacts = true, requireCashAmount = true } = {}) {
   const d = {
     requesterName: cleanText(p.requesterName, 80),
     requesterPhone: cleanPhone(p.requesterPhone),
@@ -2141,7 +2184,7 @@ function validatePayload(p) {
     notes: cleanText(p.notes, 400)
   };
 
-  if (!d.requesterName || d.requesterPhone.length < 9) {
+  if (requireContacts && (!d.requesterName || d.requesterPhone.length < 9)) {
     fail('Dati richiedente incompleti');
   }
 
@@ -2153,7 +2196,7 @@ function validatePayload(p) {
     fail('Orario pronto non valido');
   }
 
-  if (!d.recipientName || d.recipientPhone.length < 9) {
+  if (requireContacts && (!d.recipientName || d.recipientPhone.length < 9)) {
     fail('Dati destinatario incompleti');
   }
 
@@ -2169,7 +2212,7 @@ function validatePayload(p) {
     fail('Pagamento non valido');
   }
 
-  if (d.payment === 'cash' && d.orderTotal <= 0) {
+  if (requireCashAmount && d.payment === 'cash' && d.orderTotal <= 0) {
     fail('Importo ordine da incassare non valido');
   }
 
@@ -2205,7 +2248,7 @@ async function pricedWhatsappData(env,d) {
 
 async function quoteWhatsappRequest(request,env,cors) {
   const p=await request.json().catch(()=>fail('JSON non valido'));
-  const d=validatePayload(p);
+  const d=validatePayload(p,{requireContacts:false,requireCashAmount:false});
   const quote=await pricedWhatsappData(env,d);
   await ensureWhatsappQuotes(env);
   const quoteId='WQ-'+token().slice(0,18).toUpperCase();
@@ -2234,7 +2277,7 @@ async function confirmWhatsappRequest(request,env,ctx,cors) {
   if (Date.now()>Date.parse(saved.expires_at)) fail('Preventivo scaduto: ricalcola',409);
   const av=await computeAvailability(env);
   if (av.mode==='offline' || av.mode==='full') fail('Rider non disponibile: OFF manuale o 3 ordini attivi',409);
-  const d=validatePayload(JSON.parse(saved.payload_json));
+  const d=validatePayload(JSON.parse(saved.payload_json),{requireContacts:false,requireCashAmount:true});
   const old=JSON.parse(saved.quote_json);
   const current=await pricedWhatsappData(env,d);
   if (Math.abs(Number(current.totalFee)-Number(old.totalFee))>.001 ||
@@ -2535,7 +2578,8 @@ async function getGuestRequest(code, url, env, cors) {
   const etaState = await buildEtaState(env);
   return json({
     ok: true,
-    request: attachEta(row, etaState.etaByCode, true)
+    request: attachEta(row, etaState.etaByCode, true),
+    events: await publicRequestTimeline(env, row.code)
   }, 200, cors);
 }
 
@@ -2559,7 +2603,8 @@ async function getClientRequest(code, env, a, cors) {
   const etaState = await buildEtaState(env);
   return json({
     ok: true,
-    request: { ...rowOwner(row), eta: etaState.etaByCode[row.code] || null }
+    request: { ...rowOwner(row), eta: etaState.etaByCode[row.code] || null },
+    events: await publicRequestTimeline(env, row.code)
   }, 200, cors);
 }
 

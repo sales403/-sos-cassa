@@ -701,3 +701,18 @@ html[data-theme="day"] #riderAvailabilityControl .operator-toggle .btn[aria-pres
 .rider-shell{
   padding-bottom:calc(var(--sos-rider-nav-height, 105px) + env(safe-area-inset-bottom) + 20px);
 }
+
+/* V11.3.7 · Timeline persistente degli eventi per locale/cliente. */
+.client-timeline{margin:16px 0;padding:16px;border:1px solid var(--line);border-radius:17px;background:var(--surface2)}
+.client-timeline h3{margin:0 0 14px;font-size:13px;font-weight:1000;letter-spacing:.065em;color:var(--text)}
+.client-timeline-note{margin:8px 0 0;color:var(--muted);font-size:12px;line-height:1.5}
+.client-timeline-list{margin:0 0 12px 8px;padding:0;list-style:none;border-left:2px solid var(--line2)}
+.client-timeline-item{display:flex;align-items:flex-start;gap:12px;margin-left:-11px;padding:0 0 17px}
+.client-timeline-item:last-child{padding-bottom:2px}
+.client-timeline-dot{display:flex;align-items:center;justify-content:center;flex:0 0 20px;width:20px;height:20px;border-radius:50%;background:var(--green-soft);border:2px solid var(--green);color:var(--green);font-weight:1000;font-size:11px}
+.client-timeline-item.current .client-timeline-dot{background:var(--yellow);border-color:var(--yellow2);color:#171717}
+.client-timeline-item b{display:block;color:var(--text);font-size:13px;line-height:1.4}
+.client-timeline-item.current b{color:var(--green)}
+.client-timeline-item small{display:block;color:var(--muted);font-size:11px;margin-top:3px}
+.client-recent-actions{display:flex;flex-wrap:wrap;justify-content:flex-end;gap:6px}
+@media(max-width:420px){.client-recent{grid-template-columns:1fr}.client-recent-actions{justify-content:flex-start}}

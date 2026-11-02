@@ -795,23 +795,23 @@ function clientFormData(){
 }
 function validateClientForm(forQuote=true){
   const d=clientFormData(), missing=[];
-  if(!d.requesterName) missing.push('nome locale/richiedente');
-  if(d.requesterPhone.length<9) missing.push('telefono referente');
+  if(!forQuote&&!d.requesterName) missing.push('nome locale/richiedente');
+  if(!forQuote&&d.requesterPhone.length<9) missing.push('telefono referente');
   if(!d.pickupAddress || !clientPickup) missing.push('indirizzo ritiro selezionato');
   if(!d.readyTime) missing.push('orario ordine pronto');
-  if(!d.recipientName) missing.push('destinatario 1');
-  if(d.recipientPhone.length<9) missing.push('telefono destinatario 1');
+  if(!forQuote&&!d.recipientName) missing.push('destinatario 1');
+  if(!forQuote&&d.recipientPhone.length<9) missing.push('telefono destinatario 1');
   if(!d.deliveryAddress || !clientDelivery) missing.push('indirizzo consegna 1 selezionato');
-  if(d.payment==='cash' && d.orderTotal<=0) missing.push('importo ordine 1 da incassare');
+  if(!forQuote&&d.payment==='cash' && d.orderTotal<=0) missing.push('importo ordine 1 da incassare');
   if(clientBatchMode){
     const s=d.second||{};
-    if(!s.recipientName)missing.push('destinatario 2');
-    if((s.recipientPhone||'').length<9)missing.push('telefono destinatario 2');
+    if(!forQuote&&!s.recipientName)missing.push('destinatario 2');
+    if(!forQuote&&(s.recipientPhone||'').length<9)missing.push('telefono destinatario 2');
     if(!s.deliveryAddress||!clientDelivery2)missing.push('indirizzo consegna 2 selezionato');
-    if(s.payment==='cash'&&s.orderTotal<=0)missing.push('importo ordine 2 da incassare');
+    if(!forQuote&&s.payment==='cash'&&s.orderTotal<=0)missing.push('importo ordine 2 da incassare');
   }
   if(missing.length)throw new Error('Completa: '+missing.join(', ')+'.');
-  if(forQuote && (!clientPickup?.lat || !clientDelivery?.lat || (clientBatchMode&&!clientDelivery2?.lat)))throw new Error('Seleziona gli indirizzi dai suggerimenti reali.');
+  if(!clientPickup?.lat || !clientDelivery?.lat || (clientBatchMode&&!clientDelivery2?.lat))throw new Error('Seleziona gli indirizzi dai suggerimenti reali.');
   return d;
 }
 function hideClientQuote(){ $('clientQuoteSection').classList.add('hidden'); }
@@ -1001,19 +1001,26 @@ async function updateClientLivePosition(code,token,status){
 }
 
 function clientHistory(){try{return JSON.parse(localStorage.getItem(CLIENT_HISTORY_KEY)||'[]')}catch{return[]}}
-function addClientHistory(code){
-  const d=clientFormData();const item={code,at:nowIso(),...d,pickupGeo:clientPickup,deliveryGeo:clientDelivery,quote:clientQuote};
+function addClientHistory(code,token,owned=false){
+  const d=clientFormData();const item={code,token,owned,at:nowIso(),...d,pickupGeo:clientPickup,deliveryGeo:clientDelivery,quote:clientQuote};
   const arr=clientHistory().filter(x=>x.code!==code);arr.unshift(item);localStorage.setItem(CLIENT_HISTORY_KEY,JSON.stringify(arr.slice(0,8)));if(!authSession){recentClientItems=arr.slice(0,8);renderClientRecent();}
 }
 async function loadClientRecent(){
   if(authProfile?.role==='client'&&authSession){
-    try{const d=await fetchJson(apiBase()+'/api/client/requests?limit=8',{headers:authHeaders()},8000);recentClientItems=(d.requests||[]).map(r=>({code:r.code,at:r.createdAt,requesterName:r.requesterName,requesterPhone:r.requesterPhone,pickupAddress:r.pickupAddress,pickupGeo:{label:r.pickupAddress,lat:Number(r.pickupLat),lon:Number(r.pickupLon)},readyTime:r.readyTime,recipientName:r.recipientName,recipientPhone:r.recipientPhone,deliveryAddress:r.deliveryAddress,deliveryGeo:{label:r.deliveryAddress,lat:Number(r.deliveryLat),lon:Number(r.deliveryLon)},service:r.service,payment:r.payment,orderTotal:Number(r.orderTotal)||0,notes:r.notes||'',quote:{total:Number(r.totalFee)||0,distanceKm:Number(r.distanceKm)||0}}));renderClientRecent();return;}catch(e){console.warn('Storico online cliente non disponibile',e)}
+    try{const d=await fetchJson(apiBase()+'/api/client/requests?limit=8',{headers:authHeaders()},8000);recentClientItems=(d.requests||[]).map(r=>({code:r.code,at:r.createdAt,status:r.status,owned:true,requesterName:r.requesterName,requesterPhone:r.requesterPhone,pickupAddress:r.pickupAddress,pickupGeo:{label:r.pickupAddress,lat:Number(r.pickupLat),lon:Number(r.pickupLon)},readyTime:r.readyTime,recipientName:r.recipientName,recipientPhone:r.recipientPhone,deliveryAddress:r.deliveryAddress,deliveryGeo:{label:r.deliveryAddress,lat:Number(r.deliveryLat),lon:Number(r.deliveryLon)},service:r.service,payment:r.payment,orderTotal:Number(r.orderTotal)||0,notes:r.notes||'',quote:{total:Number(r.totalFee)||0,distanceKm:Number(r.distanceKm)||0}}));renderClientRecent();return;}catch(e){console.warn('Storico online cliente non disponibile',e)}
   }
   recentClientItems=clientHistory();renderClientRecent();
 }
 function renderClientRecent(){
   const arr=recentClientItems||[];const sec=$('clientRecentSection');if(!sec)return;sec.classList.toggle('hidden',!arr.length);if(!arr.length){$('clientRecentList').innerHTML='';return;}
-  $('clientRecentList').innerHTML=arr.slice(0,4).map((x,i)=>`<div class="client-recent"><div><b>${esc(x.requesterName||'Richiesta')} → ${esc(x.recipientName||'Cliente')}</b><small>${esc(x.deliveryAddress||'')} · ${vehicleLabel(x.service)}${x.quote?.total?' · '+money(x.quote.total):''}</small></div><button class="btn ghost small" type="button" data-repeat-client="${i}">RIPETI</button></div>`).join('');
+  $('clientRecentList').innerHTML=arr.slice(0,4).map((x,i)=>`<div class="client-recent"><div><b>${esc(x.requesterName||'Richiesta')} → ${esc(x.recipientName||'Cliente')}</b><small>${esc(x.code)} · ${esc(x.deliveryAddress||'')} · ${vehicleLabel(x.service)}${x.quote?.total?' · '+money(x.quote.total):''}</small></div><div class="client-recent-actions">${x.token||(authSession&&authProfile?.role==='client')?`<button class="btn primary small" type="button" data-track-client="${i}">TRACKING</button>`:''}<button class="btn ghost small" type="button" data-repeat-client="${i}">RIPETI</button></div></div>`).join('');
+}
+function openClientRecentTracking(index){
+  const x=recentClientItems[Number(index)];if(!x?.code)return;
+  const owned=!!(authSession&&authProfile?.role==='client'&&x.owned);
+  if(!owned&&!x.token)return;
+  localStorage.setItem(CLIENT_ACTIVE_KEY,JSON.stringify({code:x.code,token:x.token||'',owned}));
+  showClientRequestStatus({code:x.code,status:x.status||'new'},x.token||'',owned);
 }
 function repeatClientRequest(index){
   const x=recentClientItems[Number(index)];if(!x)return;
@@ -1066,7 +1073,7 @@ async function submitClientRequest(){
   const status=$('clientSendStatus'),sendBtn=$('clientSendRequest');if(sendBtn.disabled)return;
   sendBtn.disabled=true;status.className='status-line';status.textContent='Verifico disponibilità e dati…';
   try{
-    const d=validateClientForm(true);if(!clientQuote)throw new Error('Ricalcola prima la tariffa.');
+    const d=validateClientForm(false);if(!clientQuote)throw new Error('Ricalcola prima la tariffa.');
     if(!clientSubmissionId)clientSubmissionId=(crypto.randomUUID?.()||uid('SUB'));
     getAudioCtx('client')?.resume?.();
     // Prezzo vincolante: il cliente deve accettare il prezzo aggiornato se meteo o orario cambiano.
@@ -1101,27 +1108,50 @@ async function submitClientRequest(){
       const res=await fetchJson(apiBase()+'/api/requests',{method:'POST',headers,body:JSON.stringify(payload)},35000);
       if(!res?.request?.code||!res?.clientToken)throw new Error('Risposta server incompleta.');
       const r=res.request;clientQuote={service:r.service,distanceKm:Number(r.distanceKm),durationMin:Number(r.durationMin)||0,source:r.routeSource||'server',base:Number(r.baseFee),lateFee:Number(r.lateFee),weatherFee:Number(r.weatherFee)||0,weatherAdverse:!!r.weatherAdverse,total:Number(r.totalFee),micro:!!r.microDelivery,readyTime:r.readyTime,pickupAvailability:clientQuote?.pickupAvailability||null};renderClientQuote();await generateClientQuoteImage();
-      localStorage.setItem(CLIENT_ACTIVE_KEY,JSON.stringify({code:r.code,token:res.clientToken,owned:!!(authSession&&authProfile?.role==='client')}));addClientHistory(r.code);saveClientDraft();clientSubmissionId=null;
+      localStorage.setItem(CLIENT_ACTIVE_KEY,JSON.stringify({code:r.code,token:res.clientToken,owned:!!(authSession&&authProfile?.role==='client')}));addClientHistory(r.code,res.clientToken,!!(authSession&&authProfile?.role==='client'));saveClientDraft();clientSubmissionId=null;
       showClientRequestStatus(r,res.clientToken,!!(authSession&&authProfile?.role==='client'));status.className='status-line ok';status.textContent='✓ Richiesta inviata automaticamente.';currentAvailability=res.availability||currentAvailability;renderAvailability();loadClientRecent();
     }
   }catch(e){status.className='status-line error';status.innerHTML=`⚠ Invio automatico non riuscito: ${esc(e.message)}<br><a class="btn whatsapp-btn full" style="margin-top:8px" href="${waLink(clientStructuredWhatsApp())}" target="_blank" rel="noopener">INVIA I DATI SU WHATSAPP</a>`;}finally{sendBtn.disabled=false;}
 }
 function showClientBatchStatus(batch,token){
-  $('clientFormCard').classList.add('hidden');$('clientQuoteSection').classList.add('hidden');$('clientRequestStatus').classList.remove('hidden');$('clientRequestCode').textContent=batch.batchId;$('clientStatusWhatsapp').href=waLink(`Ciao Marcello, ho inviato il giro SOS Rider ${batch.batchId}.`);lastClientStatus=null;updateClientBatchStatusUI(batch);startClientBatchPolling(batch.batchId,token);$('clientRequestStatus').scrollIntoView({behavior:'smooth',block:'start'});
+  $('clientFormCard').classList.add('hidden');$('clientQuoteSection').classList.add('hidden');$('clientRequestStatus').classList.remove('hidden');$('clientRequestCode').textContent=batch.batchId;$('clientStatusWhatsapp').href=waLink(`Ciao Marcello, ho inviato il giro SOS Rider ${batch.batchId}.`);lastClientStatus=null;updateClientBatchStatusUI(batch);renderClientTimeline([]);startClientBatchPolling(batch.batchId,token);$('clientRequestStatus').scrollIntoView({behavior:'smooth',block:'start'});
 }
 function updateClientBatchStatusUI(b){
   const badge=$('clientStatusBadge'),s=b.status||'new';if(lastClientStatus&&lastClientStatus!==s)playDing();lastClientStatus=s;badge.className='request-state';$('clientConfirmedPrice').textContent=`Tariffa giro: ${money(b.totalFee)}`;$('clientStatusIcon').textContent=s==='delivered'?'✓':s==='new'?'…':'⚡';
   if(s==='new'){badge.classList.add('waiting');badge.textContent='GIRO IN ATTESA DEL RIDER';$('clientStatusText').textContent='Richiesta unica: 1 ritiro e 2 consegne.';}
   else if(s==='accepted'){badge.classList.add('accepted');badge.textContent='GIRO ACCETTATO';$('clientStatusText').textContent='Marcello ha preso in carico entrambi gli ordini.';}
   else if(s==='picked'){badge.classList.add('progress');badge.textContent=`IN CONSEGNA · ${b.deliveredCount||0}/2 COMPLETATE`;$('clientStatusText').textContent='Entrambi gli ordini sono stati ritirati. Il rider segue l’ordine di consegna ottimizzato.';}
-  else if(s==='delivered'){badge.classList.add('accepted');badge.textContent='GIRO COMPLETATO';$('clientStatusText').textContent='Entrambe le consegne sono state completate.';localStorage.removeItem(CLIENT_ACTIVE_KEY);stopClientBatchPolling();}
-  else if(s==='rejected'||s==='cancelled'){badge.classList.add('rejected');badge.textContent='GIRO NON ATTIVO';$('clientStatusText').textContent='Il giro non è stato preso in carico.';localStorage.removeItem(CLIENT_ACTIVE_KEY);stopClientBatchPolling();}
+  else if(s==='delivered'){badge.classList.add('accepted');badge.textContent='GIRO COMPLETATO';$('clientStatusText').textContent='Entrambe le consegne sono state completate.';stopClientBatchPolling();}
+  else if(s==='rejected'||s==='cancelled'){badge.classList.add('rejected');badge.textContent='GIRO NON ATTIVO';$('clientStatusText').textContent='Il giro non è stato preso in carico.';stopClientBatchPolling();}
   const items=(b.items||[]).slice().sort((x,y)=>x.batchStopIndex-y.batchStopIndex);$('clientEtaBox').innerHTML=`<div class="live-eta-title">⚡ GIRO 2 CONSEGNE</div><div class="batch-status-stops">${items.map(x=>`<div><b>${x.batchStopIndex}️⃣ ${esc(x.recipientName)}</b><span>${esc(x.deliveryAddress)}</span><small>${x.status==='delivered'?'✓ CONSEGNATA':x.eta?.delivery?'ETA '+esc(etaRange(x.eta.delivery)):remoteStatusLabel(x.status)}</small></div>`).join('')}</div>`;$('clientEtaBox').classList.remove('hidden');
 }
-function startClientBatchPolling(batchId,token){stopClientBatchPolling();const go=async()=>{try{const u=new URL(apiBase()+`/api/batches/${encodeURIComponent(batchId)}`);u.searchParams.set('token',token);const d=await fetchJson(u.toString(),{headers:{Accept:'application/json'}},7000);if(d?.batch){updateClientBatchStatusUI(d.batch);if(d.batch.items?.[0])updateClientLivePosition(d.batch.items[0].code,token,d.batch.status)}}catch(e){console.warn('Status giro non disponibile',e)}};go();clientBatchPolling=setInterval(go,4000);}
+function startClientBatchPolling(batchId,token){stopClientBatchPolling();const go=async()=>{try{const u=new URL(apiBase()+`/api/batches/${encodeURIComponent(batchId)}`);u.searchParams.set('token',token);const d=await fetchJson(u.toString(),{headers:{Accept:'application/json'}},7000);if(d?.batch){updateClientBatchStatusUI(d.batch);renderClientTimeline(d.events||[],d.batch,true);if(d.batch.items?.[0])updateClientLivePosition(d.batch.items[0].code,token,d.batch.status)}}catch(e){console.warn('Status giro non disponibile',e)}};clientBatchPolling=setInterval(go,4000);go();}
 function stopClientBatchPolling(){if(clientBatchPolling){clearInterval(clientBatchPolling);clientBatchPolling=null;}}
 function showClientRequestStatus(r,token,owned=false){
-  $('clientFormCard').classList.add('hidden');$('clientQuoteSection').classList.add('hidden');$('clientRequestStatus').classList.remove('hidden');$('clientRequestCode').textContent=r.code;$('clientStatusWhatsapp').href=waLink(`Ciao Marcello, ho inviato la richiesta SOS Rider ${r.code}.`);lastClientStatus=null;updateClientStatusUI(r);startClientPolling(r.code,token,owned);$('clientRequestStatus').scrollIntoView({behavior:'smooth',block:'start'});
+  $('clientFormCard').classList.add('hidden');$('clientQuoteSection').classList.add('hidden');$('clientRequestStatus').classList.remove('hidden');$('clientRequestCode').textContent=r.code;$('clientStatusWhatsapp').href=waLink(`Ciao Marcello, ho inviato la richiesta SOS Rider ${r.code}.`);lastClientStatus=null;updateClientStatusUI(r);renderClientTimeline([]);startClientPolling(r.code,token,owned,true);$('clientRequestStatus').scrollIntoView({behavior:'smooth',block:'start'});
+}
+const CLIENT_TIMELINE_LABELS={new:'Richiesta inviata',accepted:'Rider ha accettato la consegna',picked:'Ordine ritirato dal locale',arrived:'Rider arrivato a destinazione',delivered:'Consegna completata',rejected:'Richiesta rifiutata',cancelled:'Richiesta annullata'};
+function renderClientTimeline(events=[],request=null,isBatch=false){
+  const box=$('clientTimeline');if(!box)return;
+  const rows=[];
+  for(const event of events){
+    const status=String(event?.status||'');if(!Object.hasOwn(CLIENT_TIMELINE_LABELS,status))continue;
+    const last=rows[rows.length-1];
+    if(last?.status===status&&last?.stopIndex===event.stopIndex)continue;
+    rows.push({status,createdAt:event.createdAt,stopIndex:event.stopIndex});
+  }
+  const heading='<h3>📦 TRACKING CONSEGNA</h3>';
+  if(!rows.length){
+    const current=request?.status;
+    box.innerHTML=heading+'<p class="client-timeline-note">'+(current&&CLIENT_TIMELINE_LABELS[current]?`Stato attuale: ${esc(CLIENT_TIMELINE_LABELS[current])}. La cronologia dei passaggi non è ancora disponibile.`:'Caricamento aggiornamenti…')+'</p>';
+    return;
+  }
+  rows.sort((a,b)=>Date.parse(a.createdAt||0)-Date.parse(b.createdAt||0));
+  box.innerHTML=heading+'<ol class="client-timeline-list">'+rows.map((item,index)=>{
+    const time=item.createdAt&&!Number.isNaN(Date.parse(item.createdAt))?new Date(item.createdAt).toLocaleString('it-IT',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}):'Orario non disponibile';
+    const stop=isBatch&&item.stopIndex?` · tappa ${Number(item.stopIndex)}`:'';
+    return `<li class="client-timeline-item${index===rows.length-1?' current':''}"><span class="client-timeline-dot" aria-hidden="true">${index===rows.length-1?'●':'✓'}</span><div><b>${esc(CLIENT_TIMELINE_LABELS[item.status]+stop)}</b><small>${esc(time)}</small></div></li>`;
+  }).join('')+'</ol><p class="client-timeline-note">Passaggi salvati sul server: rimangono visibili quando riapri l’app.</p>';
 }
 function renderClientEta(r){
   const box=$('clientEtaBox');if(!box)return;
@@ -1147,15 +1177,15 @@ function updateClientStatusUI(r){
   else if(s==='accepted'){badge.classList.add('accepted');const q=r?.eta?.queuePosition||1;badge.textContent=q>1?'ACCETTATA · IN CODA':'ACCETTATA · RIDER VERSO IL LOCALE';$('clientStatusText').textContent=q>1?`Richiesta confermata. Marcello ha ${q-1} consegna${q-1===1?'':'e'} prima della tua; l’orario di ritiro viene ricalcolato automaticamente.`:'Marcello ha accettato la consegna. L’ETA di ritiro viene aggiornato automaticamente.';$('clientStatusIcon').textContent='✓';}
   else if(s==='picked'){badge.classList.add('progress');badge.textContent='IN CONSEGNA';$('clientStatusText').textContent='Ordine ritirato: il rider è diretto al destinatario.';$('clientStatusIcon').textContent='⚡';}
   else if(s==='arrived'){badge.classList.add('progress');badge.textContent='RIDER ARRIVATO';$('clientStatusText').textContent='Il rider è arrivato al punto di consegna.';$('clientStatusIcon').textContent='📍';}
-  else if(s==='delivered'){badge.classList.add('accepted');badge.textContent='COMPLETATO';$('clientStatusText').textContent='Consegna completata. Grazie per aver usato SOS Rider.';$('clientStatusIcon').textContent='✓';localStorage.removeItem(CLIENT_ACTIVE_KEY);stopClientPolling();}
-  else if(s==='rejected'||s==='cancelled'){badge.classList.add('rejected');badge.textContent=s==='rejected'?'RICHIESTA NON ACCETTATA':'RICHIESTA ANNULLATA';$('clientStatusText').textContent=r.rejectionReason||'In questo momento la consegna non è disponibile.';$('clientStatusIcon').textContent='×';localStorage.removeItem(CLIENT_ACTIVE_KEY);stopClientPolling();}
+  else if(s==='delivered'){badge.classList.add('accepted');badge.textContent='COMPLETATO';$('clientStatusText').textContent='Consegna completata. Grazie per aver usato SOS Rider.';$('clientStatusIcon').textContent='✓';stopClientPolling();}
+  else if(s==='rejected'||s==='cancelled'){badge.classList.add('rejected');badge.textContent=s==='rejected'?'RICHIESTA NON ACCETTATA':'RICHIESTA ANNULLATA';$('clientStatusText').textContent=r.rejectionReason||'In questo momento la consegna non è disponibile.';$('clientStatusIcon').textContent='×';stopClientPolling();}
 }
 function restoreActiveClientRequest(){
-  try{const x=JSON.parse(localStorage.getItem(CLIENT_ACTIVE_KEY)||'null');if(x?.batch&&x?.batchId&&x?.token){$('clientRequestCode').textContent=x.batchId;$('clientFormCard').classList.add('hidden');$('clientQuoteSection').classList.add('hidden');$('clientRequestStatus').classList.remove('hidden');startClientBatchPolling(x.batchId,x.token);return;}if(x?.code&&x?.token){$('clientRequestCode').textContent=x.code;$('clientFormCard').classList.add('hidden');$('clientQuoteSection').classList.add('hidden');$('clientRequestStatus').classList.remove('hidden');startClientPolling(x.code,x.token,!!x.owned,true)}}catch{}
+  try{const x=JSON.parse(localStorage.getItem(CLIENT_ACTIVE_KEY)||'null');if(x?.batch&&x?.batchId&&x?.token){$('clientRequestCode').textContent=x.batchId;$('clientFormCard').classList.add('hidden');$('clientQuoteSection').classList.add('hidden');$('clientRequestStatus').classList.remove('hidden');renderClientTimeline([]);startClientBatchPolling(x.batchId,x.token);return;}if(x?.code&&(x.token||x.owned)){showClientRequestStatus({code:x.code,status:'new'},x.token||'',!!x.owned)}}catch{}
 }
 
 function startClientPolling(code,token,owned=false,immediate=false){
-  stopClientPolling();const go=async()=>{try{let url,headers;if(owned&&authSession&&authProfile?.role==='client'){url=apiBase()+`/api/client/requests/${encodeURIComponent(code)}`;headers=authHeaders()}else{const u=new URL(apiBase()+`/api/requests/${encodeURIComponent(code)}`);u.searchParams.set('token',token);url=u.toString();headers={Accept:'application/json'}}const d=await fetchJson(url,{headers},7000);if(d?.request){updateClientStatusUI(d.request);updateClientLivePosition(code,token,d.request.status)}}catch(e){console.warn('Status client non disponibile',e)}};if(immediate)go();clientPolling=setInterval(go,4000);
+  stopClientPolling();const go=async()=>{try{let url,headers;if(owned&&authSession&&authProfile?.role==='client'){url=apiBase()+`/api/client/requests/${encodeURIComponent(code)}`;headers=authHeaders()}else{const u=new URL(apiBase()+`/api/requests/${encodeURIComponent(code)}`);u.searchParams.set('token',token);url=u.toString();headers={Accept:'application/json'}}const d=await fetchJson(url,{headers},7000);if(d?.request){updateClientStatusUI(d.request);renderClientTimeline(d.events||[],d.request);updateClientLivePosition(code,token,d.request.status)}}catch(e){console.warn('Status client non disponibile',e)}};clientPolling=setInterval(go,4000);if(immediate)go();
 }
 function stopClientPolling(){if(clientPolling){clearInterval(clientPolling);clientPolling=null;}}
 
@@ -1515,7 +1545,7 @@ function parseWa(raw){
   };
 }
 function openWhatsAppImporter(){
-  openModal('Importa da WhatsApp',`<p class="muted"><b>Modalità rapida:</b> bastano nome, telefono, servizio, indirizzo e <b>orario indicativo di ritiro</b>. Può scrivere anche “20:30”, “verso le 20:30”, “tra 20 min” o “subito”. I dati del locale puoi completarli tu.</p><label>Incolla messaggio<textarea id="mWaText" rows="8" placeholder="Marcello\n3495153092\nEconomy E-bike\nVia Malpighi 5 Carpi\n20:30 circa"></textarea></label><div id="mWaResult" class="status-line"></div>`,[
+  openModal('Importa da WhatsApp',`<p class="muted"><b>Modalità rapida:</b> per il preventivo bastano indirizzi di ritiro e consegna, veicolo e <b>orario ordine pronto</b>. Nomi e telefoni sono facoltativi. L’orario può essere anche “20:30”, “tra 20 min” o “subito”.</p><label>Incolla messaggio<textarea id="mWaText" rows="8" placeholder="Economy E-bike\nVia Malpighi 5 Carpi\n20:30 circa"></textarea></label><div id="mWaResult" class="status-line"></div>`,[
     {label:'ANNULLA',cls:'ghost'},
     {label:'ANALIZZA',cls:'primary',keep:true,fn:()=>{
       const input=$('mWaText');
@@ -1602,9 +1632,8 @@ function waImportedPayload(){
     service:$('mPVehicle').value,payment:$('mPPayment').value,
     orderTotal:num($('mPOrderTotal').value),notes:$('mPNotes').value.trim()
   };
-  if(!result.requesterName||result.requesterPhone.length<9||!result.recipientName||result.recipientPhone.length<9||
-      !result.readyTime)throw Error('Completa locale, telefono locale, destinatario, telefono cliente e orario pronto.');
-  if(result.payment==='cash'&&result.orderTotal<=0)throw Error('Inserisci il denaro da incassare per il locale.');
+  if(!/^\d{2}:\d{2}$/.test(result.readyTime))throw Error('Seleziona l’orario in cui l’ordine sarà pronto.');
+  if(!['ebike','moto','auto'].includes(result.service))throw Error('Seleziona il veicolo per calcolare il preventivo.');
   return result;
 }
 
@@ -1821,12 +1850,12 @@ function renderWaParsed(d){
   r.innerHTML='<div class="notice blue"><b>WhatsApp → indirizzi verificati → preventivo → conferma → D1.</b><br>'+
     'Mentre scrivi compaiono indirizzi reali. Scegli una voce dell’elenco per ogni tappa. Se la mappa non conferma il civico, controllalo con il locale.</div>'+
     '<div class="form-grid" style="margin-top:9px">'+
-    '<label>Locale<input id="mPRestaurant" value="'+esc(d.restaurant||'')+'"></label>'+
-    '<label>Telefono locale<input id="mPRestaurantPhone" inputmode="tel" value="'+esc(d.requesterPhone||'')+'"></label>'+
-    '<label>Ordine pronto<input id="mPReady" type="time" value="'+esc(d.readyTime||'')+'"></label>'+
+    '<label>Locale (facoltativo)<input id="mPRestaurant" value="'+esc(d.restaurant||'')+'"></label>'+
+    '<label>Telefono locale (facoltativo)<input id="mPRestaurantPhone" inputmode="tel" value="'+esc(d.requesterPhone||'')+'"></label>'+
+    '<label>Ordine pronto *<input id="mPReady" type="time" value="'+esc(d.readyTime||'')+'"></label>'+
     addressMarkup('pickup','Indirizzo ritiro','mPPickup',d.pickupAddress)+
-    '<label>Cliente<input id="mPCustomer" value="'+esc(d.customer||'')+'"></label>'+
-    '<label>Telefono cliente<input id="mPPhone" inputmode="tel" value="'+esc(d.phone||'')+'"></label>'+
+    '<label>Cliente (facoltativo)<input id="mPCustomer" value="'+esc(d.customer||'')+'"></label>'+
+    '<label>Telefono cliente (facoltativo)<input id="mPPhone" inputmode="tel" value="'+esc(d.phone||'')+'"></label>'+
     addressMarkup('drop','Indirizzo consegna','mPAddress',d.address)+
     '<label>Veicolo<select id="mPVehicle"><option value="ebike" '+(d.vehicle==='ebike'?'selected':'')+'>Economy E-bike</option>'+
     '<option value="moto" '+(d.vehicle==='moto'?'selected':'')+'>Moto Express</option>'+
@@ -1834,7 +1863,7 @@ function renderWaParsed(d){
     '<label>Pagamento<select id="mPPayment"><option value="paid" '+(d.payment==='paid'?'selected':'')+'>Già pagato</option>'+
     '<option value="cash" '+(d.payment==='cash'?'selected':'')+'>Contanti da incassare</option>'+
     '<option value="pos" '+(d.payment==='pos'?'selected':'')+'>POS locale</option></select></label>'+
-    '<label>Importo ordine da incassare per locale<input id="mPOrderTotal" type="number" min="0" step="0.01" value="'+(num(d.orderTotal)||'')+'"></label>'+
+    '<label>Importo ordine (necessario solo per confermare contanti)<input id="mPOrderTotal" type="number" min="0" step="0.01" value="'+(num(d.orderTotal)||'')+'"></label>'+
     '<label class="full">Note / tipo cibo<textarea id="mPNotes" rows="2">'+esc(d.notes||'')+'</textarea></label>'+
     '</div>'+
     '<button id="mWaResolve" class="btn ghost full" type="button" style="margin-top:8px">📍 CERCA / CONTROLLA INDIRIZZI</button>'+
@@ -1945,7 +1974,7 @@ function bindEvents(){
   $('clientRequestForm').addEventListener('input',e=>{if(!['cReadyTime','cPayment'].includes(e.target.id)){invalidateClientQuote();saveClientDraft()}});
   $('clientCalcQuote').onclick=calculateClientQuote;$('clientEditQuote').onclick=()=>{$('clientQuoteSection').classList.add('hidden');$('clientFormCard').scrollIntoView({behavior:'smooth',block:'start'})};$('clientSendRequest').onclick=submitClientRequest;
   $('clientNewRequest').onclick=()=>{localStorage.removeItem(CLIENT_ACTIVE_KEY);stopClientPolling();stopClientBatchPolling();lastClientStatus=null;setBatchMode(false);$('clientRequestStatus').classList.add('hidden');$('clientFormCard').classList.remove('hidden');clearClientDeliveryFields();$('clientFormCard').scrollIntoView({behavior:'smooth'})};
-  $('clientRecentList').addEventListener('click',e=>{const b=e.target.closest('[data-repeat-client]');if(b)repeatClientRequest(b.dataset.repeatClient)});
+  $('clientRecentList').addEventListener('click',e=>{const track=e.target.closest('[data-track-client]');if(track){openClientRecentTracking(track.dataset.trackClient);return;}const b=e.target.closest('[data-repeat-client]');if(b)repeatClientRequest(b.dataset.repeatClient)});
   $('riderRefresh').onclick=manualRiderRefresh;$('openSettings').onclick=openSettings;$('riderAvailableBtn').onclick=()=>setRiderAvailability(true);$('riderOfflineBtn').onclick=()=>setRiderAvailability(false);if($('riderWeatherAutoBtn'))$('riderWeatherAutoBtn').onclick=()=>setRiderWeather('auto');if($('riderWeatherOnBtn'))$('riderWeatherOnBtn').onclick=()=>setRiderWeather('force_on');if($('riderWeatherOffBtn'))$('riderWeatherOffBtn').onclick=()=>setRiderWeather('force_off');$('riderEtaSelect').onchange=()=>{if(currentAvailability)setRiderAvailability(!!currentAvailability.enabled)};if($('riderGpsRefresh'))$('riderGpsRefresh').onclick=()=>{riderLocationError='';renderRiderGpsStatus();captureRiderLocationOnce(true).catch(e=>{onRiderPositionError(e)})};
   document.querySelectorAll('[data-rider-page]').forEach(b=>b.onclick=()=>switchRiderPage(b.dataset.riderPage));
   $('remoteRequestsList').addEventListener('click',e=>{const ab=e.target.closest('[data-accept-batch]');if(ab)return acceptRemoteBatch(ab.dataset.acceptBatch);const rb=e.target.closest('[data-reject-batch]');if(rb)return rejectRemoteBatch(rb.dataset.rejectBatch);const ob=e.target.closest('[data-open-batch]');if(ob){const rows=remoteRequests.filter(x=>x.batchId===ob.dataset.openBatch);ensureShiftThen(()=>rows.forEach(createLocalOrderFromRemote));switchRiderPage('deliveries');return;}const a=e.target.closest('[data-accept]');if(a)return acceptRemote(a.dataset.accept);const r=e.target.closest('[data-reject]');if(r)return rejectRemote(r.dataset.reject);const m=e.target.closest('[data-map-remote]');if(m){const x=normalizeRemote(findRemote(m.dataset.mapRemote));window.open(mapsRoute({label:x.pickupAddress,lat:x.pickupLat,lon:x.pickupLon},{label:x.deliveryAddress,lat:x.deliveryLat,lon:x.deliveryLon},x.service),'_blank','noopener');return}const o=e.target.closest('[data-open-delivery]');if(o){const rr=findRemote(o.dataset.openDelivery);if(rr&&!state.orders.some(x=>x.remoteCode===rr.code))ensureShiftThen(()=>createLocalOrderFromRemote(rr));switchRiderPage('deliveries')}});
