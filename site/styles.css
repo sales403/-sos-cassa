@@ -90,18 +90,7 @@ html[data-theme="day"] .btn-whatsapp{background:#edf9f1;border-color:#acd9bc;col
 @keyframes marquee{from{transform:translateX(0)}to{transform:translateX(-22%)}}
 
 .section-head{position:relative;display:flex;justify-content:space-between;gap:40px;align-items:flex-end;margin-bottom:40px;padding-bottom:18px}.section-head::after{content:"";position:absolute;left:0;bottom:0;width:min(260px,36%);height:2px;background:linear-gradient(90deg,var(--yellow),rgba(255,208,0,.05))}.section-head>div{max-width:760px}.section-head>p{max-width:370px;margin-bottom:7px}
-.service-scroller{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
-.service-card{position:relative;min-height:430px;padding:18px 26px 26px;border:1px solid var(--line);border-radius:24px;background:
-  linear-gradient(155deg,rgba(255,255,255,.015),transparent 32%),
-  repeating-linear-gradient(45deg,rgba(255,255,255,.01) 0 1px,transparent 1px 6px),
-  linear-gradient(155deg,var(--card),var(--panel));overflow:hidden;box-shadow:0 16px 42px rgba(0,0,0,.13)}
-.service-card::before,.price-card::before,.partner-card::before,.night-fee-card::before,.app-side::before,.audience-card::before{content:"";position:absolute;left:0;top:0;width:62px;height:4px;background:linear-gradient(90deg,var(--yellow),transparent);opacity:.9}
-.service-media-wrap{position:relative;height:190px;margin:0 -8px 22px;border-radius:18px;overflow:hidden;border:1px solid var(--line);background:#080808}
-.service-media{width:100%;height:100%;object-fit:cover;transition:transform .45s}.service-card:hover .service-media{transform:scale(1.04)}
-.service-media-wrap::after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,transparent 52%,rgba(0,0,0,.76))}
-.service-media-wrap>span{position:absolute;z-index:2;left:12px;bottom:10px;color:#ffd000;font-size:8px;font-weight:1000;letter-spacing:.14em}
-.service-code{color:var(--yellow2);font-size:9px;font-weight:1000;letter-spacing:.16em}.service-card h3{font-size:38px;margin:8px 0 12px}.service-card p{font-size:12px;min-height:78px}
-.service-card>a{position:absolute;bottom:24px;left:26px;color:var(--yellow2);font-size:10px;font-weight:1000;text-decoration:none}
+.price-card::before,.partner-card::before,.night-fee-card::before,.app-side::before,.audience-card::before{content:"";position:absolute;left:0;top:0;width:62px;height:4px;background:linear-gradient(90deg,var(--yellow),transparent);opacity:.9}
 
 .pricing-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
 .price-card,.partner-card,.night-fee-card{position:relative;padding:22px;border:1px solid var(--line);border-radius:22px;background:
@@ -211,7 +200,7 @@ footer{padding:34px 0 100px;border-top:1px solid var(--line);margin-top:88px}.fo
   .mobile-menu{position:fixed;z-index:190;top:70px;left:12px;right:12px;padding:10px;border:1px solid var(--line);border-radius:18px;background:rgba(12,12,12,.96);backdrop-filter:blur(16px);box-shadow:var(--shadow);transform:translateY(-14px);opacity:0;pointer-events:none;transition:.2s}
   .mobile-menu.open{display:grid;opacity:1;transform:none;pointer-events:auto}.mobile-menu a{padding:12px;border-bottom:1px solid #262626;text-decoration:none;font-size:11px;font-weight:900}.mobile-menu a:last-child{border-bottom:0}
   html[data-theme="day"] .mobile-menu{background:rgba(255,255,255,.96)}
-  .service-scroller{grid-template-columns:1fr}.pricing-grid{grid-template-columns:1fr}.pricing-extras{grid-template-columns:1fr}.coverage-inner{grid-template-columns:1fr}.coverage-copy{text-align:center}.radius-legend{justify-content:center}
+  .pricing-grid{grid-template-columns:1fr}.pricing-extras{grid-template-columns:1fr}.coverage-inner{grid-template-columns:1fr}.coverage-copy{text-align:center}.radius-legend{justify-content:center}
   .app-real-grid{grid-template-columns:1fr}.steps{grid-template-columns:repeat(2,1fr)}.step:last-child{grid-column:1/-1}.final-cta-inner{grid-template-columns:120px 1fr}.final-actions{grid-column:1/-1;grid-template-columns:1fr 1fr}
 }
 @media(max-width:700px){
@@ -221,7 +210,6 @@ footer{padding:34px 0 100px;border-top:1px solid var(--line);margin-top:88px}.fo
   .hero-hotspot{display:block}.hero-hotspot.app{left:17%;right:17%;top:79%;height:6.2%}.hero-hotspot.whatsapp{left:17%;right:17%;top:85.7%;height:6%}
   .intro-seo{padding:42px 0 58px}.intro-seo h1{font-size:39px}.intro-seo p{font-size:14px}.intro-actions{display:grid;grid-template-columns:1fr;width:100%}.intro-actions .btn{width:100%}.trust-row{display:grid;grid-template-columns:1fr 1fr}.trust-row span:last-child{grid-column:1/-1}
   h2{font-size:39px}.section-head{display:block;margin-bottom:24px}.section-head>p{max-width:none}
-  .service-scroller{display:flex;overflow-x:auto;scroll-snap-type:x mandatory;margin-right:-12px;padding-right:12px;scrollbar-width:none}.service-scroller::-webkit-scrollbar{display:none}.service-card{flex:0 0 86%;min-height:400px;scroll-snap-align:start}.service-media-wrap{height:175px}.service-card p{min-height:68px}
   .partner-grid{grid-template-columns:1fr}.night-fee-card{align-items:flex-start}.night-fee-card strong{font-size:31px}.pricing-note{align-items:stretch;flex-direction:column}.pricing-note .btn{width:100%}
   .radar-map{height:440px;--bx:50%;--by:50%}
   .city-marker{font-size:10px;padding:6px 8px;gap:6px}
@@ -735,22 +723,6 @@ html[data-theme="day"] .quick-menu a{border-bottom-color:#e6e7e9!important}
   transform:translateY(4px);
 }
 
-/* Niente scorrimento laterale del contenuto su mobile */
-@media(max-width:960px){
-  .service-scroller{
-    display:grid!important;
-    grid-template-columns:1fr!important;
-    overflow:visible!important;
-    margin-right:0!important;
-    padding-right:0!important;
-    scroll-snap-type:none!important;
-  }
-  .service-card{
-    width:100%!important;
-    max-width:100%!important;
-    flex:none!important;
-  }
-}
 @media(max-width:700px){
   .topbar.topbar-centered{
     height:88px;
