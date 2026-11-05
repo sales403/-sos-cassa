@@ -2,7 +2,7 @@
 
 **Stato: modifiche locali non pubblicate.** Nessuna migrazione/deploy, nessun messaggio inviato.
 
-Dopo il caricamento corretto del Worker, `/api/status` deve indicare `SOS Rider API 11.3.8-partner-tracking-staging` e `capabilities.partnerPages: true`.
+Dopo il caricamento corretto del Worker, `/api/status` deve indicare `SOS Rider API 11.3.9-partner-tracking-staging` e `capabilities.partnerPages: true`.
 
 ## 1. Tracking di un ordine WhatsApp
 

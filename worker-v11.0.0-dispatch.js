@@ -1,4 +1,4 @@
-const VERSION = 'SOS Rider API 11.3.8-partner-tracking-staging';
+const VERSION = 'SOS Rider API 11.3.9-partner-tracking-staging';
 const V11_BATCH_FEATURE = true;
 const WEATHER_FEE_EUR = 3;
 let batchSchemaReady = false;
@@ -65,41 +65,41 @@ export default {
       // OwnTracks iOS: endpoint HTTPS con Basic Auth. Non viene esposto al cliente.
       if (url.pathname === '/api/tracker/owntracks' && request.method === 'POST') {
         requireDb(env);
-        return handleOwnTracks(request, env);
+        return await handleOwnTracks(request, env);
       }
 
       const liveMatch = url.pathname.match(/^\/api\/track\/([^/]+)$/);
       if (liveMatch && request.method === 'GET') {
         requireDb(env);
-        return getClientLivePosition(liveMatch[1], url, env, cors);
+        return await getClientLivePosition(liveMatch[1], url, env, cors);
       }
 
       if (url.pathname === '/api/address' && request.method === 'GET') {
-        return handleAddress(url, cors);
+        return await handleAddress(url, cors);
       }
 
       if (url.pathname === '/api/route' && request.method === 'GET') {
-        return handleRoute(url, cors);
+        return await handleRoute(url, cors);
       }
 
       if (url.pathname === '/api/quote' && request.method === 'POST') {
-        return handleQuote(request, env, cors);
+        return await handleQuote(request, env, cors);
       }
 
       if (url.pathname === '/api/batch/quote' && request.method === 'POST') {
         requireDb(env);
-        return handleBatchQuote(request, env, cors);
+        return await handleBatchQuote(request, env, cors);
       }
 
       if (url.pathname === '/api/requests/batch' && request.method === 'POST') {
         requireDb(env);
-        return createBatchRequest(request, env, ctx, cors);
+        return await createBatchRequest(request, env, ctx, cors);
       }
 
       const guestBatchMatch = url.pathname.match(/^\/api\/batches\/([^/]+)$/);
       if (guestBatchMatch && request.method === 'GET') {
         requireDb(env);
-        return getGuestBatch(guestBatchMatch[1], url, env, cors);
+        return await getGuestBatch(guestBatchMatch[1], url, env, cors);
       }
 
       if (url.pathname === '/api/availability' && request.method === 'GET') {
@@ -110,22 +110,22 @@ export default {
       const partnerPageMatch = url.pathname.match(/^\/api\/partner\/([a-f0-9]{36})$/);
       if (partnerPageMatch && request.method === 'GET') {
         requireDb(env);
-        return getPartnerPage(partnerPageMatch[1], url, env, cors);
+        return await getPartnerPage(partnerPageMatch[1], url, env, cors);
       }
 
       if (url.pathname === '/api/rider/partners' && ['GET','POST'].includes(request.method)) {
         requireDb(env);
         await requireRole(request, env, 'rider');
-        return request.method === 'GET'
+        return await (request.method === 'GET'
           ? listPartnerPages(env, cors)
-          : createPartnerPage(request, env, cors);
+          : createPartnerPage(request, env, cors));
       }
 
       const partnerRevokeMatch = url.pathname.match(/^\/api\/rider\/partners\/([a-f0-9]{36})$/);
       if (partnerRevokeMatch && request.method === 'DELETE') {
         requireDb(env);
         await requireRole(request, env, 'rider');
-        return revokePartnerPage(partnerRevokeMatch[1], env, cors);
+        return await revokePartnerPage(partnerRevokeMatch[1], env, cors);
       }
 
       if (url.pathname === '/api/me' && request.method === 'GET') {
@@ -137,62 +137,62 @@ export default {
       if (url.pathname === '/api/me' && request.method === 'PATCH') {
         requireDb(env);
         const a = await requireAuth(request, env);
-        return updateMyProfile(request, env, a, cors);
+        return await updateMyProfile(request, env, a, cors);
       }
 
       if (url.pathname === '/api/requests' && request.method === 'POST') {
         requireDb(env);
-        return createRequest(request, env, ctx, cors);
+        return await createRequest(request, env, ctx, cors);
       }
 
       const guestMatch = url.pathname.match(/^\/api\/requests\/([^/]+)$/);
       if (guestMatch && request.method === 'GET') {
         requireDb(env);
-        return getGuestRequest(guestMatch[1], url, env, cors);
+        return await getGuestRequest(guestMatch[1], url, env, cors);
       }
 
       if (url.pathname === '/api/client/requests' && request.method === 'GET') {
         requireDb(env);
         const a = await requireRole(request, env, 'client');
-        return listClientRequests(url, env, a, cors);
+        return await listClientRequests(url, env, a, cors);
       }
 
       if (url.pathname === '/api/client/recipients' && request.method === 'GET') {
         requireDb(env); const a=await requireRole(request,env,'client');
-        return listSavedRecipients(env,a,cors);
+        return await listSavedRecipients(env,a,cors);
       }
       if (url.pathname === '/api/client/recipients' && request.method === 'POST') {
         requireDb(env); const a=await requireRole(request,env,'client');
-        return saveRecipient(request,env,a,cors);
+        return await saveRecipient(request,env,a,cors);
       }
       if (url.pathname === '/api/client/recipients' && request.method === 'DELETE') {
         requireDb(env); const a=await requireRole(request,env,'client');
-        return removeRecipient(request,env,a,cors);
+        return await removeRecipient(request,env,a,cors);
       }
 
       const clientMatch = url.pathname.match(/^\/api\/client\/requests\/([^/]+)$/);
       if (clientMatch && request.method === 'GET') {
         requireDb(env);
         const a = await requireRole(request, env, 'client');
-        return getClientRequest(clientMatch[1], env, a, cors);
+        return await getClientRequest(clientMatch[1], env, a, cors);
       }
 
       if (url.pathname === '/api/rider/whatsapp/quote' && request.method === 'POST') {
         requireDb(env);
         await requireRole(request, env, 'rider');
-        return quoteWhatsappRequest(request, env, cors);
+        return await quoteWhatsappRequest(request, env, cors);
       }
 
       if (url.pathname === '/api/rider/whatsapp/confirm' && request.method === 'POST') {
         requireDb(env);
         await requireRole(request, env, 'rider');
-        return confirmWhatsappRequest(request, env, ctx, cors);
+        return await confirmWhatsappRequest(request, env, ctx, cors);
       }
 
       if (url.pathname === '/api/rider/availability' && request.method === 'PATCH') {
         requireDb(env);
         await requireRole(request, env, 'rider');
-        return updateAvailability(request, env, cors);
+        return await updateAvailability(request, env, cors);
       }
 
       if (url.pathname === '/api/rider/weather' && request.method === 'GET') {
@@ -204,7 +204,7 @@ export default {
       if (url.pathname === '/api/rider/weather' && request.method === 'PATCH') {
         requireDb(env);
         await requireRole(request, env, 'rider');
-        return updateWeatherState(request, env, cors);
+        return await updateWeatherState(request, env, cors);
       }
 
       if (url.pathname === '/api/rider/location' && request.method === 'GET') {
@@ -216,26 +216,26 @@ export default {
       if (url.pathname === '/api/rider/location' && (request.method === 'PATCH' || request.method === 'POST')) {
         requireDb(env);
         await requireRole(request, env, 'rider');
-        return updateRiderLocation(request, env, cors);
+        return await updateRiderLocation(request, env, cors);
       }
 
       if (url.pathname === '/api/rider/requests' && request.method === 'GET') {
         requireDb(env);
         await requireRole(request, env, 'rider');
-        return listRiderRequests(url, env, cors);
+        return await listRiderRequests(url, env, cors);
       }
 
       const riderShareMatch = url.pathname.match(/^\/api\/rider\/requests\/([^/]+)\/share$/);
       if (riderShareMatch && request.method === 'GET') {
         requireDb(env);
         await requireRole(request, env, 'rider');
-        return getRiderRequestShare(riderShareMatch[1], env, cors);
+        return await getRiderRequestShare(riderShareMatch[1], env, cors);
       }
 
       if (url.pathname === '/api/rider/push/subscribe' && request.method === 'POST') {
         requireDb(env);
         const a = await requireRole(request, env, 'rider');
-        return subscribePush(request, env, a, cors);
+        return await subscribePush(request, env, a, cors);
       }
 
       if (url.pathname === '/api/rider/push/test' && request.method === 'POST') {
@@ -249,14 +249,14 @@ export default {
       if (riderBatchMatch && request.method === 'PATCH') {
         requireDb(env);
         await requireRole(request, env, 'rider');
-        return updateRiderBatch(riderBatchMatch[1], request, env, cors);
+        return await updateRiderBatch(riderBatchMatch[1], request, env, cors);
       }
 
       const riderMatch = url.pathname.match(/^\/api\/rider\/requests\/([^/]+)$/);
       if (riderMatch && request.method === 'PATCH') {
         requireDb(env);
         await requireRole(request, env, 'rider');
-        return updateRiderRequest(riderMatch[1], request, env, cors);
+        return await updateRiderRequest(riderMatch[1], request, env, cors);
       }
 
       return json({ error: 'Not found' }, 404, cors);

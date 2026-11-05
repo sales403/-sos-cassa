@@ -13,8 +13,35 @@ const portion=(source,begin,end)=>{
 const key='0123456789abcdef0123456789abcdefabcd';
 
 test('La versione staging autorizza il frontend V11 e si distingue dalla release precedente',()=>{
-  assert.match(worker,/SOS Rider API 11\.3\.8-partner-tracking-staging/);
+  assert.match(worker,/SOS Rider API 11\.3\.9-partner-tracking-staging/);
   assert.match(worker,/https:\/\/v11-dispatch-engine-sos-cassa\.sales-3c8\.workers\.dev/);
+});
+
+test('Gli errori asincroni dei link privati rientrano nel gestore HTTP del Worker',()=>{
+  assert.match(worker,/return await getPartnerPage\(/);
+  assert.match(worker,/return await getGuestRequest\(/);
+  assert.match(worker,/return await getClientLivePosition\(/);
+  assert.match(worker,/return await getRiderRequestShare\(/);
+});
+
+test('Un token partner inesistente restituisce 404 JSON, non un errore Cloudflare',async()=>{
+  const fragment=portion(worker,'export default {','function corsHeaders(')
+    .replace('export default','const exported = ');
+  const rejected=Object.assign(new Error('Link partner non trovato'),{status:404});
+  const handler=runInNewContext(fragment+'\nexported',{
+    URL,
+    corsHeaders:()=>({}),
+    requireDb:()=>{},
+    getPartnerPage:async()=>{throw rejected;},
+    json:(body,status)=>({body,status}),
+    console:{error:()=>{}}
+  });
+  const response=await handler.fetch({
+    url:'https://staging.example.com/api/partner/'+key,
+    method:'GET',headers:{get:()=>null}
+  },{DB:{}},{});
+  assert.equal(response.status,404);
+  assert.equal(response.body.error,'Link partner non trovato');
 });
 
 test('Il link tracking conserva il token soltanto nel frammento URL',()=>{
