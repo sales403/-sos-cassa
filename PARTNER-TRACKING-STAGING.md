@@ -1,6 +1,6 @@
 # SOS Rider V11 – Tracking WhatsApp e disponibilità per locale
 
-**Stato: modifiche locali non pubblicate.** Nessuna migrazione/deploy, nessun messaggio inviato.
+**Stato (05/11/2026):** frontend `track.html` e `partner.html` online nello staging; Marcello ha distribuito il backend 11.3.8. Correzione 11.3.9 preparata su branch `v11-dispatch-engine`, in attesa di caricamento manuale sul Worker di staging. Produzione invariata. Nessun messaggio a clienti inviato.
 
 Dopo il caricamento corretto del Worker, `/api/status` deve indicare `SOS Rider API 11.3.9-partner-tracking-staging` e `capabilities.partnerPages: true`.
 
@@ -25,13 +25,13 @@ Dopo il caricamento corretto del Worker, `/api/status` deve indicare `SOS Rider 
 
 **Limiti attuali:** ETA stimati, non garantiti; se GPS non è fresco si applica fallback. Richieste non ancora accettate non prenotano uno slot. I due link sono associati all'host statico dove sarà pubblicata la versione: **il dominio personalizzato/QR permanente non è ancora pronto**.
 
-## Collaudo prima di qualsiasi deploy
+## Collaudo staging prima dell'uso con clienti
 
 - [ ] Verificare su ambiente di staging con D1 reale la creazione, il recupero e la revoca dei link.
 - [ ] Confermare che endpoint non autenticati non restituiscano token di altri ordini o coordinate rider fuori da ordine autorizzato.
 - [ ] Testare 0, 1, 2 e 3 consegne attive, ordine multiplo, arrivo, consegna, cancellazione e ritorno alla disponibilità.
 - [ ] Provare OwnTracks con iPhone bloccato, GPS recente/stale e rete interrotta.
 - [ ] Aprire su entrambi gli iPhone i link da WhatsApp e controllare aggiornamenti, scelta mezzo e condivisione.
-- [ ] Approvarne il deploy in staging; **nessuna pubblicazione in produzione senza OK**.
+- [x] Deploy staging autorizzato da Marcello; **nessuna pubblicazione in produzione senza OK**.
 
 Test locali: `node --test tests/*.test.mjs`, `node --check app.js`, `node --check worker-v11.0.0-dispatch.js`.
