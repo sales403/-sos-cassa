@@ -9,7 +9,7 @@
   <meta name="apple-mobile-web-app-title" content="SOS Rider V11 STAGING">
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="apple-touch-icon" href="icon-192.png">
-  <link rel="stylesheet" href="styles.css?v=11.3.7-client-timeline">
+  <link rel="stylesheet" href="styles.css?v=11.3.8-partner-tracking">
   <title>SOS Rider Carpi-Soliera · V11 STAGING</title>
 </head>
 <body>
@@ -338,6 +338,12 @@
         <div class="section-head"><div class="section-title-with-icon"><span class="section-icon"><svg class="ui-icon" aria-hidden="true"><use href="icons.svg#icon-message"></use></svg></span><div><div class="eyebrow">FALLBACK</div><h2>Ordine arrivato su WhatsApp?</h2></div></div></div>
         <p class="muted">Solo per richieste ricevute fuori dal flusso automatico.</p>
         <button id="openWaImporter" class="btn ghost full" type="button"><svg class="btn-icon" aria-hidden="true"><use href="icons.svg#icon-message"></use></svg> INCOLLA MESSAGGIO</button>
+        <button id="recoverTrackingLink" class="btn ghost full" type="button" style="margin-top:8px">RECUPERA LINK TRACKING</button>
+      </section>
+      <section class="card section fallback-card">
+        <div class="section-head"><div class="section-title-with-icon"><span class="section-icon">⚡</span><div><div class="eyebrow">PARTNER</div><h2>Disponibilità sempre aggiornata</h2></div></div></div>
+        <p class="muted">Genera un link personale per ogni locale: mostra il tuo ETA di arrivo e permette di ordinare via WhatsApp.</p>
+        <button id="openPartnerLinks" class="btn ghost full" type="button">GESTISCI LINK PARTNER</button>
       </section>
     </section>
 
@@ -394,6 +400,6 @@
   </div>
 
   <script src="config.js?v=11.0.2-staging"></script>
-  <script type="module" src="app.js?v=11.3.7-client-timeline"></script>
+  <script type="module" src="app.js?v=11.3.8-partner-tracking"></script>
 </body>
 </html>

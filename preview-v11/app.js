@@ -170,6 +170,32 @@ function mapsNavigate(destination,vehicle){
 }
 function waLink(text){ return `https://wa.me/${SOS_WHATSAPP}?text=${encodeURIComponent(text)}`; }
 
+// Token nei frammenti URL: non finiscono nei log del server delle pagine web.
+function publicPortalLink(page, params){
+  const u=new URL(page,window.location.href);
+  u.hash=new URLSearchParams(params).toString();
+  return u.href;
+}
+function orderTrackingLink(code,clientToken){
+  if(!code||!/^[a-f0-9]{36}$/i.test(String(clientToken||'')))throw Error('Token tracking non disponibile');
+  return publicPortalLink('track.html',{code,key:clientToken});
+}
+function permanentPartnerLink(key){
+  if(!/^[a-f0-9]{36}$/i.test(String(key||'')))throw Error('Token locale non valido');
+  return publicPortalLink('partner.html',{key});
+}
+async function copyPortalLink(link){
+  if(navigator.clipboard?.writeText){await navigator.clipboard.writeText(link);return;}
+  const temp=document.createElement('textarea');temp.value=link;temp.style.position='fixed';temp.style.opacity='0';
+  document.body.appendChild(temp);temp.select();const ok=document.execCommand('copy');temp.remove();
+  if(!ok)throw Error('Copia non supportata su questo dispositivo');
+}
+async function sharePortalLink(link,title){
+  if(navigator.share){try{await navigator.share({title,url:link});return;}catch(e){if(e.name==='AbortError')return;}}
+  await copyPortalLink(link);
+  alert('Link copiato: puoi incollarlo in WhatsApp.');
+}
+
 // iOS PWA: the navigation must live directly under <body>, not in the scrollable Rider shell.
 let riderNavLayoutFrame = null;
 function syncRiderNavViewport(){
@@ -1831,8 +1857,135 @@ async function confirmWhatsappQuote(){
     status.className='status-line ok';status.textContent='✓ Ordine '+d.request.code+' registrato in D1, inviato alla coda Rider.';
     $('mWaConfirm').disabled=true;
     $('mWaQuoteResult').insertAdjacentHTML('beforeend','<div class="notice green">✓ Richiesta '+esc(d.request.code)+' in coda Rider condivisa.</div>');
+    if(d.clientToken){
+      const link=orderTrackingLink(d.request.code,d.clientToken);
+      const wrap=document.createElement('div');wrap.className='notice green';wrap.style.marginTop='10px';
+      const text=document.createElement('p');text.textContent='Link privato di tracking pronto per il locale. Si aggiorna da solo anche senza app.';
+      const copy=document.createElement('button');copy.type='button';copy.className='btn ghost small';copy.textContent='COPIA LINK TRACKING';
+      const share=document.createElement('button');share.type='button';share.className='btn primary small';share.textContent='CONDIVIDI';
+      copy.onclick=async()=>{try{await copyPortalLink(link);copy.textContent='✓ COPIATO';}catch(e){alert(e.message);}};
+      share.onclick=()=>sharePortalLink(link,'SOS Rider · Tracking '+d.request.code).catch(e=>alert(e.message));
+      wrap.append(text,copy,share);$('mWaQuoteResult').appendChild(wrap);
+    }
     refreshRemoteRequests();
   }catch(e){status.className='status-line error';status.textContent='⚠ '+e.message;}
+}
+
+// Il Rider può recuperare il link di un ordine WhatsApp anche dopo aver chiuso
+// il preventivo. Il token cliente resta accessibile solo con login Rider.
+function openTrackingLinkRecovery(){
+  openModal('Recupera tracking ordine',`
+    <p class="muted">Inserisci il codice SOS dell'ordine già registrato. Il link esistente non cambia.</p>
+    <label>Codice ordine<input id="mTrackRecoveryCode" autocomplete="off" placeholder="Codice SOS…"></label>
+    <button id="mTrackRecoveryGo" class="btn primary full" type="button">CERCA ORDINE</button>
+    <div id="mTrackRecoveryResult" class="status-line" aria-live="polite"></div>
+  `,[{label:'CHIUDI',cls:'ghost',fn:closeModal}]);
+  $('mTrackRecoveryGo').onclick=async()=>{
+    const code=$('mTrackRecoveryCode').value.trim();
+    const result=$('mTrackRecoveryResult');
+    if(!code){result.className='status-line error';result.textContent='Inserisci il codice ordine.';return;}
+    const button=$('mTrackRecoveryGo');button.disabled=true;
+    result.className='status-line';result.textContent='Cerco il link privato…';
+    try{
+      const d=await fetchJson(apiBase()+'/api/rider/requests/'+encodeURIComponent(code)+'/share',{headers:riderHeaders()},9000);
+      const link=orderTrackingLink(d.code,d.clientToken);
+      result.replaceChildren();result.className='status-line ok';
+      const label=document.createElement('p');label.textContent='✓ Link di '+d.code+' pronto da condividere.';
+      const copy=document.createElement('button');copy.type='button';copy.className='btn ghost small';copy.textContent='COPIA LINK';
+      copy.onclick=async()=>{try{await copyPortalLink(link);copy.textContent='✓ COPIATO';}catch(e){alert(e.message);}};
+      const share=document.createElement('button');share.type='button';share.className='btn primary small';share.textContent='CONDIVIDI';
+      share.onclick=()=>sharePortalLink(link,'SOS Rider · Tracking '+d.code).catch(e=>alert(e.message));
+      result.append(label,copy,share);
+    }catch(e){result.className='status-line error';result.textContent='⚠ '+e.message;}
+    finally{button.disabled=false;}
+  };
+}
+
+// Registrazione di un link per ogni locale: coordinate verificate dai suggerimenti
+// e token creato esclusivamente dal Worker dopo login Rider.
+function openPermanentPartnerLinks(){
+  openModal('Link permanenti locali',`
+    <p class="muted">Crea una volta il link del locale. Potrà salvarlo sul telefono e verificare la disponibilità senza registrarsi.</p>
+    <label>Nome attività<input id="mPartnerName" placeholder="Es. Pizzeria Da Mario" autocomplete="off"></label>
+    <label>Indirizzo del locale<input id="mPartnerAddress" placeholder="Via e civico, Carpi/Soliera" autocomplete="off"></label>
+    <div id="mPartnerSuggestions" class="section"></div>
+    <small id="mPartnerAddressStatus">Seleziona un indirizzo fra i risultati reali.</small>
+    <label style="margin-top:10px"><input type="checkbox" id="mPartnerConfirmCivic"> Ho controllato il civico del locale</label>
+    <button id="mPartnerCreate" class="btn primary full" type="button">CREA LINK PARTNER</button>
+    <div id="mPartnerMessage" class="status-line"></div>
+    <h3 style="margin-top:24px">Locali con link attivo</h3>
+    <div id="mPartnerList">Caricamento…</div>
+  `,[{label:'CHIUDI',cls:'ghost',fn:closeModal}]);
+  let chosen=null,serial=0,timer=null;
+  const address=$('mPartnerAddress'),suggestions=$('mPartnerSuggestions'),status=$('mPartnerAddressStatus');
+  const result=$('mPartnerMessage');
+  const setStatus=(v,error=false)=>{result.textContent=v;result.className='status-line'+(error?' error':' ok');};
+  address.addEventListener('input',()=>{
+    chosen=null;++serial;clearTimeout(timer);suggestions.replaceChildren();
+    status.textContent='Seleziona un risultato per verificare le coordinate.';
+    const q=address.value.trim(),mySerial=serial;
+    if(q.length<3)return;
+    timer=setTimeout(async()=>{
+      try{
+        const rows=(await searchAddresses(q,'partner-link')).slice(0,6);
+        if(mySerial!==serial)return;
+        suggestions.replaceChildren();
+        for(const f of rows){
+          const coords=waFeatureCoords(f);
+          if(!coords)continue;
+          const label=featureLabel(f)||f.properties?.name;
+          if(!label)continue;
+          const b=document.createElement('button');b.type='button';b.className='btn ghost full';
+          b.style.marginTop='6px';b.textContent=label;
+          b.onclick=()=>{chosen={...coords,label};address.value=label;status.textContent='✓ Coordinate verificate. Controlla e conferma il civico.';suggestions.replaceChildren();};
+          suggestions.appendChild(b);
+        }
+        if(!suggestions.children.length)status.textContent='Nessun risultato. Prova con una via più specifica.';
+      }catch(e){if(mySerial===serial)status.textContent='Ricerca indirizzi non disponibile: '+e.message;}
+    },350);
+  });
+  const load=async()=>{
+    try{
+      const d=await fetchJson(apiBase()+'/api/rider/partners',{headers:riderHeaders()},9000);
+      const list=$('mPartnerList');list.replaceChildren();
+      if(!d.partners?.length){list.textContent='Nessun locale registrato.';return;}
+      for(const p of d.partners){
+        const box=document.createElement('div');box.className='notice blue';box.style.marginTop='9px';
+        const title=document.createElement('b');title.textContent=p.name;
+        const note=document.createElement('p');note.textContent=p.pickupAddress;
+        const copy=document.createElement('button');copy.type='button';copy.className='btn ghost small';copy.textContent='COPIA LINK';
+        copy.onclick=async()=>{try{await copyPortalLink(permanentPartnerLink(p.token));copy.textContent='✓ COPIATO';}catch(e){alert(e.message);}};
+        const revoke=document.createElement('button');revoke.type='button';revoke.className='btn ghost small';revoke.textContent='REVOCA';
+        revoke.onclick=async()=>{
+          if(!confirm('Disattivare il link di '+p.name+'? Il QR e i link già distribuiti smetteranno di funzionare.'))return;
+          try{await fetchJson(apiBase()+'/api/rider/partners/'+p.token,{method:'DELETE',headers:riderHeaders()},9000);await load();}
+          catch(e){setStatus(e.message,true);}
+        };
+        box.append(title,note,copy,revoke);list.appendChild(box);
+      }
+    }catch(e){setStatus('Non riesco a caricare i partner: '+e.message,true);}
+  };
+  $('mPartnerCreate').onclick=async()=>{
+    const name=$('mPartnerName').value.trim();
+    if(name.length<2||!chosen||address.value.trim()!==chosen.label||!$('mPartnerConfirmCivic').checked){
+      setStatus('Completa nome, indirizzo selezionato e verifica del civico.',true);return;
+    }
+    const btn=$('mPartnerCreate');btn.disabled=true;
+    try{
+      const d=await fetchJson(apiBase()+'/api/rider/partners',{
+        method:'POST',headers:riderHeaders(),body:JSON.stringify({
+          name,pickupAddress:chosen.label,pickupLat:chosen.lat,pickupLon:chosen.lon
+        })
+      },9000);
+      const link=permanentPartnerLink(d.partner.token);
+      await copyPortalLink(link).catch(()=>{});
+      setStatus('✓ Link creato. Usa COPIA LINK nell’elenco per condividerlo.');
+      $('mPartnerName').value='';address.value='';chosen=null;$('mPartnerConfirmCivic').checked=false;
+      await load();
+    }catch(e){setStatus('Creazione non riuscita: '+e.message,true);}
+    finally{btn.disabled=false;}
+  };
+  load();
 }
 function renderWaParsed(d){
   waQuoteDraft=null;
@@ -1979,6 +2132,8 @@ function bindEvents(){
   document.querySelectorAll('[data-rider-page]').forEach(b=>b.onclick=()=>switchRiderPage(b.dataset.riderPage));
   $('remoteRequestsList').addEventListener('click',e=>{const ab=e.target.closest('[data-accept-batch]');if(ab)return acceptRemoteBatch(ab.dataset.acceptBatch);const rb=e.target.closest('[data-reject-batch]');if(rb)return rejectRemoteBatch(rb.dataset.rejectBatch);const ob=e.target.closest('[data-open-batch]');if(ob){const rows=remoteRequests.filter(x=>x.batchId===ob.dataset.openBatch);ensureShiftThen(()=>rows.forEach(createLocalOrderFromRemote));switchRiderPage('deliveries');return;}const a=e.target.closest('[data-accept]');if(a)return acceptRemote(a.dataset.accept);const r=e.target.closest('[data-reject]');if(r)return rejectRemote(r.dataset.reject);const m=e.target.closest('[data-map-remote]');if(m){const x=normalizeRemote(findRemote(m.dataset.mapRemote));window.open(mapsRoute({label:x.pickupAddress,lat:x.pickupLat,lon:x.pickupLon},{label:x.deliveryAddress,lat:x.deliveryLat,lon:x.deliveryLon},x.service),'_blank','noopener');return}const o=e.target.closest('[data-open-delivery]');if(o){const rr=findRemote(o.dataset.openDelivery);if(rr&&!state.orders.some(x=>x.remoteCode===rr.code))ensureShiftThen(()=>createLocalOrderFromRemote(rr));switchRiderPage('deliveries')}});
   $('openWaImporter').onclick=openWhatsAppImporter;$('newManualOrder').onclick=openWhatsAppImporter;
+  if($('recoverTrackingLink'))$('recoverTrackingLink').onclick=openTrackingLinkRecovery;
+  if($('openPartnerLinks'))$('openPartnerLinks').onclick=openPermanentPartnerLinks;
   $('startShiftBtn').onclick=()=>openModal('Inizia turno',`<label>Nome turno<input id="mShiftName" value="${esc(new Date().toLocaleDateString('it-IT',{weekday:'long',day:'2-digit',month:'2-digit'})+' sera')}"></label><label style="margin-top:8px">Fondo resto<input id="mFund" type="number" min="0" value="100"></label>`,[{label:'ANNULLA',cls:'ghost'},{label:'INIZIA',cls:'primary',keep:true,fn:()=>{startShift($('mShiftName').value.trim(),num($('mFund').value));closeModal()}}]);
   $('closeShiftBtn').onclick=closeCurrentShift;
   $('statFund')?.closest('.stat-card')?.addEventListener('click',editInitialFund);

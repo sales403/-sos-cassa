@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="it">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#090909">
+  <meta name="referrer" content="no-referrer">
+  <meta name="robots" content="noindex,nofollow">
+  <title>SOS Rider · Segui la consegna</title>
+  <link rel="stylesheet" href="portal.css?v=1">
+  <script src="config.js" defer></script>
+  <script src="track.js" defer></script>
+</head>
+<body>
+  <div class="staging">SOS RIDER · STAGING · PAGINA DI PROVA</div>
+  <main class="shell">
+    <header class="top"><div class="brand"><strong>SOS</strong> RIDER</div><span class="pill" id="statusPill">COLLEGAMENTO IN VERIFICA</span></header>
+    <h1>Segui la tua consegna.</h1>
+    <p class="lede" id="orderName">Sto cercando il tuo ordine…</p>
+    <div id="message" class="message hidden" role="status"></div>
+    <section class="panel hero-panel" aria-live="polite">
+      <div class="hero-label" id="etaTitle">ARRIVO PREVISTO</div>
+      <div class="hero-time" id="etaTime">—</div>
+      <div class="muted" id="etaDescription">Attendi il caricamento delle informazioni.</div>
+      <div class="updated" id="lastUpdated"></div>
+    </section>
+    <section class="panel">
+      <h2>Stato della consegna</h2>
+      <div id="timeline" aria-live="polite"><p>Caricamento aggiornamenti…</p></div>
+    </section>
+    <section class="panel hidden" id="mapPanel">
+      <h2>Posizione del rider</h2>
+      <div id="gpsNotice" class="muted">Attendo GPS aggiornato…</div>
+      <iframe class="map hidden" id="map" title="Posizione rider su OpenStreetMap" loading="lazy" referrerpolicy="no-referrer"></iframe>
+      <p class="footnote">La posizione è disponibile solo durante una consegna accettata e con GPS recente.</p>
+    </section>
+    <div class="actions">
+      <a class="btn primary" href="https://wa.me/393495153092" target="_blank" rel="noopener noreferrer">💬 CONTATTA MARCELLO</a>
+      <button class="btn secondary" id="reload" type="button">AGGIORNA ORA</button>
+    </div>
+    <footer>Il tuo rider di emergenza · Carpi · Limidi · Soliera<br>Non condividere questo link: permette di seguire la tua consegna.</footer>
+  </main>
+</body>
+</html>

@@ -1,4 +1,4 @@
-const VERSION = 'SOS Rider API 11.3.0-ops-staging';
+const VERSION = 'SOS Rider API 11.3.8-partner-tracking-staging';
 const V11_BATCH_FEATURE = true;
 const WEATHER_FEE_EUR = 3;
 let batchSchemaReady = false;
@@ -17,6 +17,7 @@ const ETA_MODEL = Object.freeze({
 
 const DEFAULT_ORIGINS = [
   'https://sales403.github.io',
+  'https://v11-dispatch-engine-sos-cassa.sales-3c8.workers.dev',
   'https://sos-rider-richiesta.marcello-marcellopo.chatgpt.site',
   'http://localhost:8000',
   'http://127.0.0.1:8000'
@@ -53,6 +54,7 @@ export default {
             nativeTracker: !!(env.TRACKER_BASIC_USER && env.TRACKER_BASIC_PASSWORD),
             liveTracking: !!env.DB,
             whatsappQuote: !!env.DB,
+            partnerPages: !!env.DB,
             batch: !!env.DB,
             weatherAdverse: !!env.DB,
             push: !!(env.DB && env.VAPID_PRIVATE_JWK)
@@ -103,6 +105,27 @@ export default {
       if (url.pathname === '/api/availability' && request.method === 'GET') {
         requireDb(env);
         return json({ ok: true, availability: await computeAvailability(env) }, 200, cors);
+      }
+
+      const partnerPageMatch = url.pathname.match(/^\/api\/partner\/([a-f0-9]{36})$/);
+      if (partnerPageMatch && request.method === 'GET') {
+        requireDb(env);
+        return getPartnerPage(partnerPageMatch[1], url, env, cors);
+      }
+
+      if (url.pathname === '/api/rider/partners' && ['GET','POST'].includes(request.method)) {
+        requireDb(env);
+        await requireRole(request, env, 'rider');
+        return request.method === 'GET'
+          ? listPartnerPages(env, cors)
+          : createPartnerPage(request, env, cors);
+      }
+
+      const partnerRevokeMatch = url.pathname.match(/^\/api\/rider\/partners\/([a-f0-9]{36})$/);
+      if (partnerRevokeMatch && request.method === 'DELETE') {
+        requireDb(env);
+        await requireRole(request, env, 'rider');
+        return revokePartnerPage(partnerRevokeMatch[1], env, cors);
       }
 
       if (url.pathname === '/api/me' && request.method === 'GET') {
@@ -200,6 +223,13 @@ export default {
         requireDb(env);
         await requireRole(request, env, 'rider');
         return listRiderRequests(url, env, cors);
+      }
+
+      const riderShareMatch = url.pathname.match(/^\/api\/rider\/requests\/([^/]+)\/share$/);
+      if (riderShareMatch && request.method === 'GET') {
+        requireDb(env);
+        await requireRole(request, env, 'rider');
+        return getRiderRequestShare(riderShareMatch[1], env, cors);
       }
 
       if (url.pathname === '/api/rider/push/subscribe' && request.method === 'POST') {
@@ -1540,6 +1570,69 @@ async function computeAvailability(env) {
   return (await buildEtaState(env)).availability;
 }
 
+// Link permanenti dei locali: token casuali, nessun account cliente e nessun
+// dettaglio sulle consegne altrui o sulle coordinate esatte del rider.
+let partnerPagesSchemaReady = false;
+async function ensurePartnerPagesSchema(env) {
+  if (partnerPagesSchemaReady) return;
+  await env.DB.prepare(`CREATE TABLE IF NOT EXISTS partner_pages (
+    token TEXT PRIMARY KEY,
+    name TEXT NOT NULL,
+    pickup_address TEXT NOT NULL,
+    pickup_lat REAL NOT NULL,
+    pickup_lon REAL NOT NULL,
+    created_at TEXT NOT NULL
+  )`).run();
+  partnerPagesSchemaReady = true;
+}
+
+async function createPartnerPage(request, env, cors) {
+  const p = await request.json().catch(() => fail('Dati locale non validi'));
+  const name = cleanText(p.name, 80);
+  const address = cleanText(p.pickupAddress, 180);
+  const lat = Number(p.pickupLat), lon = Number(p.pickupLon);
+  if (name.length < 2 || !address || !validCoord(lat, lon)) {
+    fail('Indica nome e indirizzo verificato del locale');
+  }
+  await ensurePartnerPagesSchema(env);
+  const key = token();
+  const createdAt = new Date().toISOString();
+  await env.DB.prepare('INSERT INTO partner_pages(token,name,pickup_address,pickup_lat,pickup_lon,created_at) VALUES(?,?,?,?,?,?)')
+    .bind(key,name,address,lat,lon,createdAt).run();
+  return json({ ok:true, partner:{ token:key, name, pickupAddress:address, createdAt } }, 201, cors);
+}
+
+async function listPartnerPages(env, cors) {
+  await ensurePartnerPagesSchema(env);
+  const rows = await env.DB.prepare('SELECT token,name,pickup_address,created_at FROM partner_pages ORDER BY created_at DESC LIMIT 100').all();
+  return json({ ok:true, partners:(rows.results || []).map(p => ({
+    token:p.token, name:p.name, pickupAddress:p.pickup_address, createdAt:p.created_at
+  })) }, 200, cors);
+}
+
+async function revokePartnerPage(key, env, cors) {
+  await ensurePartnerPagesSchema(env);
+  const deleted = await env.DB.prepare('DELETE FROM partner_pages WHERE token=?').bind(key).run();
+  if (!Number(deleted.meta?.changes)) fail('Link non trovato',404);
+  return json({ok:true,revoked:true},200,cors);
+}
+
+async function getPartnerPage(key, url, env, cors) {
+  await ensurePartnerPagesSchema(env);
+  const row = await env.DB.prepare('SELECT name,pickup_address,pickup_lat,pickup_lon FROM partner_pages WHERE token=?').bind(key).first();
+  if (!row) fail('Link partner non trovato',404);
+  const service = ['ebike','moto','auto'].includes(url.searchParams.get('service'))
+    ? url.searchParams.get('service') : 'ebike';
+  const pickupAvailability = await buildPickupAvailabilityPreview(env,{
+    pickupLat:Number(row.pickup_lat), pickupLon:Number(row.pickup_lon),
+    service, readyTime:''
+  });
+  // Non esporre la distanza precisa rider-locale: il pubblico vede solo ETA.
+  const { transferKm, ...safeAvailability } = pickupAvailability;
+  return json({ ok:true, partner:{ name:row.name, pickupAddress:row.pickup_address },
+    service, availability:safeAvailability }, 200, cors);
+}
+
 async function buildPickupAvailabilityPreview(env, input) {
   const state = await buildEtaState(env);
   const a = state.availability;
@@ -1580,10 +1673,18 @@ async function buildPickupAvailabilityPreview(env, input) {
   }
 
   if (a?.mode === 'full') {
+    // Stima prudente di quando si potrà raggiungere il locale dopo la coda;
+    // NON autorizza a prenotare uno slot già occupato.
+    let tentativeMin = Math.max(0, Number(ctx.cursorMin) || 0);
+    if (ctx.lastPoint && validCoord(ctx.lastPoint.lat, ctx.lastPoint.lon)) {
+      tentativeMin += travelMinutes(estimatedRoadKm(ctx.lastPoint.lat, ctx.lastPoint.lon,pickupLat,pickupLon),service);
+    } else if (state.liveLocation?.fresh) {
+      tentativeMin += travelMinutes(estimatedRoadKm(state.liveLocation.lat,state.liveLocation.lon,pickupLat,pickupLon),service);
+    } else tentativeMin += Math.max(5,Number(a?.firstPickupEtaMin)||5);
     return {mode:'full',enabled:true,canSubmit:false,level:'red',
       title:'Rider al completo',text:'3 consegne attive: nessuna nuova richiesta fino a quando si libera un posto.',
       active:Number(ctx.active)||3,pending:Number(ctx.pending)||0,queueAhead:Number(ctx.active)||3,
-      pickupEta:null,pickupEtaMin:null,locationFresh:!!state.liveLocation?.fresh,
+      pickupEta:null,pickupEtaMin:null,tentativePickupEta:etaWindow(tentativeMin),locationFresh:!!state.liveLocation?.fresh,
       updatedAt:new Date().toISOString()};
   }
 
@@ -2271,7 +2372,7 @@ async function confirmWhatsappRequest(request,env,ctx,cors) {
   if (saved.status==='confirmed') {
     const row=await getByCode(env,saved.request_code);
     if (!row) fail('Consegna confermata non trovata',500);
-    return json({ok:true,idempotent:true,request:rowPublic(row)},200,cors);
+    return json({ok:true,idempotent:true,request:rowPublic(row),clientToken:row.client_token},200,cors);
   }
   if (saved.status!=='awaiting_confirmation') fail('Preventivo non confermabile',409);
   if (Date.now()>Date.parse(saved.expires_at)) fail('Preventivo scaduto: ricalcola',409);
@@ -2555,6 +2656,13 @@ async function getByCode(env, code) {
   return env.DB.prepare(
     'SELECT * FROM requests WHERE code=?'
   ).bind(code).first();
+}
+
+async function getRiderRequestShare(code, env, cors) {
+  const row = await getByCode(env, cleanText(code, 50));
+  if (!row) fail('Ordine non trovato', 404);
+  if (!/^[a-f0-9]{36}$/i.test(String(row.client_token || ''))) fail('Link tracking non disponibile', 409);
+  return json({ok:true, code:row.code, clientToken:row.client_token}, 200, cors);
 }
 
 async function getGuestRequest(code, url, env, cors) {
