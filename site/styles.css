@@ -1803,3 +1803,14 @@ html[data-theme="day"] .about-story .section-kicker{color:#ffd000}
     scroll-padding-top:calc(96px + var(--sos-safe-top));
   }
 }
+
+/* Business sectors: scoped to the showcase, independent of dispatch. */
+.business-service-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:18px}
+.business-service-card{display:flex;flex-direction:column;min-width:0;padding:26px}
+.business-service-card h3{font-size:24px;line-height:1.2;margin:16px 0 12px;overflow-wrap:anywhere}
+.business-service-card p{min-height:0;flex:1}
+.business-service-card .btn{align-self:flex-start;font-size:12px;white-space:normal;max-width:100%;text-align:left}
+.business-service-note{margin-top:28px;max-width:850px}
+.business-service-note h3{font-size:24px;margin-bottom:10px}
+@media(max-width:1000px){.business-service-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:700px){.business-service-grid{grid-template-columns:minmax(0,1fr)}.business-service-card{padding:24px}.business-service-card h3{font-size:24px}}
