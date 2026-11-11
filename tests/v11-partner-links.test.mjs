@@ -13,7 +13,7 @@ const portion=(source,begin,end)=>{
 const key='0123456789abcdef0123456789abcdefabcd';
 
 test('La versione staging autorizza il frontend V11 e si distingue dalla release precedente',()=>{
-  assert.match(worker,/SOS Rider API 11\.3\.9-partner-tracking-staging/);
+  assert.match(worker,/SOS Rider API 11\.4\.0-pricing-3band-staging/);
   assert.match(worker,/https:\/\/v11-dispatch-engine-sos-cassa\.sales-3c8\.workers\.dev/);
 });
 
