@@ -356,7 +356,7 @@ function roundHalf(n) {
 
 function tariffFor(km, service, readyTime, weatherAdverse = false) {
   km = Number(km);
-  if (!Number.isFinite(km) || km <= 0) fail('Distanza stradale non valida');
+  if (!Number.isFinite(km) || km < 0) fail('Distanza stradale non valida');
   if (km > 8) fail('Per tratte oltre 8 km serve un preventivo personalizzato: contattaci su WhatsApp.', 422);
   const prices = {
     ebike: [6.50, 8.50, 12.50],
