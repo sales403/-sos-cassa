@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="it">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#090909">
+  <meta name="referrer" content="no-referrer">
+  <meta name="robots" content="noindex,nofollow">
+  <title>SOS Rider · Area Partner</title>
+  <link rel="stylesheet" href="portal.css?v=1">
+  <script src="config.js" defer></script>
+  <script src="partner.js" defer></script>
+</head>
+<body>
+  <div class="staging">SOS RIDER · STAGING · PAGINA DI PROVA</div>
+  <main class="shell">
+    <header class="top"><div class="brand"><strong>SOS</strong> RIDER</div><span class="pill" id="statusPill">IN VERIFICA</span></header>
+    <h1 id="greeting">Il tuo rider di emergenza.</h1>
+    <p class="lede" id="pickupAddress">Controllo la disponibilità per il tuo locale…</p>
+    <div id="message" class="message hidden" role="status"></div>
+    <section class="panel hero-panel" aria-live="polite">
+      <div class="hero-label">ARRIVO STIMATO AL TUO LOCALE</div>
+      <div class="hero-time" id="etaTime">—</div>
+      <div class="muted" id="etaDescription">Calcolo in corso…</div>
+      <div class="updated" id="lastUpdated"></div>
+    </section>
+    <section class="panel">
+      <h2>Quale mezzo ti serve?</h2>
+      <label for="service">Il tempo viene ricalcolato in base al veicolo</label>
+      <select id="service">
+        <option value="ebike">Economy E-bike</option>
+        <option value="moto">Express Moto</option>
+        <option value="auto">Cargo Auto</option>
+      </select>
+      <div class="row"><span class="muted">Consegne già in corso</span><strong id="activeOrders">—</strong></div>
+      <p class="footnote">Gli orari sono indicativi e dipendono da traffico, consegne precedenti, attese e GPS aggiornato. La disponibilità effettiva viene confermata da Marcello.</p>
+    </section>
+    <div class="actions">
+      <a class="btn primary" id="whatsapp" href="https://wa.me/393495153092" target="_blank" rel="noopener noreferrer">💬 RICHIEDI CONSEGNA</a>
+      <button class="btn secondary" id="reload" type="button">AGGIORNA ORA</button>
+    </div>
+    <footer>Solo per il tuo locale · Nessun costo fisso<br>Paghi soltanto le consegne concordate.</footer>
+  </main>
+</body>
+</html>

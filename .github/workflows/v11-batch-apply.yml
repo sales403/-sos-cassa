@@ -1,0 +1,55 @@
+name: V11 Batch Feature Apply
+
+on:
+  push:
+    branches:
+      - v11-dispatch-engine
+    paths:
+      - .github/workflows/v11-batch-apply.yml
+
+permissions:
+  contents: write
+
+jobs:
+  apply-batch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout V11 branch
+        uses: actions/checkout@v4
+        with:
+          ref: v11-dispatch-engine
+          fetch-depth: 0
+
+      - name: Apply V11.1 batch patch
+        run: python3 .github/scripts/apply_v11_batch.py
+
+      - name: Repair generated app replacement
+        run: python3 .github/scripts/fix_v11_batch_generated.py
+
+      - name: Polish batch metadata and draft handling
+        run: python3 .github/scripts/polish_v11_batch.py
+
+      - name: Syntax checks
+        run: |
+          node --check app.js
+          node --check preview-v11/app.js
+          node --check worker-v11.0.0-dispatch.js
+          node --check sw.js
+          node --check preview-v11/sw.js
+          grep -q "SOS Rider API 11.1.0-batch" worker-v11.0.0-dispatch.js
+          grep -q "clientSecondDelivery" index.html
+          grep -q "RITIRATI 2 ORDINI" app.js
+          grep -q "batchTotalDistanceKm" app.js
+          grep -q "batchTotalDistanceKm" worker-v11.0.0-dispatch.js
+
+      - name: Commit generated V11.1 files
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add worker-v11.0.0-dispatch.js app.js index.html styles.css sw.js preview-v11/app.js preview-v11/index.html preview-v11/styles.css preview-v11/sw.js migration-v11-to-v11.1-batches.sql
+          if git diff --cached --quiet; then
+            echo "No generated changes"
+            exit 0
+          fi
+          git commit -m "V11.1 batch: polish grouped-delivery metadata"
+          git push origin HEAD:v11-dispatch-engine
