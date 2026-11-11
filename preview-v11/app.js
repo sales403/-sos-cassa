@@ -861,10 +861,18 @@ async function calculateClientQuote(){
     if(clientBatchMode){
       const res=await fetchJson(apiBase()+'/api/batch/quote',{method:'POST',headers:{'Accept':'application/json','Content-Type':'application/json'},body:JSON.stringify(batchPayload(d))},30000);
       const q=res.quote;if(!q||!Number.isFinite(Number(q.totalFee)))throw new Error('Preventivo giro non disponibile.');
+      if(Number(q.extraStopFee)!==0||Math.abs(Number(q.totalFee)-(Number(q.baseFee)+Number(q.lateFee)+Number(q.weatherFee)))>0.001){
+        throw new Error('Tariffario in aggiornamento sul server. Per ora richiedi il preventivo su WhatsApp.');
+      }
       clientQuote={batch:true,distanceKm:Number(q.totalDistanceKm)||0,durationMin:Number(q.totalDurationMin)||0,base:Number(q.baseFee)||0,extraStopFee:Number(q.extraStopFee)||0,lateFee:Number(q.lateFee)||0,weatherFee:Number(q.weatherFee)||0,weatherAdverse:!!q.weatherAdverse,total:Number(q.totalFee),service:d.service,readyTime:d.readyTime,routeOrder:q.routeOrder||[0,1],stops:q.stops||[],pickupAvailability:q.pickupAvailability||res.availability||null,createdAt:Date.now()};
     }else{
       const res=await fetchJson(apiBase()+'/api/quote',{method:'POST',headers:{'Accept':'application/json','Content-Type':'application/json'},body:JSON.stringify({pickupLat:d.pickupLat,pickupLon:d.pickupLon,deliveryLat:d.deliveryLat,deliveryLon:d.deliveryLon,service:d.service,readyTime:d.readyTime})},28000);
       const q=res.quote;if(!q||!Number.isFinite(Number(q.totalFee)))throw new Error('Preventivo server non disponibile.');
+      const expected=tariffFor(Number(q.distanceKm),d.service,d.readyTime);
+      if(Math.abs(Number(q.baseFee)-expected.base)>0.001||Math.abs(Number(q.lateFee)-expected.lateFee)>0.001||
+         Math.abs(Number(q.totalFee)-(expected.total+Number(q.weatherFee||0)))>0.001){
+        throw new Error('Tariffario in aggiornamento sul server. Per ora richiedi il preventivo su WhatsApp.');
+      }
       clientQuote={distanceKm:Number(q.distanceKm),durationMin:Number(q.durationMin)||0,source:q.routeSource||'server',base:Number(q.baseFee),lateFee:Number(q.lateFee)||0,weatherFee:Number(q.weatherFee)||0,weatherAdverse:!!q.weatherAdverse,total:Number(q.totalFee),micro:!!q.microDelivery,service:d.service,readyTime:d.readyTime,createdAt:Date.now(),pickupAvailability:res.pickupAvailability||null};
       currentAvailability=res.availability||currentAvailability;
     }
