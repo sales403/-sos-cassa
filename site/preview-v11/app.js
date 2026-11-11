@@ -131,21 +131,14 @@ function isLateTime(t){
   return h*60+m >= 22*60+30;
 }
 function tariffFor(km, vehicle, readyTime){
-  km = Math.max(0, Number(km)||0);
-  const tables = {
-    ebike:[[1,2.50],[2,3.50],[3,4.00],[5,6.00],[8,8.50]],
-    moto:[[1,4.50],[2,5.50],[3,6.50],[5,8.50],[8,11.00]],
-    auto:[[1,5.50],[2,6.50],[3,7.50],[5,10.00],[8,13.00]]
-  };
-  const slopes = {ebike:1.00,moto:1.20,auto:1.50};
-  const table = tables[vehicle] || tables.ebike;
-  let base = table[table.length-1][1];
-  for(const [limit,price] of table){ if(km<=limit){ base=price; break; } }
-  if(km>8) base = table[table.length-1][1] + (km-8)*(slopes[vehicle] || 1.00);
-  const micro = vehicle==='ebike' && km<=1;
-  base = roundHalf(base);
+  km=Number(km);
+  if(!Number.isFinite(km)||km<=0)throw Error('Distanza stradale non valida');
+  if(km>8)throw Error('Oltre 8 km serve un preventivo personalizzato: contattaci su WhatsApp.');
+  const table={ebike:[6.50,8.50,12.50],moto:[9.50,12.50,16.50],auto:[12.50,15.50,20.50]};
+  if(!Object.hasOwn(table,vehicle))throw Error('Servizio non valido');
+  const base=table[vehicle][km<=3?0:km<=5?1:2];
   const lateFee = isLateTime(readyTime) ? 2 : 0;
-  return {base, lateFee, total:roundHalf(base+lateFee), micro};
+  return {base,lateFee,total:roundHalf(base+lateFee),micro:false};
 }
 
 async function routeBetween(a,b,vehicle){
@@ -700,7 +693,7 @@ async function calculateClientQuote(){
     currentAvailability=res.availability||currentAvailability;renderAvailability();renderClientQuote();await generateClientQuoteImage();
     $('clientQuoteSection').classList.remove('hidden');$('clientQuoteSection').scrollIntoView({behavior:'smooth',block:'start'});
     status.className='status-line ok';status.textContent='✓ Preventivo pronto e verificato dal server. Puoi modificarlo oppure inviare la richiesta.';
-    if(clientQuote.distanceKm>8&&clientVehicle==='ebike'){$('serviceSuggestion').classList.remove('hidden');$('serviceSuggestion').textContent="💡 Oltre 8 km la tariffa è indicativa: la disponibilità viene confermata dall'operatore.";}else if(clientQuote.micro){$('serviceSuggestion').classList.remove('hidden');$('serviceSuggestion').textContent='⚡ ECONOMY E-BIKE: fascia 0–1 km · €2,50.';}else $('serviceSuggestion').classList.add('hidden');
+    $('serviceSuggestion').classList.add('hidden');
   }catch(e){status.className='status-line error';status.textContent='⚠ '+e.message;}
 }
 
@@ -710,7 +703,6 @@ function renderClientQuote(){
   $('cqTotal').textContent=money(clientQuote.total);
   $('cqDistance').textContent=`${clientQuote.distanceKm.toFixed(1)} km`;
   $('cqBase').textContent=money(clientQuote.base);
-  $('cqMicroRow').classList.toggle('hidden',!clientQuote.micro);
   $('cqLateRow').classList.toggle('hidden', !clientQuote.lateFee);
   $('cqLateNotice').classList.toggle('hidden', !clientQuote.lateFee);
   $('clientQuoteRouteBadge').textContent='PERCORSO CALCOLATO';
