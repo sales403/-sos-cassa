@@ -26,7 +26,7 @@ const prices = {
 
 test('Le 3 fasce ufficiali coincidono per ogni veicolo sulle soglie esatte', () => {
   for (const [vehicle, [first, second, third]] of Object.entries(prices)) {
-    for (const [km, expected] of [[0.2, first], [3, first], [3.001, second], [5, second], [5.001, third], [8, third]]) {
+    for (const [km, expected] of [[0, first], [0.2, first], [3, first], [3.001, second], [5, second], [5.001, third], [8, third]]) {
       const fee = tariff(km, vehicle, '19:00');
       assert.equal(fee.totalFee, expected, `${vehicle} @ ${km} km`);
       assert.equal(fee.baseFee, expected);
