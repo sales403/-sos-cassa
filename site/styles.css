@@ -288,6 +288,14 @@ footer{padding:34px 0 100px;border-top:1px solid var(--line);margin-top:88px}.fo
 .premium-night-fee strong{display:block;padding:12px 18px;border-radius:14px;background:#ffd000;color:#111;font-size:28px;white-space:nowrap}
 .premium-price-footer{display:flex;justify-content:space-between;gap:18px;align-items:center;margin-top:16px;color:#70757c;font-size:11px}
 .premium-price-footer a{text-decoration:none;font-size:10px;font-weight:1000;letter-spacing:.1em;color:#7d6200;border-bottom:2px solid #ffd000;padding-bottom:4px}
+.premium-partner-note{display:flex;align-items:center;gap:18px;margin-top:24px;padding:23px 25px;border:1px solid #d4b128;border-radius:22px;background:linear-gradient(115deg,#16191e,#2a2b2d);box-shadow:0 12px 32px rgba(12,12,12,.12);color:#fff}
+.premium-partner-symbol{display:grid;place-items:center;flex:0 0 52px;height:52px;border-radius:16px;background:#ffd000;color:#101317;font-size:28px}
+.premium-partner-note>div:nth-child(2){flex:1;min-width:0}
+.premium-partner-note b{font-size:15px;letter-spacing:.035em}
+.premium-partner-note p{margin:7px 0 0;color:#d7d9dd!important;font-size:14px;line-height:1.5}
+.premium-partner-note p strong{color:#ffe16b}
+.premium-partner-note a{flex:0 0 auto;padding:12px 16px;border:1px solid #ffd000;border-radius:12px;color:#ffd000;text-decoration:none;font-size:12px;font-weight:900;white-space:nowrap}
+@media(max-width:700px){.premium-partner-note{align-items:flex-start;flex-direction:column;padding:20px}.premium-partner-note a{align-self:stretch;text-align:center}}
 
 /* APP INTRO */
 .app-editorial{padding:100px 0 44px}
