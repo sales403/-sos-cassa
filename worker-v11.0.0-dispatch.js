@@ -1,4 +1,4 @@
-const VERSION = 'SOS Rider API 11.3.9-partner-tracking-staging';
+const VERSION = 'SOS Rider API 11.4.0-pricing-3band-staging';
 const V11_BATCH_FEATURE = true;
 const WEATHER_FEE_EUR = 3;
 let batchSchemaReady = false;
@@ -355,23 +355,16 @@ function roundHalf(n) {
 }
 
 function tariffFor(km, service, readyTime, weatherAdverse = false) {
-  km = Math.max(0, Number(km) || 0);
-
-  let base;
-  let micro = false;
-
-  if (service === 'moto') {
-    base = km <= 5 ? 9 : 9 + (km - 5) * 1.20;
-  } else if (service === 'auto') {
-    base = km <= 5 ? 12 : 12 + (km - 5) * 1.50;
-  } else if (km <= 1) {
-    base = 2.50;
-    micro = true;
-  } else {
-    base = km <= 3 ? 6.50 : 6.50 + (km - 3) * 1.00;
-  }
-
-  base = roundHalf(base);
+  km = Number(km);
+  if (!Number.isFinite(km) || km <= 0) fail('Distanza stradale non valida');
+  if (km > 8) fail('Per tratte oltre 8 km serve un preventivo personalizzato: contattaci su WhatsApp.', 422);
+  const prices = {
+    ebike: [6.50, 8.50, 12.50],
+    moto: [9.50, 12.50, 16.50],
+    auto: [12.50, 15.50, 20.50]
+  };
+  if (!Object.hasOwn(prices, service)) fail('Servizio non valido');
+  const base = prices[service][km <= 3 ? 0 : km <= 5 ? 1 : 2];
   const lateFee = isLate(readyTime) ? 2 : 0;
   const weatherFee = weatherAdverse ? WEATHER_FEE_EUR : 0;
 
@@ -381,7 +374,7 @@ function tariffFor(km, service, readyTime, weatherAdverse = false) {
     weatherFee,
     weatherAdverse: weatherFee > 0,
     totalFee: roundHalf(base + lateFee + weatherFee),
-    microDelivery: micro
+    microDelivery: false
   };
 }
 
@@ -1006,9 +999,16 @@ async function calculateBatchData(env, p, opts = {}) {
   const totalDistanceKm = firstLeg.distanceKm + secondLeg.distanceKm;
   const totalDurationMin = firstLeg.durationMin + secondLeg.durationMin;
   const weather = await getWeatherState(env,base.pickupLat,base.pickupLon,base.readyTime);
-  const routeFee = tariffFor(totalDistanceKm, base.service, base.readyTime, weather.adverse);
-  const extraStopFee = 3.50;
-  const totalFee = roundHalf(routeFee.totalFee + extraStopFee);
+  if (totalDistanceKm > 8) fail('Per giri oltre 8 km serve un preventivo personalizzato: contattaci su WhatsApp.', 422);
+  // Due consegne = somma delle tariffe base delle due tratte percorse.
+  // Solo meteo e fascia serale sono supplementi, applicati una volta al giro.
+  const firstFee = tariffFor(firstLeg.distanceKm, base.service, base.readyTime);
+  const secondFee = tariffFor(secondLeg.distanceKm, base.service, base.readyTime);
+  const baseFee = firstFee.baseFee + secondFee.baseFee;
+  const lateFee = firstFee.lateFee;
+  const weatherFee = weather.adverse ? WEATHER_FEE_EUR : 0;
+  const extraStopFee = 0; // Campo mantenuto per compatibilità con D1 e client esistenti.
+  const totalFee = roundHalf(baseFee + lateFee + weatherFee);
 
   const singleRoutes = [pA, pB];
   const singleFees = singleRoutes.map(r => tariffFor(r.distanceKm, base.service, base.readyTime).totalFee);
@@ -1052,10 +1052,10 @@ async function calculateBatchData(env, p, opts = {}) {
     sharesByOriginal,
     totalDistanceKm,
     totalDurationMin,
-    baseFee: routeFee.baseFee,
-    lateFee: routeFee.lateFee,
-    weatherFee: routeFee.weatherFee,
-    weatherAdverse: routeFee.weatherAdverse,
+    baseFee,
+    lateFee,
+    weatherFee,
+    weatherAdverse: weatherFee > 0,
     extraStopFee,
     totalFee,
     pickupAvailability,
