@@ -137,14 +137,14 @@ function isLateTime(t){
 }
 function tariffFor(km, vehicle, readyTime){
   // Solo fallback locale: stessa tariffa base del Worker. Preventivi ufficiali sempre server.
-  km=Math.max(0,Number(km)||0);
-  const micro=vehicle==='ebike'&&km<=1;
-  let base=vehicle==='moto'?(km<=5?9:9+(km-5)*1.20):
-    vehicle==='auto'?(km<=5?12:12+(km-5)*1.50):
-    micro?2.50:(km<=3?6.50:6.50+(km-3)*1.00);
-  base=roundHalf(base);
+  km=Number(km);
+  if(!Number.isFinite(km)||km<=0)throw Error('Distanza stradale non valida');
+  if(km>8)throw Error('Oltre 8 km serve un preventivo personalizzato: contattaci su WhatsApp.');
+  const table={ebike:[6.50,8.50,12.50],moto:[9.50,12.50,16.50],auto:[12.50,15.50,20.50]};
+  if(!Object.hasOwn(table,vehicle))throw Error('Servizio non valido');
+  const base=table[vehicle][km<=3?0:km<=5?1:2];
   const lateFee=isLateTime(readyTime)?2:0;
-  return {base,lateFee,total:roundHalf(base+lateFee),micro};
+  return {base,lateFee,total:roundHalf(base+lateFee),micro:false};
 }
 
 async function routeBetween(a,b,vehicle){
@@ -854,12 +854,14 @@ function batchPayload(d){
 }
 async function calculateClientQuote(){
   const status=$('clientFormStatus');status.className='status-line';status.textContent=clientBatchMode?'Calcolo il giro migliore per 2 consegne…':'Calcolo percorso e tariffa sul server…';
+  clientQuote=null;
+  $('clientQuoteSection').classList.add('hidden');
   try{
     const d=validateClientForm(true);
     if(clientBatchMode){
       const res=await fetchJson(apiBase()+'/api/batch/quote',{method:'POST',headers:{'Accept':'application/json','Content-Type':'application/json'},body:JSON.stringify(batchPayload(d))},30000);
       const q=res.quote;if(!q||!Number.isFinite(Number(q.totalFee)))throw new Error('Preventivo giro non disponibile.');
-      clientQuote={batch:true,distanceKm:Number(q.totalDistanceKm)||0,durationMin:Number(q.totalDurationMin)||0,base:Number(q.baseFee)||0,extraStopFee:Number(q.extraStopFee)||3.5,lateFee:Number(q.lateFee)||0,weatherFee:Number(q.weatherFee)||0,weatherAdverse:!!q.weatherAdverse,total:Number(q.totalFee),service:d.service,readyTime:d.readyTime,routeOrder:q.routeOrder||[0,1],stops:q.stops||[],pickupAvailability:q.pickupAvailability||res.availability||null,createdAt:Date.now()};
+      clientQuote={batch:true,distanceKm:Number(q.totalDistanceKm)||0,durationMin:Number(q.totalDurationMin)||0,base:Number(q.baseFee)||0,extraStopFee:Number(q.extraStopFee)||0,lateFee:Number(q.lateFee)||0,weatherFee:Number(q.weatherFee)||0,weatherAdverse:!!q.weatherAdverse,total:Number(q.totalFee),service:d.service,readyTime:d.readyTime,routeOrder:q.routeOrder||[0,1],stops:q.stops||[],pickupAvailability:q.pickupAvailability||res.availability||null,createdAt:Date.now()};
     }else{
       const res=await fetchJson(apiBase()+'/api/quote',{method:'POST',headers:{'Accept':'application/json','Content-Type':'application/json'},body:JSON.stringify({pickupLat:d.pickupLat,pickupLon:d.pickupLon,deliveryLat:d.deliveryLat,deliveryLon:d.deliveryLon,service:d.service,readyTime:d.readyTime})},28000);
       const q=res.quote;if(!q||!Number.isFinite(Number(q.totalFee)))throw new Error('Preventivo server non disponibile.');
@@ -869,7 +871,7 @@ async function calculateClientQuote(){
     clientSubmissionId=null;renderAvailability();renderClientQuote();await generateClientQuoteImage();
     $('clientQuoteSection').classList.remove('hidden');$('clientQuoteSection').scrollIntoView({behavior:'smooth',block:'start'});
     status.className='status-line ok';status.textContent=clientBatchMode?'✓ Giro ottimizzato: 1 ritiro, 2 consegne. Controlla ordine e tariffa.':'✓ Preventivo pronto e verificato dal server. Puoi modificarlo oppure inviare la richiesta.';
-    if(!clientBatchMode&&clientQuote.distanceKm>8&&clientVehicle==='ebike'){$('serviceSuggestion').classList.remove('hidden');$('serviceSuggestion').textContent="💡 Oltre 8 km la tariffa è indicativa: la disponibilità viene confermata dall'operatore.";}else if(!clientBatchMode&&clientQuote.micro){$('serviceSuggestion').classList.remove('hidden');$('serviceSuggestion').textContent='⚡ ECONOMY E-BIKE: fascia 0–1 km · €2,50.';}else $('serviceSuggestion').classList.add('hidden');
+    $('serviceSuggestion').classList.add('hidden');
   }catch(e){status.className='status-line error';status.textContent='⚠ '+e.message;}
 }
 
@@ -914,14 +916,11 @@ function renderClientQuote(){
   $('cqTotal').textContent=money(clientQuote.total);
   $('cqDistance').textContent=`${clientQuote.distanceKm.toFixed(1)} km`;
   $('cqBase').textContent=money(clientQuote.base);
-  $('cqMicroRow').classList.toggle('hidden',!clientQuote.micro);
   $('cqLateRow').classList.toggle('hidden', !clientQuote.lateFee);
   $('cqLateNotice').classList.toggle('hidden', !clientQuote.lateFee);
   $('cqWeatherRow')?.classList.toggle('hidden', !clientQuote.weatherFee);
-  $('cqBatchRow')?.classList.toggle('hidden',!clientQuote.batch);
-  if($('cqBatchExtra'))$('cqBatchExtra').textContent=clientQuote.batch?money(clientQuote.extraStopFee||3.5):'—';
   const br=$('clientBatchRoute');
-  if(br){br.classList.toggle('hidden',!clientQuote.batch);br.innerHTML=clientQuote.batch?'<b>⚡ ORDINE DI CONSEGNA OTTIMIZZATO</b>'+clientQuote.stops.map(s=>`<span>${s.stopIndex}️⃣ ${esc(s.recipientName)} · ${esc(s.deliveryAddress)} · ETA ${esc(etaRange(s.eta))}</span>`).join(''):'';}
+  if(br){br.classList.toggle('hidden',!clientQuote.batch);br.innerHTML=clientQuote.batch?'<b>⚡ ORDINE DI CONSEGNA OTTIMIZZATO</b><small>La tariffa base comprende entrambe le consegne, senza extra per la seconda fermata.</small>'+clientQuote.stops.map(s=>`<span>${s.stopIndex}️⃣ ${esc(s.recipientName)} · ${esc(s.deliveryAddress)} · ETA ${esc(etaRange(s.eta))}</span>`).join(''):'';}
   $('clientQuoteRouteBadge').textContent=clientQuote.batch?'GIRO OTTIMIZZATO':'PERCORSO CALCOLATO';
   renderClientPickupAvailability();
 }
