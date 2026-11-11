@@ -132,7 +132,7 @@ function isLateTime(t){
 }
 function tariffFor(km, vehicle, readyTime){
   km=Number(km);
-  if(!Number.isFinite(km)||km<=0)throw Error('Distanza stradale non valida');
+  if(!Number.isFinite(km)||km<0)throw Error('Distanza stradale non valida');
   if(km>8)throw Error('Oltre 8 km serve un preventivo personalizzato: contattaci su WhatsApp.');
   const table={ebike:[6.50,8.50,12.50],moto:[9.50,12.50,16.50],auto:[12.50,15.50,20.50]};
   if(!Object.hasOwn(table,vehicle))throw Error('Servizio non valido');
