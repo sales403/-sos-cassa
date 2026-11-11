@@ -89,6 +89,15 @@ test('La variante client non applica tariffe locali incompatibili', () => {
   }
 });
 
+test('Il client blocca preventivi di un Worker non ancora aggiornato', () => {
+  for(const path of ['app.js','preview-v11/app.js']){
+    const js=source(path);
+    assert.match(js,/Math\.abs\(Number\(q\.baseFee\)-expected\.base\)/);
+    assert.match(js,/Number\(q\.extraStopFee\)!==0/);
+    assert.match(js,/Tariffario in aggiornamento sul server/);
+  }
+});
+
 test('Preventivi batch senza extra fermata: si sommano due tariffe base e gli extra una volta', async () => {
   const start = worker.indexOf('async function calculateBatchData(');
   const end = worker.indexOf('function batchQuotePublic(', start);
