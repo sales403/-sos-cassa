@@ -535,3 +535,68 @@ body{padding-top:24px}
 .password-eye-off{display:none}
 .password-toggle.is-visible .password-eye-open{display:none}
 .password-toggle.is-visible .password-eye-off{display:block}
+
+/* SOS RIDER V11.5 — Cliente veloce: quattro schede, CTA fissa, account compatto */
+#clientHub{padding-bottom:calc(198px + env(safe-area-inset-bottom))}
+#clientAvailability{margin:8px 0 18px}
+#clientAccountCard,#clientGuestCard{margin:0 0 16px}
+#clientHub .client-account-strip{display:flex;flex-direction:row;align-items:center;gap:12px;padding:12px 14px}
+.client-account-identity{flex:1;min-width:0}
+#clientHub #clientAccountName{font-size:clamp(21px,4vw,27px);line-height:1.15;font-weight:1000;letter-spacing:-.02em;overflow-wrap:anywhere;margin:5px 0}
+#clientHub .client-account-identity small{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:100%}
+#clientHub .account-actions{display:flex;flex:0 0 auto;align-items:center;justify-content:flex-end;flex-wrap:nowrap}
+#clientHub .account-actions .btn{min-width:64px}
+#clientHub .account-actions .hidden{display:none!important}
+.client-page{display:none}.client-page.active{display:block}
+.client-flow-head{display:flex;align-items:flex-end;justify-content:space-between;gap:10px;padding:6px 2px 13px}
+.client-flow-head h1{margin:4px 0 0;font-size:clamp(24px,5vw,32px);line-height:1.1}
+.client-flow-hint{color:var(--muted);font-size:10px;text-align:right;max-width:115px;line-height:1.3}
+.client-flow-steps{display:grid;grid-template-columns:repeat(3,1fr);gap:7px;margin:0 0 13px}
+.client-flow-steps span{border-bottom:4px solid var(--line2);color:var(--muted);font-size:10px;font-weight:900;padding:6px 2px 9px;text-align:center;white-space:nowrap}
+.client-flow-steps span.active{border-color:var(--yellow);color:var(--text)}
+.client-pickup-details{display:block;border:1px solid var(--line2);background:var(--surface,#111);border-radius:15px;padding:11px 12px}
+.client-pickup-details summary{display:flex;gap:8px;justify-content:space-between;align-items:center;cursor:pointer;list-style:none}
+.client-pickup-details summary::-webkit-details-marker{display:none}
+.client-pickup-details summary b{font-size:14px;display:block}
+.client-pickup-details summary small{font-size:11px;color:var(--muted);margin-top:4px;display:block;line-height:1.35;max-width:480px;overflow-wrap:anywhere}
+.client-change-hint{color:var(--yellow);font-size:10px;font-weight:900;white-space:nowrap}
+.client-pickup-details[open] .client-change-hint{font-size:0}
+.client-pickup-details[open] .client-change-hint::after{content:'CHIUDI ▴';font-size:10px}
+.client-pickup-fields{margin-top:13px;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.client-pickup-fields>.address-field{grid-column:1/-1}
+.client-pickup-fields label{min-width:0}
+.client-form-section-heading{border-top:1px solid var(--line);padding-top:14px}
+.client-form-section-heading b{display:block;font-size:15px}
+.client-form-section-heading small{display:block;color:var(--muted);font-size:11px;margin-top:3px}
+.client-floating-action{position:fixed;z-index:95;left:50%;transform:translateX(-50%);bottom:calc(80px + env(safe-area-inset-bottom));width:min(820px,100%);padding:10px 12px 8px;text-align:center;background:var(--navbg,rgba(7,7,7,.96));border-top:1px solid var(--line);box-shadow:0 -10px 28px rgba(0,0,0,.16);backdrop-filter:blur(15px)}
+.client-floating-action .btn{min-height:51px}
+.client-floating-action small{display:block;color:var(--muted);font-size:10px;padding-top:4px}
+.client-bottom-nav{width:min(820px,100%)}
+.client-list-hint{font-size:12px;color:var(--muted);margin:0 2px 14px}
+.client-list-stack{display:grid;gap:10px}
+.client-request-row{display:flex;gap:10px;justify-content:space-between;align-items:center;margin:0}
+.client-request-row div{min-width:0}
+.client-request-row b{display:block;font-size:14px;line-height:1.3}
+.client-request-row small{display:block;color:var(--muted);font-size:11px;line-height:1.4;margin-top:4px;overflow-wrap:anywhere}
+.client-empty{padding:18px;font-size:13px;color:var(--muted);line-height:1.5}
+.client-analytics-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px;margin-bottom:13px}
+.client-analytics-grid .stat-card{min-width:0}
+.client-analytics-grid .stat-card b{font-size:clamp(17px,4vw,24px);overflow-wrap:anywhere}
+.client-help{text-align:center;padding:18px 0 6px}
+.client-help a{color:var(--muted);font-size:12px;text-decoration:underline;text-underline-offset:3px}
+#clientPageHistory .client-recent{margin-bottom:9px}
+#clientPageHistory #clientRecentSection{margin-top:0}
+#clientHub .client-quote-success{color:var(--green)}
+@media(max-width:700px){
+  #clientHub .client-account-strip{align-items:center;flex-direction:row}
+  #clientHub .client-account-strip .account-actions{justify-content:flex-end}
+  #clientHub #clientAccountName{font-size:21px}
+  .client-pickup-fields{grid-template-columns:1fr}
+}
+@media(max-width:390px){
+  .client-flow-steps span{font-size:9px}
+  #clientHub #clientAccountName{font-size:19px}
+  #clientHub .client-account-strip{padding:10px}
+}
+html[data-theme="day"] .client-floating-action{background:rgba(244,245,246,.97)}
+html[data-theme="day"] .client-pickup-details{background:#fff}
