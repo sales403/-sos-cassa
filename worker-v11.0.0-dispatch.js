@@ -1,4 +1,4 @@
-const VERSION = 'SOS Rider API 11.4.0-pricing-3band-staging';
+const VERSION = 'SOS Rider API 11.4.1-pricing-4band-staging';
 const V11_BATCH_FEATURE = true;
 const WEATHER_FEE_EUR = 3;
 let batchSchemaReady = false;
@@ -359,12 +359,12 @@ function tariffFor(km, service, readyTime, weatherAdverse = false) {
   if (!Number.isFinite(km) || km < 0) fail('Distanza stradale non valida');
   if (km > 8) fail('Per tratte oltre 8 km serve un preventivo personalizzato: contattaci su WhatsApp.', 422);
   const prices = {
-    ebike: [6.50, 8.50, 12.50],
-    moto: [9.50, 12.50, 16.50],
-    auto: [12.50, 15.50, 20.50]
+    ebike: [4.50, 6.50, 8.50, 12.50],
+    moto: [7.50, 9.50, 12.50, 16.50],
+    auto: [10.50, 12.50, 15.50, 20.50]
   };
   if (!Object.hasOwn(prices, service)) fail('Servizio non valido');
-  const base = prices[service][km <= 3 ? 0 : km <= 5 ? 1 : 2];
+  const base = prices[service][km <= 1 ? 0 : km <= 3 ? 1 : km <= 5 ? 2 : 3];
   const lateFee = isLate(readyTime) ? 2 : 0;
   const weatherFee = weatherAdverse ? WEATHER_FEE_EUR : 0;
 
@@ -374,7 +374,7 @@ function tariffFor(km, service, readyTime, weatherAdverse = false) {
     weatherFee,
     weatherAdverse: weatherFee > 0,
     totalFee: roundHalf(base + lateFee + weatherFee),
-    microDelivery: false
+    microDelivery: service === 'ebike' && km <= 1
   };
 }
 
