@@ -600,3 +600,6 @@ body{padding-top:24px}
 }
 html[data-theme="day"] .client-floating-action{background:rgba(244,245,246,.97)}
 html[data-theme="day"] .client-pickup-details{background:#fff}
+
+/* Un solo pulsante primario di calcolo: la barra fissa lo richiama. */
+#clientPageNew #clientCalcQuote{display:none}
