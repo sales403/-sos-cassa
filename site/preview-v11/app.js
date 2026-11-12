@@ -1,13 +1,16 @@
 (() => {
 'use strict';
 
-const APP_VERSION = '11.0.0-dispatch';
+const APP_VERSION = '11.5.0-client-ux';
 const KEY = 'sosRiderUnifiedV10';
 const V9_KEY = 'sosRiderUnifiedV9';
 const OLD_KEY = 'sosRiderGestV7';
 const CLIENT_DRAFT_KEY = 'sosRiderClientDraftV10';
 const CLIENT_ACTIVE_KEY = 'sosRiderClientActiveV10';
 const CLIENT_HISTORY_KEY = 'sosRiderClientHistoryV10';
+let currentClientIdentity = null;
+// Never mix drafts, history or tracking tokens between different local accounts.
+function clientScopedKey(base){ return base+':'+(authProfile?.role==='client'&&authUser?.id?'user:'+authUser.id:'guest'); }
 const PUBLIC_CONFIG = window.SOS_RIDER_CONFIG || {};
 const DEFAULT_API = PUBLIC_CONFIG.apiBase || 'https://sosrider.sales-3c8.workers.dev';
 const SOS_WHATSAPP = '393495153092';
@@ -181,6 +184,25 @@ function openLogin(){
   $('authStatus').textContent=''; $('signupStatus').textContent='';
   if(authUser?.email) $('authEmail').value=authUser.email;
 }
+function resetClientFormForSession(){
+  for(const id of ['cRequester','cRequesterPhone','cPickup','cRecipient','cRecipientPhone','cDelivery','cOrderTotal','cNotes']) $(id).value='';
+  $('cReadyTime').value=''; $('cPayment').value='paid'; $('cRemember').checked=true;
+  clientPickup=null; clientDelivery=null; clientQuote=null; clientSubmissionId=null;
+  $('cPickupStatus').textContent='Scrivi almeno 3 caratteri e seleziona un risultato.';
+  $('cDeliveryStatus').textContent='Scrivi almeno 3 caratteri e seleziona un risultato.';
+  $('clientDraftPill').classList.add('hidden'); $('clientRequestStatus').classList.add('hidden');
+  hideClientQuote(); stopClientPolling(); setDefaultReadyTime();
+}
+async function openGuestClient(){
+  // An explicit guest choice must end the current local login, not reuse it.
+  if(authSession){
+    try{const sb=await getSupabase();const {error}=await sb.auth.signOut({scope:'local'});if(error)throw error;}
+    catch(e){alert('Impossibile passare alla modalità ospite. Esci dall’account e riprova.');return;}
+  }
+  authSession=null; authUser=null; authProfile=null;
+  currentClientIdentity=null;
+  await openClient();
+}
 async function openClient(){
   stopRiderPolling(); stopAlarm();
   if(authProfile?.role==='rider'){
@@ -188,11 +210,15 @@ async function openClient(){
     return openRider();
   }
   history.replaceState(null,'',`${location.pathname}?hub=client`);
+  const identity=authProfile?.role==='client'&&authUser?.id?'user:'+authUser.id:'guest';
+  if(identity!==currentClientIdentity){resetClientFormForSession();currentClientIdentity=identity;}
   showOnly('clientHub');
   updateClientAccountUI();
   restoreClientDraft();
+  updateClientPickupSummary();
   await loadClientRecent();
   restoreActiveClientRequest();
+  switchClientPage('new');
   refreshAvailability(); startAvailabilityPolling();
 }
 async function openRider(){
@@ -263,7 +289,7 @@ async function loginEmail(){
 }
 async function signupClient(){
   const st=$('signupStatus');st.className='status-line';st.textContent='Creazione account…';
-  try{const sb=await getSupabase();const email=$('signupEmail').value.trim(),password=$('signupPassword').value,name=clampText($('signupName').value,80),phone=digits($('signupPhone').value);if(!name)throw new Error('Inserisci nome locale/richiedente.');if(phone.length<9)throw new Error('Inserisci un telefono valido.');if(!email||password.length<8)throw new Error('Email valida e password di almeno 8 caratteri.');const {data,error}=await sb.auth.signUp({email,password,options:{emailRedirectTo:'https://sales403.github.io/-sos-cassa/?hub=login',data:{display_name:name,phone}}});if(error)throw error;if(data.session){authSession=data.session;authUser=data.user;await loadMyProfile();await updateMyProfile({displayName:name,phone});st.className='status-line ok';st.textContent='✓ Account creato.';setTimeout(openClient,150);}else{st.className='status-line ok';st.textContent='✓ Account creato. Controlla la tua email per confermarlo, poi accedi.';}}
+  try{const sb=await getSupabase();const email=$('signupEmail').value.trim(),password=$('signupPassword').value,name=clampText($('signupName').value,80),phone=digits($('signupPhone').value);const accountType=$('signupAccountType')?.value==='private'?'private':'business';if(!name)throw new Error('Inserisci nome locale/richiedente.');if(phone.length<9)throw new Error('Inserisci un telefono valido.');if(!email||password.length<8)throw new Error('Email valida e password di almeno 8 caratteri.');const {data,error}=await sb.auth.signUp({email,password,options:{emailRedirectTo:'https://sales403.github.io/-sos-cassa/?hub=login',data:{display_name:name,phone,account_type:accountType}}});if(error)throw error;if(data.session){authSession=data.session;authUser=data.user;await loadMyProfile();await updateMyProfile({displayName:name,phone});st.className='status-line ok';st.textContent='✓ Account creato.';setTimeout(openClient,150);}else{st.className='status-line ok';st.textContent='✓ Account creato. Controlla la tua email per confermarlo, poi accedi.';}}
   catch(e){st.className='status-line error';st.textContent='⚠ '+(e.message||e)}
 }
 async function forgotPassword(){
@@ -280,8 +306,56 @@ async function registerPasskey(){
 async function logoutAccount(){try{const sb=await getSupabase();await sb.auth.signOut()}catch{}authSession=null;authUser=null;authProfile=null;stopAlarm();openHome();}
 async function updateMyProfile(body){if(!authSession)return;const d=await fetchJson(apiBase()+'/api/me',{method:'PATCH',headers:authHeaders(),body:JSON.stringify(body)},8000);authProfile=d.profile||authProfile;updateClientAccountUI();}
 function updateClientAccountUI(){
-  const signed=authProfile?.role==='client';$('clientAccountCard')?.classList.toggle('hidden',!signed);$('clientGuestCard')?.classList.toggle('hidden',signed);
-  if(signed){$('clientAccountName').textContent=authProfile.displayName||authUser?.email||'Cliente';$('clientAccountEmail').textContent=authUser?.email||'';if(!$('cRequester').value&&authProfile.displayName)$('cRequester').value=authProfile.displayName;if(!$('cRequesterPhone').value&&authProfile.phone)$('cRequesterPhone').value=authProfile.phone;if(!$('cPickup').value&&authProfile.pickupAddress){$('cPickup').value=authProfile.pickupAddress;clientPickup={label:authProfile.pickupAddress,lat:Number(authProfile.pickupLat),lon:Number(authProfile.pickupLon)};if(Number.isFinite(clientPickup.lat)&&Number.isFinite(clientPickup.lon))$('cPickupStatus').textContent='✓ Indirizzo salvato nel profilo';else clientPickup=null;}}
+  const signed=authProfile?.role==='client'&&!!authSession;
+  $('clientAccountCard').classList.toggle('hidden',!signed);
+  $('clientGuestCard').classList.toggle('hidden',signed);
+  if(!signed)return;
+  const isPrivate=authUser?.user_metadata?.account_type==='private';
+  $('clientAccountTypeLabel').textContent=isPrivate?'IL TUO PROFILO':'IL TUO LOCALE';
+  $('clientAccountName').textContent=authProfile.displayName||authUser?.email||'Cliente';
+  $('clientAccountEmail').textContent=authUser?.email||'';
+  if(!$('cRequester').value&&authProfile.displayName)$('cRequester').value=authProfile.displayName;
+  if(!$('cRequesterPhone').value&&authProfile.phone)$('cRequesterPhone').value=authProfile.phone;
+  if(!$('cPickup').value&&authProfile.pickupAddress){
+    $('cPickup').value=authProfile.pickupAddress;
+    const lat=Number(authProfile.pickupLat),lon=Number(authProfile.pickupLon);
+    clientPickup=Number.isFinite(lat)&&Number.isFinite(lon)?{label:authProfile.pickupAddress,lat,lon}:null;
+    if(clientPickup)$('cPickupStatus').textContent='✓ Indirizzo salvato nel profilo';
+  }
+  updateClientPickupSummary();
+}
+function updateClientPickupSummary(){
+  const summary=$('clientPickupSummary'),details=$('clientPickupDetails');
+  if(!summary||!details)return;
+  const name=$('cRequester').value.trim(),address=$('cPickup').value.trim(),phone=digits($('cRequesterPhone').value);
+  summary.textContent=name?(name+(address?' · '+address:'')):'Inserisci i dati di ritiro';
+  const complete=!!(name&&phone.length>=9&&address&&clientPickup?.lat!=null&&clientPickup?.lon!=null);
+  details.classList.toggle('complete',complete);
+  if(complete&&authProfile?.role==='client'&&details.dataset.initialized!==currentClientIdentity){
+    details.open=false;details.dataset.initialized=currentClientIdentity;
+  }
+  if(!complete)details.open=true;
+}
+function updateClientFlowUI(){
+  const onNew=$('clientPageNew')?.classList.contains('active');
+  const activeOrder=!$('clientRequestStatus').classList.contains('hidden');
+  const step=activeOrder?3:clientQuote?2:1;
+  document.querySelectorAll('[data-client-step]').forEach(el=>el.classList.toggle('active',Number(el.dataset.clientStep)===step));
+  const floating=$('clientFloatingAction');
+  floating.classList.toggle('hidden',!onNew||activeOrder);
+  $('clientFlowAction').textContent=clientQuote?'CONFERMA E INVIA RICHIESTA →':'CALCOLA TARIFFA →';
+  $('clientFlowActionHint').textContent=clientQuote?'Verifica il totale prima di confermare':'Poi vedi il prezzo e decidi se inviare';
+}
+function switchClientPage(page){
+  const pages=['new','requests','history','analytics'];
+  const target=pages.includes(page)?page:'new';
+  for(const p of pages){const id='clientPage'+p[0].toUpperCase()+p.slice(1);$(id).classList.toggle('active',p===target);}
+  document.querySelectorAll('[data-client-page]').forEach(b=>{
+    const active=b.dataset.clientPage===target;b.classList.toggle('active',active);b.setAttribute('aria-current',active?'page':'false');
+  });
+  if(target!=='new'){renderClientRecent();}
+  updateClientFlowUI();
+  window.scrollTo({top:0,behavior:'instant'});
 }
 
 // ---------- Disponibilità pubblica ----------
@@ -680,7 +754,7 @@ function validateClientForm(forQuote=true){
   if(forQuote && (!clientPickup?.lat || !clientDelivery?.lat)) throw new Error('Seleziona gli indirizzi dai suggerimenti reali.');
   return d;
 }
-function hideClientQuote(){ $('clientQuoteSection').classList.add('hidden'); }
+function hideClientQuote(){ $('clientQuoteSection').classList.add('hidden'); updateClientFlowUI(); }
 function invalidateClientQuote(){ clientQuote=null; clientSubmissionId=null; hideClientQuote(); }
 async function calculateClientQuote(){
   const status=$('clientFormStatus'); status.className='status-line'; status.textContent='Calcolo percorso e tariffa sul server…';
@@ -691,10 +765,10 @@ async function calculateClientQuote(){
     clientQuote={distanceKm:Number(q.distanceKm),durationMin:Number(q.durationMin)||0,source:q.routeSource||'server',base:Number(q.baseFee),lateFee:Number(q.lateFee)||0,total:Number(q.totalFee),micro:!!q.microDelivery,service:d.service,readyTime:d.readyTime,createdAt:Date.now()};
     clientSubmissionId=null;
     currentAvailability=res.availability||currentAvailability;renderAvailability();renderClientQuote();await generateClientQuoteImage();
-    $('clientQuoteSection').classList.remove('hidden');$('clientQuoteSection').scrollIntoView({behavior:'smooth',block:'start'});
+    $('clientQuoteSection').classList.remove('hidden');updateClientFlowUI();$('clientQuoteSection').scrollIntoView({behavior:'smooth',block:'start'});
     status.className='status-line ok';status.textContent='✓ Preventivo pronto e verificato dal server. Puoi modificarlo oppure inviare la richiesta.';
     $('serviceSuggestion').classList.add('hidden');
-  }catch(e){status.className='status-line error';status.textContent='⚠ '+e.message;}
+  }catch(e){status.className='status-line error';status.textContent='⚠ '+e.message;status.scrollIntoView({behavior:'smooth',block:'center'});}
 }
 
 function renderClientQuote(){
@@ -732,37 +806,48 @@ async function generateClientQuoteImage(){
   x.fillStyle=muted;x.font='20px Arial';x.fillText(`${clientQuote.micro?'Micro E-bike':'Tariffa base'} ${money(clientQuote.base)}${clientQuote.lateFee?'  +  serale €2,00':''}`,110,y);y+=38;x.fillStyle=text;x.font='700 20px Arial';x.fillText('Tariffa verificata dal server · richiesta soggetta a disponibilità rider.',110,y);y+=45;x.fillStyle=muted;x.font='20px Arial';x.fillText('WhatsApp Marcello · 349 515 3092',110,1240);$('clientQuoteImage').src=c.toDataURL('image/png');
 }
 
-function clientHistory(){try{return JSON.parse(localStorage.getItem(CLIENT_HISTORY_KEY)||'[]')}catch{return[]}}
+function clientHistory(){try{return JSON.parse(localStorage.getItem(clientScopedKey(CLIENT_HISTORY_KEY))||'[]')}catch{return[]}}
 function addClientHistory(code){
   const d=clientFormData();const item={code,at:nowIso(),...d,pickupGeo:clientPickup,deliveryGeo:clientDelivery,quote:clientQuote};
-  const arr=clientHistory().filter(x=>x.code!==code);arr.unshift(item);localStorage.setItem(CLIENT_HISTORY_KEY,JSON.stringify(arr.slice(0,8)));if(!authSession){recentClientItems=arr.slice(0,8);renderClientRecent();}
+  const arr=clientHistory().filter(x=>x.code!==code);arr.unshift(item);localStorage.setItem(clientScopedKey(CLIENT_HISTORY_KEY),JSON.stringify(arr.slice(0,8)));if(!authSession){recentClientItems=arr.slice(0,8);renderClientRecent();}
 }
 async function loadClientRecent(){
   if(authProfile?.role==='client'&&authSession){
-    try{const d=await fetchJson(apiBase()+'/api/client/requests?limit=8',{headers:authHeaders()},8000);recentClientItems=(d.requests||[]).map(r=>({code:r.code,at:r.createdAt,requesterName:r.requesterName,requesterPhone:r.requesterPhone,pickupAddress:r.pickupAddress,pickupGeo:{label:r.pickupAddress,lat:Number(r.pickupLat),lon:Number(r.pickupLon)},readyTime:r.readyTime,recipientName:r.recipientName,recipientPhone:r.recipientPhone,deliveryAddress:r.deliveryAddress,deliveryGeo:{label:r.deliveryAddress,lat:Number(r.deliveryLat),lon:Number(r.deliveryLon)},service:r.service,payment:r.payment,orderTotal:Number(r.orderTotal)||0,notes:r.notes||'',quote:{total:Number(r.totalFee)||0,distanceKm:Number(r.distanceKm)||0}}));renderClientRecent();return;}catch(e){console.warn('Storico online cliente non disponibile',e)}
+    try{const d=await fetchJson(apiBase()+'/api/client/requests?limit=8',{headers:authHeaders()},8000);recentClientItems=(d.requests||[]).map(r=>({code:r.code,at:r.createdAt,requesterName:r.requesterName,requesterPhone:r.requesterPhone,pickupAddress:r.pickupAddress,pickupGeo:{label:r.pickupAddress,lat:Number(r.pickupLat),lon:Number(r.pickupLon)},readyTime:r.readyTime,recipientName:r.recipientName,recipientPhone:r.recipientPhone,deliveryAddress:r.deliveryAddress,deliveryGeo:{label:r.deliveryAddress,lat:Number(r.deliveryLat),lon:Number(r.deliveryLon)},service:r.service,payment:r.payment,orderTotal:Number(r.orderTotal)||0,notes:r.notes||'',status:r.status||'',quote:{total:Number(r.totalFee)||0,distanceKm:Number(r.distanceKm)||0}}));renderClientRecent();return;}catch(e){console.warn('Storico online cliente non disponibile',e)}
   }
   recentClientItems=clientHistory();renderClientRecent();
 }
 function renderClientRecent(){
-  const arr=recentClientItems||[];const sec=$('clientRecentSection');if(!sec)return;sec.classList.toggle('hidden',!arr.length);if(!arr.length){$('clientRecentList').innerHTML='';return;}
-  $('clientRecentList').innerHTML=arr.slice(0,4).map((x,i)=>`<div class="client-recent"><div><b>${esc(x.requesterName||'Richiesta')} → ${esc(x.recipientName||'Cliente')}</b><small>${esc(x.deliveryAddress||'')} · ${vehicleLabel(x.service)}${x.quote?.total?' · '+money(x.quote.total):''}</small></div><button class="btn ghost small" type="button" data-repeat-client="${i}">RIPETI</button></div>`).join('');
+  const arr=(recentClientItems||[]).slice(0,8),sec=$('clientRecentSection');
+  if(!sec)return;
+  sec.classList.toggle('hidden',!arr.length);
+  $('clientHistoryEmpty').classList.toggle('hidden',!!arr.length);
+  const statuses={new:'In attesa',accepted:'Accettata',picked:'In consegna',delivered:'Consegnata',completed:'Completata',cancelled:'Annullata',rejected:'Rifiutata'};
+  $('clientRecentList').innerHTML=arr.map((x,i)=>`<div class="client-recent"><div><b>${esc(x.requesterName||'Richiesta')} → ${esc(x.recipientName||'Cliente')}</b><small>${esc(x.deliveryAddress||'')} · ${vehicleLabel(x.service)}${x.quote?.total?' · '+money(x.quote.total):''}</small></div><button class="btn ghost small" type="button" data-repeat-client="${i}">RIPETI</button></div>`).join('');
+  $('clientRequestsList').innerHTML=arr.length?arr.map((x,i)=>`<div class="card client-request-row"><div><b>${esc(x.recipientName||'Destinatario')}</b><small>${esc(x.deliveryAddress||'')}</small><small>${esc(x.code||'')} · ${esc(statuses[x.status]||'Richiesta inviata')}</small></div><button type="button" class="btn ghost small" data-repeat-client="${i}">RIPETI</button></div>`).join(''):'<div class="card client-empty">Non hai ancora richieste. Tocca NUOVA per iniziare.</div>';
+  const amounts=arr.map(x=>Number(x.quote?.total)).filter(x=>Number.isFinite(x)&&x>0),total=amounts.reduce((a,b)=>a+b,0);
+  $('clientStatsCount').textContent=String(arr.length);
+  $('clientStatsTotal').textContent=money(total);
+  $('clientStatsAverage').textContent=money(amounts.length?total/amounts.length:0);
+  $('clientStatsLast').textContent=arr[0]?.at&&Number.isFinite(new Date(arr[0].at).getTime())?new Date(arr[0].at).toLocaleDateString('it-IT'):'—';
 }
 function repeatClientRequest(index){
   const x=recentClientItems[Number(index)];if(!x)return;
-  $('cRequester').value=x.requesterName||'';$('cRequesterPhone').value=x.requesterPhone||'';$('cPickup').value=x.pickupAddress||'';clientPickup=x.pickupGeo||null;$('cReadyTime').value=x.readyTime||$('cReadyTime').value;$('cRecipient').value=x.recipientName||'';$('cRecipientPhone').value=x.recipientPhone||'';$('cDelivery').value=x.deliveryAddress||'';clientDelivery=x.deliveryGeo||null;$('cPayment').value=x.payment||'paid';$('cOrderTotal').value=x.orderTotal||'';$('cNotes').value=x.notes||'';setClientVehicle(x.service||'ebike',false);toggleOrderTotal();updateLateHint();clientQuote=null;clientSubmissionId=null;hideClientQuote();$('clientRequestStatus').classList.add('hidden');$('clientFormCard').classList.remove('hidden');if(clientPickup)$('cPickupStatus').textContent='✓ Indirizzo verificato';if(clientDelivery)$('cDeliveryStatus').textContent='✓ Indirizzo verificato';saveClientDraft();$('clientFormCard').scrollIntoView({behavior:'smooth',block:'start'});
+  switchClientPage('new'); $('clientPickupDetails').open=true;
+  $('cRequester').value=x.requesterName||'';$('cRequesterPhone').value=x.requesterPhone||'';$('cPickup').value=x.pickupAddress||'';clientPickup=x.pickupGeo||null;$('cReadyTime').value=x.readyTime||$('cReadyTime').value;$('cRecipient').value=x.recipientName||'';$('cRecipientPhone').value=x.recipientPhone||'';$('cDelivery').value=x.deliveryAddress||'';clientDelivery=x.deliveryGeo||null;$('cPayment').value=x.payment||'paid';$('cOrderTotal').value=x.orderTotal||'';$('cNotes').value=x.notes||'';setClientVehicle(x.service||'ebike',false);toggleOrderTotal();updateLateHint();clientQuote=null;clientSubmissionId=null;hideClientQuote();$('clientRequestStatus').classList.add('hidden');$('clientFormCard').classList.remove('hidden');if(clientPickup)$('cPickupStatus').textContent='✓ Indirizzo verificato';if(clientDelivery)$('cDeliveryStatus').textContent='✓ Indirizzo verificato';saveClientDraft();updateClientPickupSummary();updateClientFlowUI();$('clientFormCard').scrollIntoView({behavior:'smooth',block:'start'});
 }
 
 function saveClientDraft(){
   const d={...clientFormData(), pickupGeo:clientPickup, deliveryGeo:clientDelivery, remember:$('cRemember').checked};
-  localStorage.setItem(CLIENT_DRAFT_KEY,JSON.stringify(d)); $('clientDraftPill').classList.remove('hidden');
-  if($('cRemember').checked){ state.settings.clientProfile={requesterName:d.requesterName,requesterPhone:d.requesterPhone,pickupAddress:d.pickupAddress,pickupGeo:d.pickupGeo}; saveState(); }
+  localStorage.setItem(clientScopedKey(CLIENT_DRAFT_KEY),JSON.stringify(d)); $('clientDraftPill').classList.remove('hidden');
+  updateClientPickupSummary();
 }
 function restoreClientDraft(){
   setDefaultReadyTime();
   try{
-    const localProfile=state.settings.clientProfile||{};
+    const localProfile={}; // Legacy global profile is not account-scoped: never reveal it to a guest.
     const serverProfile=authProfile?.role==='client'?{requesterName:authProfile.displayName||'',requesterPhone:authProfile.phone||'',pickupAddress:authProfile.pickupAddress||'',pickupGeo:authProfile.pickupAddress&&Number.isFinite(Number(authProfile.pickupLat))&&Number.isFinite(Number(authProfile.pickupLon))?{label:authProfile.pickupAddress,lat:Number(authProfile.pickupLat),lon:Number(authProfile.pickupLon)}:null}:null;
-    const d=JSON.parse(localStorage.getItem(CLIENT_DRAFT_KEY)||'null')||serverProfile||localProfile;
+    const d=JSON.parse(localStorage.getItem(clientScopedKey(CLIENT_DRAFT_KEY))||'null')||serverProfile||localProfile;
     if(d){
       $('cRequester').value=d.requesterName||'';$('cRequesterPhone').value=d.requesterPhone||'';$('cPickup').value=d.pickupAddress||'';clientPickup=d.pickupGeo||null;
       if(d.readyTime)$('cReadyTime').value=d.readyTime;if(d.recipientName)$('cRecipient').value=d.recipientName;if(d.recipientPhone)$('cRecipientPhone').value=d.recipientPhone;
@@ -772,7 +857,7 @@ function restoreClientDraft(){
       $('clientDraftPill').classList.remove('hidden');
     }
   }catch{}
-  updateLateHint(); toggleOrderTotal();
+  updateLateHint(); toggleOrderTotal();updateClientPickupSummary();
 }
 function clearClientDeliveryFields(){
   $('cRecipient').value='';$('cRecipientPhone').value='';$('cDelivery').value='';$('cNotes').value='';$('cOrderTotal').value='';clientDelivery=null;clientQuote=null;clientSubmissionId=null;hideClientQuote();$('cDeliveryStatus').textContent='Scrivi almeno 3 caratteri e seleziona un risultato.';saveClientDraft();
@@ -800,14 +885,14 @@ async function submitClientRequest(){
     const res=await fetchJson(apiBase()+'/api/requests',{method:'POST',headers,body:JSON.stringify(payload)},12000);
     if(!res?.request?.code||!res?.clientToken)throw new Error('Risposta server incompleta.');
     const r=res.request;clientQuote={service:r.service,distanceKm:Number(r.distanceKm),durationMin:Number(r.durationMin)||0,source:r.routeSource||'server',base:Number(r.baseFee),lateFee:Number(r.lateFee),total:Number(r.totalFee),micro:!!r.microDelivery,readyTime:r.readyTime};renderClientQuote();await generateClientQuoteImage();
-    localStorage.setItem(CLIENT_ACTIVE_KEY,JSON.stringify({code:r.code,token:res.clientToken,owned:!!(authSession&&authProfile?.role==='client')}));addClientHistory(r.code);saveClientDraft();
+    localStorage.setItem(clientScopedKey(CLIENT_ACTIVE_KEY),JSON.stringify({code:r.code,token:res.clientToken,owned:!!(authSession&&authProfile?.role==='client')}));addClientHistory(r.code);saveClientDraft();
     if(authProfile?.role==='client')updateMyProfile({displayName:d.requesterName,phone:d.requesterPhone,pickupAddress:d.pickupAddress,pickupLat:d.pickupLat,pickupLon:d.pickupLon}).catch(()=>{});
     clientSubmissionId=null;
     showClientRequestStatus(r,res.clientToken,!!(authSession&&authProfile?.role==='client'));status.className='status-line ok';status.textContent='✓ Richiesta inviata automaticamente.';currentAvailability=res.availability||currentAvailability;renderAvailability();loadClientRecent();
   }catch(e){status.className='status-line error';status.innerHTML=`⚠ Invio automatico non riuscito: ${esc(e.message)}<br><a class="btn whatsapp-btn full" style="margin-top:8px" href="${waLink(clientStructuredWhatsApp())}" target="_blank" rel="noopener">INVIA I DATI SU WHATSAPP</a>`;}finally{sendBtn.disabled=false;}
 }
 function showClientRequestStatus(r,token,owned=false){
-  $('clientFormCard').classList.add('hidden');$('clientQuoteSection').classList.add('hidden');$('clientRequestStatus').classList.remove('hidden');$('clientRequestCode').textContent=r.code;$('clientStatusWhatsapp').href=waLink(`Ciao Marcello, ho inviato la richiesta SOS Rider ${r.code}.`);lastClientStatus=null;updateClientStatusUI(r);startClientPolling(r.code,token,owned);$('clientRequestStatus').scrollIntoView({behavior:'smooth',block:'start'});
+  $('clientFormCard').classList.add('hidden');$('clientQuoteSection').classList.add('hidden');$('clientRequestStatus').classList.remove('hidden');updateClientFlowUI();$('clientRequestCode').textContent=r.code;$('clientStatusWhatsapp').href=waLink(`Ciao Marcello, ho inviato la richiesta SOS Rider ${r.code}.`);lastClientStatus=null;updateClientStatusUI(r);startClientPolling(r.code,token,owned);$('clientRequestStatus').scrollIntoView({behavior:'smooth',block:'start'});
 }
 function renderClientEta(r){
   const box=$('clientEtaBox');if(!box)return;
@@ -833,11 +918,11 @@ function updateClientStatusUI(r){
   else if(s==='accepted'){badge.classList.add('accepted');const q=r?.eta?.queuePosition||1;badge.textContent=q>1?'ACCETTATA · IN CODA':'ACCETTATA · RIDER VERSO IL LOCALE';$('clientStatusText').textContent=q>1?`Richiesta confermata. Marcello ha ${q-1} consegna${q-1===1?'':'e'} prima della tua; l’orario di ritiro viene ricalcolato automaticamente.`:'Marcello ha accettato la consegna. L’ETA di ritiro viene aggiornato automaticamente.';$('clientStatusIcon').textContent='✓';}
   else if(s==='picked'){badge.classList.add('progress');badge.textContent='IN CONSEGNA';$('clientStatusText').textContent='Ordine ritirato: il rider è diretto al destinatario.';$('clientStatusIcon').textContent='⚡';}
   else if(s==='arrived'){badge.classList.add('progress');badge.textContent='RIDER ARRIVATO';$('clientStatusText').textContent='Il rider è arrivato al punto di consegna.';$('clientStatusIcon').textContent='📍';}
-  else if(s==='delivered'){badge.classList.add('accepted');badge.textContent='COMPLETATO';$('clientStatusText').textContent='Consegna completata. Grazie per aver usato SOS Rider.';$('clientStatusIcon').textContent='✓';localStorage.removeItem(CLIENT_ACTIVE_KEY);stopClientPolling();}
-  else if(s==='rejected'||s==='cancelled'){badge.classList.add('rejected');badge.textContent=s==='rejected'?'RICHIESTA NON ACCETTATA':'RICHIESTA ANNULLATA';$('clientStatusText').textContent=r.rejectionReason||'In questo momento la consegna non è disponibile.';$('clientStatusIcon').textContent='×';localStorage.removeItem(CLIENT_ACTIVE_KEY);stopClientPolling();}
+  else if(s==='delivered'){badge.classList.add('accepted');badge.textContent='COMPLETATO';$('clientStatusText').textContent='Consegna completata. Grazie per aver usato SOS Rider.';$('clientStatusIcon').textContent='✓';localStorage.removeItem(clientScopedKey(CLIENT_ACTIVE_KEY));stopClientPolling();}
+  else if(s==='rejected'||s==='cancelled'){badge.classList.add('rejected');badge.textContent=s==='rejected'?'RICHIESTA NON ACCETTATA':'RICHIESTA ANNULLATA';$('clientStatusText').textContent=r.rejectionReason||'In questo momento la consegna non è disponibile.';$('clientStatusIcon').textContent='×';localStorage.removeItem(clientScopedKey(CLIENT_ACTIVE_KEY));stopClientPolling();}
 }
 function restoreActiveClientRequest(){
-  try{const x=JSON.parse(localStorage.getItem(CLIENT_ACTIVE_KEY)||'null');if(x?.code&&x?.token){$('clientRequestCode').textContent=x.code;$('clientFormCard').classList.add('hidden');$('clientQuoteSection').classList.add('hidden');$('clientRequestStatus').classList.remove('hidden');startClientPolling(x.code,x.token,!!x.owned,true)}}catch{}
+  try{const x=JSON.parse(localStorage.getItem(clientScopedKey(CLIENT_ACTIVE_KEY))||'null');if(x?.code&&x?.token){$('clientRequestCode').textContent=x.code;$('clientFormCard').classList.add('hidden');$('clientQuoteSection').classList.add('hidden');$('clientRequestStatus').classList.remove('hidden');updateClientFlowUI();startClientPolling(x.code,x.token,!!x.owned,true)}}catch{}
 }
 function startClientPolling(code,token,owned=false,immediate=false){
   stopClientPolling();const go=async()=>{try{let url,headers;if(owned&&authSession&&authProfile?.role==='client'){url=apiBase()+`/api/client/requests/${encodeURIComponent(code)}`;headers=authHeaders()}else{const u=new URL(apiBase()+`/api/requests/${encodeURIComponent(code)}`);u.searchParams.set('token',token);url=u.toString();headers={Accept:'application/json'}}const d=await fetchJson(url,{headers},7000);if(d?.request)updateClientStatusUI(d.request)}catch(e){console.warn('Status client non disponibile',e)}};if(immediate)go();clientPolling=setInterval(go,4000);
@@ -1302,16 +1387,19 @@ function switchRiderPage(name){
 
 // ---------- Events ----------
 function bindEvents(){
-  $('openClientHub').onclick=openClient;$('openLoginHub').onclick=openLogin;if($('openRiderHome'))$('openRiderHome').onclick=openRider;$('riderGoLoginBtn').onclick=openLogin;$('guestLoginBtn').onclick=openLogin;document.querySelectorAll('[data-back-home]').forEach(b=>b.onclick=openHome);document.querySelectorAll('[data-theme-toggle]').forEach(b=>b.onclick=cycleTheme);
+  $('openClientHub').onclick=openGuestClient;$('openLoginHub').onclick=openLogin;if($('openRiderHome'))$('openRiderHome').onclick=openRider;$('riderGoLoginBtn').onclick=openLogin;$('guestLoginBtn').onclick=openLogin;document.querySelectorAll('[data-back-home]').forEach(b=>b.onclick=openHome);document.querySelectorAll('[data-theme-toggle]').forEach(b=>b.onclick=cycleTheme);
   $('authLoginBtn').onclick=loginEmail;$('authPassword').addEventListener('keydown',e=>{if(e.key==='Enter')loginEmail()});if($('authPasswordToggle'))$('authPasswordToggle').onclick=()=>{const input=$('authPassword'),btn=$('authPasswordToggle'),show=input.type==='password';input.type=show?'text':'password';btn.classList.toggle('is-visible',show);btn.setAttribute('aria-pressed',show?'true':'false');btn.setAttribute('aria-label',show?'Nascondi password':'Mostra password');btn.title=show?'Nascondi password':'Mostra password';};$('authPasskeyLoginBtn').onclick=loginPasskey;$('authForgotBtn').onclick=forgotPassword;$('authShowSignupBtn').onclick=()=>{$('signupCard').classList.remove('hidden');$('signupCard').scrollIntoView({behavior:'smooth'})};$('authHideSignupBtn').onclick=()=>$('signupCard').classList.add('hidden');$('authSignupBtn').onclick=signupClient;
   $('clientLogoutBtn').onclick=logoutAccount;$('clientRegisterPasskey').onclick=registerPasskey;
+  $('signupAccountType').onchange=()=>{const business=$('signupAccountType').value==='business';$('signupNameLabel').textContent=business?'Nome locale / attività':'Nome e cognome';$('signupName').placeholder=business?'Es. Pizzeria Vesuvio':'Es. Mario Rossi';};
+  document.querySelectorAll('[data-client-page]').forEach(b=>b.onclick=()=>switchClientPage(b.dataset.clientPage));
+  $('clientFlowAction').onclick=()=>clientQuote?$('clientSendRequest').click():$('clientCalcQuote').click();
   $('directWhatsapp').href=waLink('Ciao Marcello, avrei bisogno di una consegna SOS.');$('clientStatusWhatsapp').href=waLink('Ciao Marcello, avrei bisogno di informazioni sulla mia richiesta SOS Rider.');
   document.querySelectorAll('[data-client-vehicle]').forEach(b=>b.onclick=()=>setClientVehicle(b.dataset.clientVehicle));
   $('cReadyTime').addEventListener('input',()=>{updateLateHint();invalidateClientQuote();saveClientDraft()});$('cPayment').addEventListener('change',()=>{toggleOrderTotal();invalidateClientQuote();saveClientDraft()});
-  $('clientRequestForm').addEventListener('input',e=>{if(!['cReadyTime','cPayment'].includes(e.target.id)){invalidateClientQuote();saveClientDraft()}});
+  $('clientRequestForm').addEventListener('input',e=>{if(!['cReadyTime','cPayment'].includes(e.target.id)){invalidateClientQuote();saveClientDraft();updateClientPickupSummary()}});
   $('clientCalcQuote').onclick=calculateClientQuote;$('clientEditQuote').onclick=()=>{$('clientQuoteSection').classList.add('hidden');$('clientFormCard').scrollIntoView({behavior:'smooth',block:'start'})};$('clientSendRequest').onclick=submitClientRequest;
-  $('clientNewRequest').onclick=()=>{localStorage.removeItem(CLIENT_ACTIVE_KEY);stopClientPolling();lastClientStatus=null;$('clientRequestStatus').classList.add('hidden');$('clientFormCard').classList.remove('hidden');clearClientDeliveryFields();$('clientFormCard').scrollIntoView({behavior:'smooth'})};
-  $('clientRecentList').addEventListener('click',e=>{const b=e.target.closest('[data-repeat-client]');if(b)repeatClientRequest(b.dataset.repeatClient)});
+  $('clientNewRequest').onclick=()=>{switchClientPage('new');localStorage.removeItem(clientScopedKey(CLIENT_ACTIVE_KEY));stopClientPolling();lastClientStatus=null;$('clientRequestStatus').classList.add('hidden');$('clientFormCard').classList.remove('hidden');clearClientDeliveryFields();updateClientFlowUI();$('clientFormCard').scrollIntoView({behavior:'smooth'})};
+  for(const id of ['clientRecentList','clientRequestsList']) $(id).addEventListener('click',e=>{const b=e.target.closest('[data-repeat-client]');if(b)repeatClientRequest(b.dataset.repeatClient)});
   $('riderRefresh').onclick=manualRiderRefresh;$('openSettings').onclick=openSettings;$('riderAvailableBtn').onclick=()=>setRiderAvailability(true);$('riderOfflineBtn').onclick=()=>setRiderAvailability(false);$('riderEtaSelect').onchange=()=>{if(currentAvailability)setRiderAvailability(!!currentAvailability.enabled)};if($('riderGpsRefresh'))$('riderGpsRefresh').onclick=()=>{riderLocationError='';renderRiderGpsStatus();captureRiderLocationOnce(true).catch(e=>{riderLocationError=e?.message||'GPS non disponibile';renderRiderGpsStatus()})};
   document.querySelectorAll('[data-rider-page]').forEach(b=>b.onclick=()=>switchRiderPage(b.dataset.riderPage));
   $('remoteRequestsList').addEventListener('click',e=>{const a=e.target.closest('[data-accept]');if(a)return acceptRemote(a.dataset.accept);const r=e.target.closest('[data-reject]');if(r)return rejectRemote(r.dataset.reject);const m=e.target.closest('[data-map-remote]');if(m){const x=normalizeRemote(findRemote(m.dataset.mapRemote));window.open(mapsRoute({label:x.pickupAddress,lat:x.pickupLat,lon:x.pickupLon},{label:x.deliveryAddress,lat:x.deliveryLat,lon:x.deliveryLon},x.service),'_blank','noopener');return}const o=e.target.closest('[data-open-delivery]');if(o){const rr=findRemote(o.dataset.openDelivery);if(rr&&!state.orders.some(x=>x.remoteCode===rr.code))ensureShiftThen(()=>createLocalOrderFromRemote(rr));switchRiderPage('deliveries')}});
