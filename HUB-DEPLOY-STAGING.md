@@ -44,3 +44,10 @@ Se il repository è già presente localmente, usa `git fetch` e aggiorna il bran
 In Cloudflare > Workers & Pages > `v11-dispatch-engine-sos-cassa` > Deployments / Version History, ripristina la versione precedente se il frontend dà problemi.
 
 Nota: la presenza dei file su GitHub NON equivale al deploy. Il workflow GitHub Actions presente in repository non pubblica il frontend. In futuro si può collegare Cloudflare Builds al branch corretto, con worker name e root directory coerenti.
+
+## Trigger build dopo correzione comando Cloudflare (12/11/2026)
+Il preview command Cloudflare per il branch `v11-dispatch-engine` è stato impostato dal proprietario su:
+```sh
+npx wrangler versions upload --assets=./site/preview-v11 --name=sos-cassa --preview-alias v11-dispatch-engine
+```
+Questo commit di sola documentazione forza una nuova build del branch di test. Controllare nei log che Wrangler legga `/opt/buildhome/repo/site/preview-v11` e verificare `/go/` sull'URL di preview. Nessuna modifica al Worker backend, ai segreti o al branch `main`.
