@@ -2,90 +2,41 @@
 <html lang="it">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="theme-color" content="#07090c">
-<meta name="description" content="SOS Rider Carpi-Soliera: ordine rapido WhatsApp, app per preventivi e tracking, informazioni e tariffe.">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#080a0b">
+<meta name="description" content="SOS Rider Carpi-Soliera: ordina via WhatsApp, apri l'app con preventivo e tracking oppure consulta informazioni e tariffe.">
 <meta name="robots" content="noindex, nofollow">
-<title>SOS Rider | Il tuo rider di emergenza</title>
+<title>SOS Rider · Come richiedere una consegna</title>
+<link rel="preload" as="image" href="./hub-sos-rider-visual.jpg">
 <style>
-:root{color-scheme:dark;--gold:#ffcb05;--ink:#07090c;--white:#fff;font-family:Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;-webkit-font-smoothing:antialiased}
+:root{color-scheme:dark}
 *{box-sizing:border-box}
-html{scroll-behavior:smooth;-webkit-text-size-adjust:100%}
-body{margin:0;background:#090b0e;color:var(--white)}
-.hub{isolation:isolate;position:relative;overflow:hidden;width:100%;max-width:550px;min-height:100svh;margin:0 auto;background:#080a0e url("https://cdn.shopify.com/s/files/1/1019/6588/9874/files/sos-rider-hero-mobile-duomo-v2.jpg?v=1788734535") center bottom / cover no-repeat;box-shadow:0 15px 80px #0008}
-.hub:before{content:"";pointer-events:none;position:absolute;z-index:-1;inset:0;background:linear-gradient(180deg,rgba(1,4,8,.38) 0%,rgba(1,4,8,.63) 14%,rgba(1,4,8,.92) 37%,rgba(1,4,8,.88) 58%,rgba(1,4,8,.20) 75%,rgba(2,4,7,.22) 85%,#050607 100%)}
-.hub:after{content:"";position:absolute;z-index:-1;inset:0 0 auto;height:190px;pointer-events:none;opacity:.75;background:repeating-linear-gradient(125deg,transparent 0 15px,rgba(244,170,0,.06) 16px,transparent 18px),linear-gradient(139deg,transparent 2%,rgba(255,200,20,.75) 3%,transparent 4%,transparent 9%,rgba(255,177,0,.4) 9.5%,transparent 10.2%,transparent 100%);mask-image:linear-gradient(#000,transparent)}
-.content{position:relative;display:flex;flex-direction:column;min-height:100svh;padding:max(22px,env(safe-area-inset-top)) clamp(17px,5.7vw,35px) max(22px,env(safe-area-inset-bottom))}
-.brand{text-align:center}
-.brand-logo{display:block;object-fit:contain;width:clamp(164px,46vw,235px);height:clamp(125px,37vw,174px);margin:0 auto 2px;filter:drop-shadow(0 5px 12px #000a)}
-.brand-kicker{display:flex;align-items:center;justify-content:center;gap:13px;color:var(--gold);font-weight:850;font-size:clamp(11px,2.9vw,15px);letter-spacing:.22em;white-space:nowrap}
-.brand-kicker:before,.brand-kicker:after{content:"";display:block;width:30px;max-width:7vw;height:2px;background:var(--gold);box-shadow:0 0 12px #ffd53690}
-h1{font-size:clamp(34px,9.15vw,49px);line-height:1.05;letter-spacing:-.055em;font-weight:900;text-align:center;margin:19px -7px 0;text-wrap:balance;text-shadow:0 3px 9px #000b}
-h1 span{display:block;color:var(--gold);font-size:1.13em}
-.swoosh{height:7px;width:47%;margin:16px auto 20px;border-radius:100% 100% 0 0;background:radial-gradient(ellipse at center,var(--gold),#ffbd0088 45%,transparent 71%);box-shadow:0 0 15px #fdbf0080;transform:skewX(-12deg)}
-.actions{display:grid;gap:14px}
-.action{position:relative;display:flex;align-items:center;min-height:105px;padding:15px 18px;border-radius:23px;color:#fff;text-decoration:none;box-shadow:0 5px 12px #0008;transition:transform .16s,filter .16s;isolation:isolate}
-.action:focus-visible,.phone:focus-visible{outline:3px solid #fff;outline-offset:4px}
-.action:active{transform:scale(.988)}
-.action:hover{filter:brightness(1.075)}
-.action-wa{border:2px solid #2df783;background:linear-gradient(114deg,#007b2c 0%,#00551e 41%,#003f1e 100%);box-shadow:0 0 2px #a4ffc8 inset,0 0 15px #05d85b66,0 8px 24px #000a}
-.action-app{color:#090a0d;border:2px solid #ffe67a;background:linear-gradient(120deg,#ffcc00 0%,#ffda27 48%,#ffb800 100%);box-shadow:0 0 10px #ffdc4e91 inset,0 0 15px #f9c30069,0 8px 24px #0009}
-.action-info{background:linear-gradient(115deg,#18191a,#141517 70%,#0a0d12);border:2px solid #dfaa1a;box-shadow:0 0 8px #f6b90034 inset,0 0 11px #e6a80050,0 8px 24px #0009}
-.icon-wrap{flex:0 0 66px;display:grid;place-items:center;min-height:60px;border-right:1.5px solid currentColor;margin-right:17px;padding-right:14px}
-.icon-wrap svg{width:51px;height:51px;display:block}
-.action-wa .icon-wrap{color:#fff}
-.action-app .icon-wrap{color:#131313}
-.action-info .icon-wrap{color:#ffce35}
-.action-copy{display:block;flex:1;min-width:0}
-.action-title{display:block;font-size:clamp(19px,5.3vw,28px);font-weight:900;letter-spacing:-.035em;line-height:1.12;white-space:nowrap}
-.action-desc{display:block;font-size:clamp(12.2px,3.05vw,16px);margin-top:5px;line-height:1.32;opacity:.96}
-.chev{margin-left:8px;flex:0 0 18px;height:24px;stroke:currentColor;stroke-width:2.5;fill:none}
-.vehicles-space{flex:1;min-height:clamp(210px,43vw,310px);pointer-events:none;position:relative}
-.vehicles-space:before{content:"";position:absolute;inset:0 -35px;background:linear-gradient(180deg,#05060885,transparent 35%,transparent 65%,#070709a0 100%);pointer-events:none}
-.footer{text-align:center;padding:8px 0 0;text-shadow:0 2px 9px #000}
-.footer-slogan{display:flex;justify-content:center;align-items:center;gap:8px;margin:0 0 17px;font-size:clamp(12px,3vw,16px);font-weight:750;font-style:italic;white-space:nowrap}
-.footer-slogan:before,.footer-slogan:after{content:"";height:2px;flex:1;max-width:35px;background:var(--gold)}
-.footer-slogan b{color:var(--gold)}
-.phone{display:inline-flex;align-items:center;justify-content:center;gap:12px;color:var(--gold);font-size:clamp(18px,4.75vw,25px);font-weight:850;letter-spacing:.105em;text-decoration:none;white-space:nowrap}
-.phone svg{width:25px;height:25px;fill:currentColor}
-@media(min-width:700px){body{padding:24px}.hub{border-radius:25px;min-height:1040px}.content{min-height:1040px}.brand-logo{width:224px;height:173px}.brand-kicker{font-size:14px}h1{font-size:47px}.vehicles-space{min-height:310px}}
-@media(max-width:375px){.content{padding-left:13px;padding-right:13px}.brand-logo{height:134px;width:175px}.brand-kicker{letter-spacing:.13em}.action{min-height:95px;padding:12px 10px;border-radius:19px}.icon-wrap{flex-basis:56px;margin-right:12px;padding-right:10px;min-height:54px}.icon-wrap svg{width:43px;height:43px}.action-title{font-size:19px}.action-desc{font-size:12px}.chev{margin-left:5px}.vehicles-space{min-height:210px}}
-@media(max-height:730px) and (max-width:600px){.brand-logo{height:128px}.swoosh{margin:10px auto 15px}.action{min-height:90px}.vehicles-space{min-height:180px}}
-@media(prefers-reduced-motion:reduce){.action{transition:none}}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;min-height:100vh;min-height:100svh;display:flex;align-items:center;justify-content:center;background:radial-gradient(ellipse at 50% 45%,#172027 0,#07080b 65%);font-family:Arial,Helvetica,sans-serif}
+.hub{position:relative;width:min(100%,550px);aspect-ratio:864/1536;overflow:hidden;background:#07090e;box-shadow:0 20px 70px #000b;isolation:isolate}
+.poster{display:block;position:absolute;inset:0;width:100%;height:100%;object-fit:fill;user-select:none;-webkit-user-drag:none}
+.hotspot{position:absolute;z-index:2;display:block;left:6.8%;width:86.4%;border-radius:22px;cursor:pointer;-webkit-tap-highlight-color:transparent;touch-action:manipulation}
+.hotspot:focus-visible{outline:3px solid #fff;outline-offset:3px}
+.hotspot:hover{box-shadow:inset 0 0 0 3px #ffffffa6}
+.hotspot:active{box-shadow:inset 0 0 0 4px #fff}
+.hotspot-wa{top:33.7%;height:10.8%}
+.hotspot-app{top:45.3%;height:10.6%}
+.hotspot-site{top:57%;height:10.4%}
+.hotspot-phone{top:94.45%;left:19.8%;width:64%;height:4.3%;border-radius:8px}
+.sr-only{position:absolute!important;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+@media(max-width:550px){body{display:block;background:#07090e}.hub{box-shadow:none}}
+@media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}}
 </style>
 </head>
 <body>
-<main class="hub">
-  <div class="content">
-    <header class="brand">
-      <img class="brand-logo" src="https://raw.githubusercontent.com/sales403/-sos-cassa/main/logo-sos-rider.png" alt="SOS Rider Carpi-Soliera" width="235" height="174">
-      <div class="brand-kicker">SOS RIDER CARPI-SOLIERA</div>
-      <h1>Scegli come richiedere <span>una consegna.</span></h1>
-      <div class="swoosh" aria-hidden="true"></div>
-    </header>
-    <nav class="actions" aria-label="Scegli come richiedere una consegna">
-      <a class="action action-wa" href="https://wa.me/393495153092?text=Ciao%20Marcello%2C%20avrei%20bisogno%20di%20una%20consegna%20SOS.%0ALocale%2Fritiro%3A%20%0ADestinazione%3A%20%0AOrario%3A%20%0AMezzo%3A%20%0ASomma%20da%20riscuotere%3A%20%0ANote%3A%20" aria-label="Ordine rapido su WhatsApp con messaggio precompilato">
-        <span class="icon-wrap" aria-hidden="true"><svg viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7.3 24.7 3.2 28l1.3-6.4a13 13 0 1 1 5.8 5.8L3.2 28"/><path d="M11.8 9.8c.6-.5 1.2-.2 1.5.3l1.5 2.6-1 1.7a15.3 15.3 0 0 0 4.8 4.8l1.7-1 2.6 1.5c.6.3.9 1 .3 1.5-1.5 1.5-3.6 1.7-5.9.6a17.5 17.5 0 0 1-8.1-8.1c-1-2.2-.9-4.4.6-5.9z" stroke-width="1.4"/></svg></span>
-        <span class="action-copy"><span class="action-title">ORDINE RAPIDO</span><span class="action-desc">WhatsApp • Messaggio precompilato</span></span>
-        <svg class="chev" viewBox="0 0 20 24" aria-hidden="true"><path d="m5 3 9 9-9 9"/></svg>
-      </a>
-      <a class="action action-app" href="https://v11-dispatch-engine-sos-cassa.sales-3c8.workers.dev/?hub=client" aria-label="Apri l'app SOS Rider per preventivo automatico e tracking">
-        <span class="icon-wrap" aria-hidden="true"><svg viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round"><rect x="9" y="2.5" width="14" height="27" rx="3"/><path d="M13 6.5h6M14 25.5h4"/><path d="m18 10-6 8h4l-1 4 6-9h-4z" fill="currentColor" stroke="none"/></svg></span>
-        <span class="action-copy"><span class="action-title">APRI L’APP</span><span class="action-desc">Preventivo automatico e tracking live</span></span>
-        <svg class="chev" viewBox="0 0 20 24" aria-hidden="true"><path d="m5 3 9 9-9 9"/></svg>
-      </a>
-      <a class="action action-info" href="https://sales403.github.io/-sos-cassa/site/" aria-label="Informazioni e tariffe SOS Rider sul sito web">
-        <span class="icon-wrap" aria-hidden="true"><svg viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"><rect x="5" y="4" width="22" height="16" rx="1.5"/><path d="m4 26 2-5h20l2 5H4zM12 10l9 5-5 1-2 4z" fill="none"/></svg></span>
-        <span class="action-copy"><span class="action-title">INFO E TARIFFE</span><span class="action-desc">Sito web • Prezzi • Zone servite</span></span>
-        <svg class="chev" viewBox="0 0 20 24" aria-hidden="true"><path d="m5 3 9 9-9 9"/></svg>
-      </a>
-    </nav>
-    <div class="vehicles-space" aria-hidden="true"></div>
-    <footer class="footer">
-      <p class="footer-slogan">Nessun abbonamento <b>•</b> Paghi solo quando ti servo</p>
-      <a class="phone" href="tel:+393495153092" aria-label="Chiama SOS Rider al 349 515 3092"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6.6 2.2a2 2 0 0 1 2.1 1.2l1.9 4.1a2 2 0 0 1-.5 2.3l-1.5 1.4a14.1 14.1 0 0 0 4.2 4.2l1.4-1.5a2 2 0 0 1 2.3-.5l4.1 1.9a2 2 0 0 1 1.2 2.1l-.3 2.9a2 2 0 0 1-1.9 1.7C10.3 22 2 13.7 2 4.8a2 2 0 0 1 1.7-1.9z"/></svg>SOS RIDER · 349 515 3092</a>
-    </footer>
-  </div>
+<main class="hub" aria-label="SOS Rider Carpi-Soliera: scegli come richiedere una consegna">
+  <img class="poster" src="./hub-sos-rider-visual.jpg" width="864" height="1536" fetchpriority="high" alt="SOS Rider Carpi-Soliera. Scegli come richiedere una consegna: Ordine rapido WhatsApp, apri l'app, info e tariffe. In basso e-bike, moto e auto.">
+  <nav aria-label="Canali di contatto SOS Rider">
+    <a class="hotspot hotspot-wa" href="https://wa.me/393495153092?text=Ciao%20Marcello%2C%20avrei%20bisogno%20di%20una%20consegna%20SOS.%0ALocale%2Fritiro%3A%20%0ADestinazione%3A%20%0AOrario%3A%20%0AMezzo%3A%20%0ASomma%20da%20riscuotere%3A%20%0ANote%3A%20" aria-label="ORDINE RAPIDO: apri WhatsApp con il messaggio già compilato"><span class="sr-only">Ordine rapido WhatsApp</span></a>
+    <a class="hotspot hotspot-app" href="https://v11-dispatch-engine-sos-cassa.sales-3c8.workers.dev/?hub=client" aria-label="APRI L'APP: preventivo automatico e tracking"><span class="sr-only">Apri l'app SOS Rider</span></a>
+    <a class="hotspot hotspot-site" href="https://sales403.github.io/-sos-cassa/site/" aria-label="INFO E TARIFFE: apri il sito SOS Rider"><span class="sr-only">Info e tariffe</span></a>
+  </nav>
+  <a class="hotspot hotspot-phone" href="tel:+393495153092" aria-label="Chiama SOS Rider al 349 515 3092"><span class="sr-only">Chiama SOS Rider</span></a>
 </main>
 </body>
 </html>
