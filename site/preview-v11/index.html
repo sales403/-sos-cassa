@@ -9,7 +9,7 @@
   <meta name="apple-mobile-web-app-title" content="SOS Rider V11 STAGING">
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="apple-touch-icon" href="icon-192.png">
-  <link rel="stylesheet" href="styles.css?v=11.0.3-staging">
+  <link rel="stylesheet" href="styles.css?v=11.5.0-client-ux">
   <title>SOS Rider Carpi-Soliera · V11 STAGING</title>
 </head>
 <body>
@@ -87,7 +87,8 @@
     <section id="signupCard" class="card section hidden">
       <div class="eyebrow">NUOVO ACCOUNT CLIENTE</div><h2>Registrati</h2>
       <div class="form-grid">
-        <label class="full">Nome locale / richiedente<input id="signupName" autocomplete="organization" placeholder="Es. Pizzeria Vesuvio"></label>
+        <label class="full">Tipo di account<select id="signupAccountType"><option value="business">Locale / Attività</option><option value="private">Privato</option></select></label>
+        <label class="full"><span id="signupNameLabel">Nome locale / attività</span><input id="signupName" autocomplete="organization" placeholder="Es. Pizzeria Vesuvio"></label>
         <label>Telefono<input id="signupPhone" inputmode="tel" autocomplete="tel"></label>
         <label>Email<input id="signupEmail" type="email" autocomplete="email"></label>
         <label class="full">Password<input id="signupPassword" type="password" autocomplete="new-password" placeholder="Almeno 8 caratteri"></label>
@@ -113,37 +114,30 @@
       <div><b>Controllo disponibilità rider…</b><small>Lo stato viene aggiornato automaticamente</small></div>
     </section>
 
-    <section id="clientAccountCard" class="card account-strip hidden">
-      <div><div class="eyebrow">PROFILO CLIENTE</div><b id="clientAccountName">—</b><small id="clientAccountEmail">—</small></div>
-      <div class="account-actions"><button id="clientRegisterPasskey" class="btn ghost small" type="button">🔑 PASSKEY <span class="beta-tag">BETA</span></button><button id="clientLogoutBtn" class="btn ghost small" type="button">ESCI</button></div>
+    <section id="clientAccountCard" class="card account-strip client-account-strip hidden">
+      <div class="client-account-identity"><div class="eyebrow" id="clientAccountTypeLabel">IL TUO LOCALE</div><b id="clientAccountName">—</b><small id="clientAccountEmail">—</small></div>
+      <div class="account-actions"><button id="clientRegisterPasskey" class="btn ghost small hidden" type="button" aria-hidden="true" tabindex="-1">PASSKEY</button><button id="clientLogoutBtn" class="btn ghost small" type="button">ESCI</button></div>
     </section>
     <section id="clientGuestCard" class="card account-strip">
       <div><div class="eyebrow">MODALITÀ OSPITE</div><b>Puoi richiedere senza registrarti</b><small>Con un account salvi profilo e storico online.</small></div>
       <button id="guestLoginBtn" class="btn ghost small" type="button">ACCEDI</button>
     </section>
 
-    <section class="card intro-card">
-      <div class="eyebrow">RICHIESTA GUIDATA · CONSIGLIATA</div>
-      <h2>Compila, vedi subito la tariffa e poi invia.</h2>
-      <p>Gli indirizzi vanno selezionati dai suggerimenti reali. La richiesta arriva direttamente nell'Area Rider.</p>
-      <a id="directWhatsapp" class="btn whatsapp-btn full" href="#" target="_blank" rel="noopener">💬 Scrivi direttamente su WhatsApp</a>
-    </section>
-
-    <section class="notice blue commercial-note">🏪 <b>Per locali e ristoratori:</b> la quota consegna SOS può essere addebitata totalmente o in parte al cliente finale, oppure gestita con un ordine minimo. Il costo mostrato qui è la tariffa SOS Rider.</section>
-
-    <section id="clientRecentSection" class="card section hidden">
-      <div class="section-head"><div><div class="eyebrow">RIPETI IN UN TAP</div><h2>Ultime richieste</h2></div></div>
-      <div id="clientRecentList"></div>
-    </section>
+    <section id="clientPageNew" class="client-page active" aria-label="Nuova consegna">
+      <div class="client-flow-head"><div><div class="eyebrow">CONSEGNA SOS</div><h1>Nuova consegna</h1></div><span class="client-flow-hint">Prezzo prima dell’invio</span></div>
+      <div id="clientFlowSteps" class="client-flow-steps" aria-label="Procedura in tre passaggi">
+        <span class="active" data-client-step="1">1 · DATI</span><span data-client-step="2">2 · TARIFFA</span><span data-client-step="3">3 · INVIO</span>
+      </div>
 
     <section id="clientFormCard" class="card section">
       <div class="section-head">
-        <div><div class="eyebrow">NUOVA CONSEGNA</div><h2>Dati essenziali</h2></div>
+        <div><div class="eyebrow">PASSO 1 DI 3</div><h2>Compila la consegna</h2></div>
         <span id="clientDraftPill" class="pill yellow hidden">BOZZA SALVATA</span>
       </div>
 
       <form id="clientRequestForm" novalidate>
         <div class="form-grid">
+          <details id="clientPickupDetails" class="client-pickup-details full" open><summary><span><b>Ritiro</b><small id="clientPickupSummary">Dati del locale / richiedente</small></span><span class="client-change-hint">MODIFICA ▾</span></summary><div class="client-pickup-fields">
           <label>Nome locale / richiedente
             <input id="cRequester" autocomplete="organization" required placeholder="Es. Pizzeria Vesuvio">
           </label>
@@ -157,12 +151,13 @@
             </label>
             <div id="cPickupSuggestions" class="suggestions hidden"></div>
             <div class="field-meta"><span id="cPickupStatus">Scrivi almeno 3 caratteri e seleziona un risultato.</span><button id="cPickupMaps" type="button" class="mini-btn">MAPS</button></div>
-          </div>
+          </div></div></details>
 
-          <label>Ordine pronto alle
+          <label class="full">Ordine pronto alle
             <input id="cReadyTime" type="time" required>
             <small id="cLateHint" class="field-help">Il supplemento serale si applica automaticamente dopo le 22:30.</small>
           </label>
+          <div class="client-form-section-heading full"><b>Destinazione</b><small>Dove consegniamo?</small></div>
           <label>Destinatario
             <input id="cRecipient" autocomplete="name" required placeholder="Nome cliente">
           </label>
@@ -204,7 +199,7 @@
           <label class="check-row full"><input id="cRemember" type="checkbox" checked><span>Ricorda questo locale/richiedente su questo dispositivo.</span></label>
         </div>
 
-        <button id="clientCalcQuote" type="button" class="btn primary full big">🧮 CALCOLA TARIFFA</button>
+        <button id="clientCalcQuote" type="button" class="btn primary full big">CALCOLA TARIFFA · POI CONFERMA →</button>
         <div id="clientFormStatus" class="status-line"></div>
       </form>
     </section>
@@ -227,7 +222,7 @@
       <div class="quote-image-wrap"><img id="clientQuoteImage" alt="Preventivo SOS Rider"></div>
       <div class="dual-actions">
         <button id="clientEditQuote" type="button" class="btn ghost">← MODIFICA</button>
-        <button id="clientSendRequest" type="button" class="btn primary">⚡ INVIA RICHIESTA</button>
+        <button id="clientSendRequest" type="button" class="btn primary">CONFERMA E INVIA RICHIESTA</button>
       </div>
       <div id="clientSendStatus" class="status-line"></div>
     </section>
@@ -246,6 +241,45 @@
         <a id="clientStatusWhatsapp" class="btn whatsapp-btn" href="#" target="_blank" rel="noopener">WHATSAPP</a>
       </div>
     </section>
+      <div class="client-help"><a id="directWhatsapp" href="#" target="_blank" rel="noopener">Serve aiuto? Scrivici su WhatsApp</a></div>
+    </section>
+
+    <section id="clientPageRequests" class="client-page" aria-label="Richieste inviate">
+      <div class="page-title-row"><div><div class="eyebrow">ORDINI</div><h1>Le tue richieste</h1></div></div>
+      <p class="client-list-hint">Richieste inviate e stato dell’ultimo ordine.</p>
+      <div id="clientRequestsList" class="client-list-stack"></div>
+    </section>
+
+    <section id="clientPageHistory" class="client-page" aria-label="Storico richieste">
+      <div class="page-title-row"><div><div class="eyebrow">ARCHIVIO</div><h1>Storico consegne</h1></div></div>
+      <section id="clientRecentSection" class="card section hidden">
+      <div class="section-head"><div><div class="eyebrow">RIPETI IN UN TAP</div><h2>Ultime richieste</h2></div></div>
+      <div id="clientRecentList"></div>
+    </section>
+      <p id="clientHistoryEmpty" class="card client-empty hidden">Nessuna richiesta salvata. Da qui potrai ripetere una consegna in un tap.</p>
+    </section>
+
+    <section id="clientPageAnalytics" class="client-page" aria-label="Analisi delle consegne">
+      <div class="page-title-row"><div><div class="eyebrow">PANORAMICA</div><h1>Analisi</h1></div></div>
+      <p class="client-list-hint">Riepilogo delle richieste disponibili nel tuo storico recente.</p>
+      <div class="client-analytics-grid">
+        <div class="stat-card"><small>Richieste</small><b id="clientStatsCount">0</b></div>
+        <div class="stat-card"><small>Tariffe SOS totali</small><b id="clientStatsTotal">€0,00</b></div>
+        <div class="stat-card"><small>Media tariffa</small><b id="clientStatsAverage">€0,00</b></div>
+        <div class="stat-card"><small>Ultima richiesta</small><b id="clientStatsLast">—</b></div>
+      </div>
+      <p class="client-list-hint">Dati indicativi sulle ultime richieste caricate, non un rendiconto contabile completo.</p>
+    </section>
+    <div id="clientFloatingAction" class="client-floating-action">
+      <button id="clientFlowAction" class="btn primary full big" type="button">CALCOLA TARIFFA →</button>
+      <small id="clientFlowActionHint">Poi vedi il prezzo e decidi se inviare</small>
+    </div>
+    <nav class="bottom-nav bottom-nav-v2 client-bottom-nav" aria-label="Menu cliente">
+      <button class="nav-btn active" type="button" data-client-page="new"><svg class="nav-icon" aria-hidden="true"><use href="icons.svg#icon-delivery-box"></use></svg><small>NUOVA</small></button>
+      <button class="nav-btn" type="button" data-client-page="requests"><svg class="nav-icon" aria-hidden="true"><use href="icons.svg#icon-bell"></use></svg><small>RICHIESTE</small></button>
+      <button class="nav-btn" type="button" data-client-page="history"><svg class="nav-icon" aria-hidden="true"><use href="icons.svg#icon-history"></use></svg><small>STORICO</small></button>
+      <button class="nav-btn" type="button" data-client-page="analytics"><svg class="nav-icon" aria-hidden="true"><use href="icons.svg#icon-analytics"></use></svg><small>ANALISI</small></button>
+    </nav>
   </main>
 
   <main id="riderLogin" class="app-shell narrow hidden">
@@ -351,6 +385,6 @@
   </div>
 
   <script src="config.js?v=11.0.1-staging"></script>
-  <script type="module" src="app.js?v=11.4.0-pricing-3band"></script>
+  <script type="module" src="app.js?v=11.5.0-client-ux"></script>
 </body>
 </html>
