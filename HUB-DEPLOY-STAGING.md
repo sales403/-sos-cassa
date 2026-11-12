@@ -1,5 +1,18 @@
 # SOS Rider — Deploy HUB V11 nello staging frontend
 
+## Metodo preferito: connessione GitHub in Cloudflare Builds
+1. Nel pannello Cloudflare apri **Workers & Pages > v11-dispatch-engine-sos-cassa > Settings > Builds**.
+2. Se il Worker non è collegato, seleziona **Connect**, GitHub e il repository `sales403/-sos-cassa`.
+3. Usa come branch di distribuzione `v11-dispatch-engine` (non `main`).
+4. Imposta **Root directory** a `site`.
+5. Imposta **Build command** vuoto (sito statico).
+6. Imposta **Deploy command** a:
+   `npx wrangler deploy --config wrangler.frontend-staging.jsonc`
+7. Salva e avvia la build/deploy; controlla la scheda **Deployments**. Non modificare il backend `sos-rider-v11-staging`.
+
+La configurazione ha il nome esatto del frontend, `v11-dispatch-engine-sos-cassa`, e pubblica gli asset da `site/preview-v11`. Una volta collegato, il branch di test potrà essere distribuito automaticamente. Se il Worker è già collegato, controlla root, branch e comando, poi avvia una nuova build secondo le opzioni del dashboard.
+
+
 ## Verifica prima di distribuire
 - Target: `v11-dispatch-engine-sos-cassa.sales-3c8.workers.dev` (frontend/app di test)
 - NON usare `sos-rider-v11-staging`: è il Worker backend API/D1.
