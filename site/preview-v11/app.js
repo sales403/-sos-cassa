@@ -822,7 +822,7 @@ function renderClientRecent(){
   if(!sec)return;
   sec.classList.toggle('hidden',!arr.length);
   $('clientHistoryEmpty').classList.toggle('hidden',!!arr.length);
-  const statuses={new:'In attesa',accepted:'Accettata',picked:'In consegna',delivered:'Consegnata',completed:'Completata',cancelled:'Annullata',rejected:'Rifiutata'};
+  const statuses={new:'In attesa',accepted:'Accettata',picked:'In consegna',arrived:'Rider arrivato',delivered:'Consegnata',completed:'Completata',cancelled:'Annullata',rejected:'Rifiutata'};
   $('clientRecentList').innerHTML=arr.map((x,i)=>`<div class="client-recent"><div><b>${esc(x.requesterName||'Richiesta')} → ${esc(x.recipientName||'Cliente')}</b><small>${esc(x.deliveryAddress||'')} · ${vehicleLabel(x.service)}${x.quote?.total?' · '+money(x.quote.total):''}</small></div><button class="btn ghost small" type="button" data-repeat-client="${i}">RIPETI</button></div>`).join('');
   $('clientRequestsList').innerHTML=arr.length?arr.map((x,i)=>`<div class="card client-request-row"><div><b>${esc(x.recipientName||'Destinatario')}</b><small>${esc(x.deliveryAddress||'')}</small><small>${esc(x.code||'')} · ${esc(statuses[x.status]||'Richiesta inviata')}</small></div><button type="button" class="btn ghost small" data-repeat-client="${i}">RIPETI</button></div>`).join(''):'<div class="card client-empty">Non hai ancora richieste. Tocca NUOVA per iniziare.</div>';
   const amounts=arr.map(x=>Number(x.quote?.total)).filter(x=>Number.isFinite(x)&&x>0),total=amounts.reduce((a,b)=>a+b,0);
@@ -913,6 +913,8 @@ function renderClientEta(r){
   box.classList.remove('hidden');
 }
 function updateClientStatusUI(r){
+  const recent=(recentClientItems||[]).find(x=>x.code===r.code);
+  if(recent&&recent.status!==r.status){recent.status=r.status;renderClientRecent();}
   const s=r.status||'new',badge=$('clientStatusBadge');if(lastClientStatus&&lastClientStatus!==s)playDing();lastClientStatus=s;badge.className='request-state';const price=Number(r.totalFee||r.total_fee||0);$('clientConfirmedPrice').textContent=price?`Tariffa consegna: ${money(price)}`:'';renderClientEta(r);
   if(s==='new'){badge.classList.add('waiting');badge.textContent='IN ATTESA DEL RIDER';$('clientStatusText').textContent='La richiesta è arrivata nell’Area Rider. Attendi la conferma.';$('clientStatusIcon').textContent='…';}
   else if(s==='accepted'){badge.classList.add('accepted');const q=r?.eta?.queuePosition||1;badge.textContent=q>1?'ACCETTATA · IN CODA':'ACCETTATA · RIDER VERSO IL LOCALE';$('clientStatusText').textContent=q>1?`Richiesta confermata. Marcello ha ${q-1} consegna${q-1===1?'':'e'} prima della tua; l’orario di ritiro viene ricalcolato automaticamente.`:'Marcello ha accettato la consegna. L’ETA di ritiro viene aggiornato automaticamente.';$('clientStatusIcon').textContent='✓';}
