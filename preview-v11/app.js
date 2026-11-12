@@ -1,7 +1,7 @@
 (() => {
 'use strict';
 
-const APP_VERSION = '11.4.1-pricing-4band';
+const APP_VERSION = '11.4.1-pricing-4band-r2';
 const V11_BATCH_UI = true;
 const KEY = 'sosRiderUnifiedV10';
 const V9_KEY = 'sosRiderUnifiedV9';
@@ -125,6 +125,15 @@ async function fetchJson(url, options={}, timeoutMs=9000){
     }
     return body;
   } finally { clearTimeout(timer); }
+}
+
+
+async function requireCurrentPricingBackend(){
+  // Non autorizzare preventivi finché il backend staging non usa il listino approvato.
+  const status=await fetchJson(apiBase()+'/api/status',{headers:{'Accept':'application/json'}},9000);
+  if(!status?.ok || !String(status.version||'').includes('11.4.1-pricing-4band-staging')){
+    throw new Error('Tariffario sul server in aggiornamento. Preventivo non disponibile: contattaci su WhatsApp.');
+  }
 }
 
 function vehicleLabel(v){ return v==='moto' ? 'Moto Express' : v==='auto' ? 'Auto Cargo' : 'Economy E-bike'; }
@@ -858,6 +867,7 @@ async function calculateClientQuote(){
   $('clientQuoteSection').classList.add('hidden');
   try{
     const d=validateClientForm(true);
+    await requireCurrentPricingBackend();
     if(clientBatchMode){
       const res=await fetchJson(apiBase()+'/api/batch/quote',{method:'POST',headers:{'Accept':'application/json','Content-Type':'application/json'},body:JSON.stringify(batchPayload(d))},30000);
       const q=res.quote;if(!q||!Number.isFinite(Number(q.totalFee)))throw new Error('Preventivo giro non disponibile.');
@@ -1107,6 +1117,7 @@ async function submitClientRequest(){
   sendBtn.disabled=true;status.className='status-line';status.textContent='Verifico disponibilità e dati…';
   try{
     const d=validateClientForm(false);if(!clientQuote)throw new Error('Ricalcola prima la tariffa.');
+    await requireCurrentPricingBackend();
     if(!clientSubmissionId)clientSubmissionId=(crypto.randomUUID?.()||uid('SUB'));
     getAudioCtx('client')?.resume?.();
     // Prezzo vincolante: il cliente deve accettare il prezzo aggiornato se meteo o orario cambiano.
@@ -1780,6 +1791,7 @@ async function quoteWhatsappFromParsed(){
   const status=$('mWaQuoteStatus');
   try{
     const payload=waImportedPayload();
+    await requireCurrentPricingBackend();
     status.className='status-line';status.textContent='Calcolo tariffa server e salvo preventivo in D1…';
     const d=await fetchJson(apiBase()+'/api/rider/whatsapp/quote',{
       method:'POST',headers:riderHeaders(),body:JSON.stringify(payload)
