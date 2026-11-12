@@ -17,6 +17,7 @@ I file modificati sono **solo**:
 - `site/preview-v11/index.html`
 - `site/preview-v11/app.js`
 - `site/preview-v11/styles.css`
+- `site/preview-v11/sw.js` (cache PWA aggiornata)
 
 Se Cloudflare Builds è collegato al branch `v11-dispatch-engine`, il push GitHub avvia il processo di preview configurato. Il comando preview configurato dal proprietario era:
 
