@@ -1,7 +1,7 @@
 (() => {
 'use strict';
 
-const APP_VERSION = '11.3.0-ops';
+const APP_VERSION = '11.4.1-pricing-4band';
 const V11_BATCH_UI = true;
 const KEY = 'sosRiderUnifiedV10';
 const V9_KEY = 'sosRiderUnifiedV9';
@@ -140,11 +140,11 @@ function tariffFor(km, vehicle, readyTime){
   km=Number(km);
   if(!Number.isFinite(km)||km<0)throw Error('Distanza stradale non valida');
   if(km>8)throw Error('Oltre 8 km serve un preventivo personalizzato: contattaci su WhatsApp.');
-  const table={ebike:[6.50,8.50,12.50],moto:[9.50,12.50,16.50],auto:[12.50,15.50,20.50]};
+  const table={ebike:[4.50,6.50,8.50,12.50],moto:[7.50,9.50,12.50,16.50],auto:[10.50,12.50,15.50,20.50]};
   if(!Object.hasOwn(table,vehicle))throw Error('Servizio non valido');
-  const base=table[vehicle][km<=3?0:km<=5?1:2];
+  const base=table[vehicle][km<=1?0:km<=3?1:km<=5?2:3];
   const lateFee=isLateTime(readyTime)?2:0;
-  return {base,lateFee,total:roundHalf(base+lateFee),micro:false};
+  return {base,lateFee,total:roundHalf(base+lateFee),micro:vehicle==='ebike'&&km<=1};
 }
 
 async function routeBetween(a,b,vehicle){
