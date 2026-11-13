@@ -621,3 +621,22 @@ html[data-theme="day"] .home-route-actions .home-whatsapp{background:#e4f9eb;bor
 .archive-entry-actions .btn{border-color:#665049;color:#ffc8bd}
 #clientPageAnalytics .stat-card b{font-variant-numeric:tabular-nums}
 @media(max-width:390px){.archive-actions .btn{font-size:9px;padding:6px 8px}.client-entry-actions{flex-direction:column}.client-period-tabs .chip{font-size:9px}}
+
+/* Stato operatore: un solo tasto evidenziato, coerente con la risposta del server. */
+#riderAvailabilityControl .operator-toggle .btn{
+  background:var(--surface2,#141414);color:var(--text);border:1px solid var(--line2);
+  box-shadow:none;transition:background .16s,border-color .16s,box-shadow .16s,color .16s;
+}
+#riderAvailabilityControl .operator-toggle .btn.is-selected{
+  background:#ffd000;color:#171300;border-color:#ffd000;
+  box-shadow:0 0 0 2px rgba(255,208,0,.20),0 0 16px rgba(255,208,0,.42);
+}
+#riderAvailabilityControl .operator-toggle .btn.is-selected .status-led{
+  box-shadow:0 0 0 2px rgba(0,0,0,.16);
+}
+#riderAvailabilityControl .operator-toggle .btn:focus-visible{
+  outline:2px solid #ffd000;outline-offset:2px;
+}
+html[data-theme="day"] #riderAvailabilityControl .operator-toggle .btn:not(.is-selected){
+  background:#fff;color:#24272b;border-color:#cfd3d8;
+}

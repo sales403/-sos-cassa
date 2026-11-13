@@ -1,7 +1,7 @@
 (() => {
 'use strict';
 
-const APP_VERSION = '11.5.2-economy-default';
+const APP_VERSION = '11.5.3-rider-off-highlight';
 const KEY = 'sosRiderUnifiedV10';
 const V9_KEY = 'sosRiderUnifiedV9';
 const OLD_KEY = 'sosRiderGestV7';
@@ -378,6 +378,13 @@ function clockOnly(iso){if(!iso)return'—';const d=new Date(iso);return Number.
 function etaRange(x){if(!x)return'';const a=clockOnly(x.windowStart||x.at),b=clockOnly(x.windowEnd||x.at);return a&&b&&a!==b?`${a}–${b}`:a;}
 function availabilityCopy(a){if(!a)return{mode:'loading',title:'Stato rider non disponibile',text:'Riprova tra poco o usa WhatsApp.'};if(a.mode==='available')return{mode:'available',title:'Rider disponibile',text:`Partenza indicativa ${a.availableEtaMin||5}-${a.availableEtaMax||10} min · ETA e-bike 30 km/h`};if(a.mode==='busy')return{mode:'busy',title:`Rider occupato · ${a.active||1} attiv${(a.active||1)===1?'a':'e'}`,text:a.nextAvailableAt?`Prossimo slot ~${clockOnly(a.nextAvailableAt)} · circa ${a.etaMin||0} min`:`Nuova partenza stimata ~${a.etaMin||25} min`};return{mode:'offline',title:'Rider non disponibile',text:'Puoi fare il preventivo, ma l’invio automatico è temporaneamente sospeso.'}}
 function renderAvailability(){
+  // Evidenzia solo lo stato effettivamente confermato dal server D1.
+  const known=typeof currentAvailability?.enabled==='boolean';
+  const isOn=known&&currentAvailability.enabled;
+  const isOff=known&&!currentAvailability.enabled;
+  const onBtn=$('riderAvailableBtn'),offBtn=$('riderOfflineBtn');
+  if(onBtn){onBtn.classList.toggle('is-selected',isOn);onBtn.setAttribute('aria-pressed',String(isOn));}
+  if(offBtn){offBtn.classList.toggle('is-selected',isOff);offBtn.setAttribute('aria-pressed',String(isOff));}
   const c=availabilityCopy(currentAvailability);['homeAvailability','clientAvailability'].forEach(id=>{const el=$(id);if(!el)return;el.className='availability-card '+c.mode;el.querySelector('b').textContent=c.title;el.querySelector('small').textContent=c.text;});
   if($('riderAvailabilityTitle')){const dot=$('riderAvailabilityDot');dot.className='availability-dot '+c.mode;$('riderAvailabilityTitle').textContent=c.title;$('riderAvailabilityText').textContent=c.text;const anchor=currentAvailability?.firstPickupEtaMin??currentAvailability?.etaPerJob;if(anchor)$('riderEtaSelect').value=String(anchor);}
 }
