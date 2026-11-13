@@ -1,4 +1,4 @@
-const CACHE='sos-rider-v11-20261113-client-history-1151';
+const CACHE='sos-rider-v11-20261113-economy-default-1152';
 const ASSETS=['./','./index.html','./styles.css','./app.js','./config.js','./manifest.webmanifest','./icon-192.png','./icon-512.png','./logo-sos-rider.png','./rider-banner-v2-live.png','./icons.svg'];
 
 self.addEventListener('install',e=>{

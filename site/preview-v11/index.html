@@ -177,9 +177,9 @@
           <div class="full">
             <label>Servizio</label>
             <div class="vehicle-grid" id="clientVehicles">
-              <button type="button" class="vehicle-card active" data-client-vehicle="ebike"><span>🚲</span><b>ECONOMY</b><small>E-bike · <strong>da €4,50</strong></small></button>
-              <button type="button" class="vehicle-card" data-client-vehicle="moto"><span>🏍️</span><b>EXPRESS</b><small>Moto · <strong>da €7,50</strong></small></button>
-              <button type="button" class="vehicle-card" data-client-vehicle="auto"><span>🚗</span><b>CARGO</b><small>Auto · <strong>da €10,50</strong></small></button>
+              <button type="button" class="vehicle-card active" data-client-vehicle="ebike" aria-pressed="true"><span>🚲</span><b>ECONOMY</b><small>E-bike · <strong>da €4,50</strong></small></button>
+              <button type="button" class="vehicle-card" data-client-vehicle="moto" aria-pressed="false"><span>🏍️</span><b>EXPRESS</b><small>Moto · <strong>da €7,50</strong></small></button>
+              <button type="button" class="vehicle-card" data-client-vehicle="auto" aria-pressed="false"><span>🚗</span><b>CARGO</b><small>Auto · <strong>da €10,50</strong></small></button>
             </div>
             <div id="serviceSuggestion" class="service-suggestion hidden"></div>
           </div>
@@ -391,6 +391,6 @@
   </div>
 
   <script src="config.js?v=11.0.1-staging"></script>
-  <script type="module" src="app.js?v=11.5.1-client-history-analytics"></script>
+  <script type="module" src="app.js?v=11.5.2-economy-default"></script>
 </body>
 </html>

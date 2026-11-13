@@ -1,7 +1,7 @@
 (() => {
 'use strict';
 
-const APP_VERSION = '11.5.1-client-history-analytics';
+const APP_VERSION = '11.5.2-economy-default';
 const KEY = 'sosRiderUnifiedV10';
 const V9_KEY = 'sosRiderUnifiedV9';
 const OLD_KEY = 'sosRiderGestV7';
@@ -186,10 +186,20 @@ function openLogin(){
   $('authStatus').textContent=''; $('signupStatus').textContent='';
   if(authUser?.email) $('authEmail').value=authUser.email;
 }
+function selectDefaultEconomy(){
+  // Ogni nuova richiesta inizia con Economy, indipendentemente dal mezzo di un vecchio preventivo/bozza.
+  clientVehicle='ebike';
+  document.querySelectorAll('[data-client-vehicle]').forEach(button=>{
+    const selected=button.dataset.clientVehicle==='ebike';
+    button.classList.toggle('active',selected);
+    button.setAttribute('aria-pressed',String(selected));
+  });
+}
 function resetClientFormForSession(){
   for(const id of ['cRequester','cRequesterPhone','cPickup','cRecipient','cRecipientPhone','cDelivery','cOrderTotal','cNotes']) $(id).value='';
   $('cReadyTime').value=''; $('cPayment').value='paid'; $('cRemember').checked=true;
   clientPickup=null; clientDelivery=null; clientQuote=null; clientSubmissionId=null;
+  selectDefaultEconomy();
   $('cPickupStatus').textContent='Scrivi almeno 3 caratteri e seleziona un risultato.';
   $('cDeliveryStatus').textContent='Scrivi almeno 3 caratteri e seleziona un risultato.';
   $('clientDraftPill').classList.add('hidden'); $('clientRequestStatus').classList.add('hidden');
@@ -904,6 +914,7 @@ function saveClientDraft(){
 }
 function restoreClientDraft(){
   setDefaultReadyTime();
+  selectDefaultEconomy();
   try{
     const localProfile={}; // Legacy global profile is not account-scoped: never reveal it to a guest.
     const serverProfile=authProfile?.role==='client'?{requesterName:authProfile.displayName||'',requesterPhone:authProfile.phone||'',pickupAddress:authProfile.pickupAddress||'',pickupGeo:authProfile.pickupAddress&&Number.isFinite(Number(authProfile.pickupLat))&&Number.isFinite(Number(authProfile.pickupLon))?{label:authProfile.pickupAddress,lat:Number(authProfile.pickupLat),lon:Number(authProfile.pickupLon)}:null}:null;
@@ -912,7 +923,7 @@ function restoreClientDraft(){
       $('cRequester').value=d.requesterName||'';$('cRequesterPhone').value=d.requesterPhone||'';$('cPickup').value=d.pickupAddress||'';clientPickup=d.pickupGeo||null;
       if(d.readyTime)$('cReadyTime').value=d.readyTime;if(d.recipientName)$('cRecipient').value=d.recipientName;if(d.recipientPhone)$('cRecipientPhone').value=d.recipientPhone;
       if(d.deliveryAddress)$('cDelivery').value=d.deliveryAddress;clientDelivery=d.deliveryGeo||null;if(d.payment)$('cPayment').value=d.payment;if(d.orderTotal)$('cOrderTotal').value=d.orderTotal;if(d.notes)$('cNotes').value=d.notes;
-      if(d.service){clientVehicle=d.service;setClientVehicle(d.service,false)}
+      // Non ripristinare EXPRESS/AUTO da una vecchia bozza: il default di ogni nuova visita è ECONOMY.
       if(clientPickup)$('cPickupStatus').textContent='✓ Indirizzo verificato';if(clientDelivery)$('cDeliveryStatus').textContent='✓ Indirizzo verificato';
       $('clientDraftPill').classList.remove('hidden');
     }
@@ -923,7 +934,7 @@ function clearClientDeliveryFields(){
   $('cRecipient').value='';$('cRecipientPhone').value='';$('cDelivery').value='';$('cNotes').value='';$('cOrderTotal').value='';clientDelivery=null;clientQuote=null;clientSubmissionId=null;hideClientQuote();$('cDeliveryStatus').textContent='Scrivi almeno 3 caratteri e seleziona un risultato.';saveClientDraft();
 }
 function setClientVehicle(v,invalidate=true){
-  clientVehicle=v;document.querySelectorAll('[data-client-vehicle]').forEach(b=>b.classList.toggle('active',b.dataset.clientVehicle===v));if(invalidate)invalidateClientQuote();saveClientDraft();
+  clientVehicle=v;document.querySelectorAll('[data-client-vehicle]').forEach(b=>{const selected=b.dataset.clientVehicle===v;b.classList.toggle('active',selected);b.setAttribute('aria-pressed',String(selected));});if(invalidate)invalidateClientQuote();saveClientDraft();
 }
 function toggleOrderTotal(){ $('cOrderTotalWrap').classList.toggle('hidden',$('cPayment').value!=='cash'); if($('cPayment').value!=='cash')$('cOrderTotal').value=''; }
 function clientStructuredWhatsApp(d=clientFormData(), q=clientQuote){
@@ -1488,7 +1499,7 @@ function bindEvents(){
   $('cReadyTime').addEventListener('input',()=>{updateLateHint();invalidateClientQuote();saveClientDraft()});$('cPayment').addEventListener('change',()=>{toggleOrderTotal();invalidateClientQuote();saveClientDraft()});
   $('clientRequestForm').addEventListener('input',e=>{if(!['cReadyTime','cPayment'].includes(e.target.id)){invalidateClientQuote();saveClientDraft();updateClientPickupSummary()}});
   $('clientCalcQuote').onclick=calculateClientQuote;$('clientEditQuote').onclick=()=>{$('clientQuoteSection').classList.add('hidden');$('clientFormCard').scrollIntoView({behavior:'smooth',block:'start'})};$('clientSendRequest').onclick=submitClientRequest;
-  $('clientNewRequest').onclick=()=>{switchClientPage('new');localStorage.removeItem(clientScopedKey(CLIENT_ACTIVE_KEY));stopClientPolling();lastClientStatus=null;$('clientRequestStatus').classList.add('hidden');$('clientFormCard').classList.remove('hidden');clearClientDeliveryFields();updateClientFlowUI();$('clientFormCard').scrollIntoView({behavior:'smooth'})};
+  $('clientNewRequest').onclick=()=>{switchClientPage('new');selectDefaultEconomy();localStorage.removeItem(clientScopedKey(CLIENT_ACTIVE_KEY));stopClientPolling();lastClientStatus=null;$('clientRequestStatus').classList.add('hidden');$('clientFormCard').classList.remove('hidden');clearClientDeliveryFields();updateClientFlowUI();$('clientFormCard').scrollIntoView({behavior:'smooth'})};
   for(const id of ['clientRecentList','clientRequestsList']) $(id).addEventListener('click',e=>{
     const remove=e.target.closest('[data-remove-client]');if(remove)return hideClientHistory(remove.dataset.removeClient);
     const repeat=e.target.closest('[data-repeat-client]');if(repeat)repeatClientRequest(repeat.dataset.repeatClient);
