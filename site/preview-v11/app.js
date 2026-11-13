@@ -1,13 +1,14 @@
 (() => {
 'use strict';
 
-const APP_VERSION = '11.5.0-client-ux';
+const APP_VERSION = '11.5.1-client-history-analytics';
 const KEY = 'sosRiderUnifiedV10';
 const V9_KEY = 'sosRiderUnifiedV9';
 const OLD_KEY = 'sosRiderGestV7';
 const CLIENT_DRAFT_KEY = 'sosRiderClientDraftV10';
 const CLIENT_ACTIVE_KEY = 'sosRiderClientActiveV10';
 const CLIENT_HISTORY_KEY = 'sosRiderClientHistoryV10';
+const CLIENT_HIDDEN_KEY = 'sosRiderClientHiddenV115';
 let currentClientIdentity = null;
 // Never mix drafts, history or tracking tokens between different local accounts.
 function clientScopedKey(base){ return base+':'+(authProfile?.role==='client'&&authUser?.id?'user:'+authUser.id:'guest'); }
@@ -38,6 +39,7 @@ let clientPolling = null;
 let riderPolling = null;
 let remoteRequests = [];
 let analyticsPeriod = '7d';
+let clientAnalyticsPeriod = '30d';
 let supabaseClient = null;
 let authSession = null;
 let authUser = null;
@@ -807,30 +809,88 @@ async function generateClientQuoteImage(){
 }
 
 function clientHistory(){try{return JSON.parse(localStorage.getItem(clientScopedKey(CLIENT_HISTORY_KEY))||'[]')}catch{return[]}}
+function clientIsFinal(status){return ['delivered','completed','cancelled','rejected'].includes(String(status||'').toLowerCase());}
+function clientHiddenCodes(){
+  try{return new Set(JSON.parse(localStorage.getItem(clientScopedKey(CLIENT_HIDDEN_KEY))||'[]'));}catch{return new Set();}
+}
+function clientCurrentActiveCode(){
+  try{return JSON.parse(localStorage.getItem(clientScopedKey(CLIENT_ACTIVE_KEY))||'null')?.code||'';}catch{return '';}
+}
+function hideClientHistory(index){
+  const item=recentClientItems[Number(index)];
+  if(!item?.code)return;
+  const signed=authProfile?.role==='client'&&!!authSession;
+  if(item.code===clientCurrentActiveCode()&&!clientIsFinal(item.status)){alert('Questa consegna è ancora attiva. Puoi rimuoverla dopo che sarà conclusa.');return;}
+  if(signed&&!clientIsFinal(item.status)){alert('Puoi nascondere soltanto le richieste concluse.');return;}
+  if(!confirm(signed?'Nascondere questa consegna su questo dispositivo? Rimarrà salvata sul server SOS Rider.':'Eliminare questa richiesta dallo storico di questo telefono? La consegna sul server non sarà cancellata.'))return;
+  if(signed){const codes=clientHiddenCodes();codes.add(item.code);localStorage.setItem(clientScopedKey(CLIENT_HIDDEN_KEY),JSON.stringify([...codes]));}
+  else{localStorage.setItem(clientScopedKey(CLIENT_HISTORY_KEY),JSON.stringify(clientHistory().filter(x=>x.code!==item.code)));}
+  recentClientItems=recentClientItems.filter(x=>x.code!==item.code);
+  renderClientRecent();
+}
+function clearClientHistory(){
+  const signed=authProfile?.role==='client'&&!!authSession,active=clientCurrentActiveCode();
+  const eligible=recentClientItems.filter(x=>x.code!==active&&(signed?clientIsFinal(x.status):true));
+  if(!eligible.length){alert('Non ci sono richieste concluse da ripulire.');return;}
+  const what=signed?'nascoste su questo dispositivo (non cancellate dal server)':'eliminate dallo storico di questo dispositivo';
+  if(!confirm('Ripulire '+eligible.length+' richieste? Saranno '+what+'. Le eventuali consegne attive resteranno visibili.'))return;
+  const removeCodes=new Set(eligible.map(x=>x.code));
+  if(signed){const codes=clientHiddenCodes();for(const code of removeCodes)codes.add(code);localStorage.setItem(clientScopedKey(CLIENT_HIDDEN_KEY),JSON.stringify([...codes]));}
+  else{localStorage.setItem(clientScopedKey(CLIENT_HISTORY_KEY),JSON.stringify(clientHistory().filter(x=>!removeCodes.has(x.code))));}
+  recentClientItems=recentClientItems.filter(x=>!removeCodes.has(x.code));
+  renderClientRecent();
+}
 function addClientHistory(code){
   const d=clientFormData();const item={code,at:nowIso(),...d,pickupGeo:clientPickup,deliveryGeo:clientDelivery,quote:clientQuote};
-  const arr=clientHistory().filter(x=>x.code!==code);arr.unshift(item);localStorage.setItem(clientScopedKey(CLIENT_HISTORY_KEY),JSON.stringify(arr.slice(0,8)));if(!authSession){recentClientItems=arr.slice(0,8);renderClientRecent();}
+  const arr=clientHistory().filter(x=>x.code!==code);arr.unshift(item);localStorage.setItem(clientScopedKey(CLIENT_HISTORY_KEY),JSON.stringify(arr.slice(0,50)));if(!authSession){recentClientItems=arr.slice(0,50);renderClientRecent();}
 }
 async function loadClientRecent(){
   if(authProfile?.role==='client'&&authSession){
-    try{const d=await fetchJson(apiBase()+'/api/client/requests?limit=8',{headers:authHeaders()},8000);recentClientItems=(d.requests||[]).map(r=>({code:r.code,at:r.createdAt,requesterName:r.requesterName,requesterPhone:r.requesterPhone,pickupAddress:r.pickupAddress,pickupGeo:{label:r.pickupAddress,lat:Number(r.pickupLat),lon:Number(r.pickupLon)},readyTime:r.readyTime,recipientName:r.recipientName,recipientPhone:r.recipientPhone,deliveryAddress:r.deliveryAddress,deliveryGeo:{label:r.deliveryAddress,lat:Number(r.deliveryLat),lon:Number(r.deliveryLon)},service:r.service,payment:r.payment,orderTotal:Number(r.orderTotal)||0,notes:r.notes||'',status:r.status||'',quote:{total:Number(r.totalFee)||0,distanceKm:Number(r.distanceKm)||0}}));renderClientRecent();return;}catch(e){console.warn('Storico online cliente non disponibile',e)}
+    try{const d=await fetchJson(apiBase()+'/api/client/requests?limit=50',{headers:authHeaders()},8000);recentClientItems=(d.requests||[]).filter(r=>!clientHiddenCodes().has(r.code)).map(r=>({code:r.code,at:r.createdAt,requesterName:r.requesterName,requesterPhone:r.requesterPhone,pickupAddress:r.pickupAddress,pickupGeo:{label:r.pickupAddress,lat:Number(r.pickupLat),lon:Number(r.pickupLon)},readyTime:r.readyTime,recipientName:r.recipientName,recipientPhone:r.recipientPhone,deliveryAddress:r.deliveryAddress,deliveryGeo:{label:r.deliveryAddress,lat:Number(r.deliveryLat),lon:Number(r.deliveryLon)},service:r.service,payment:r.payment,orderTotal:Number(r.orderTotal)||0,notes:r.notes||'',status:r.status||'',quote:{total:Number(r.totalFee)||0,distanceKm:Number(r.distanceKm)||0}}));renderClientRecent();return;}catch(e){console.warn('Storico online cliente non disponibile',e)}
   }
   recentClientItems=clientHistory();renderClientRecent();
 }
 function renderClientRecent(){
-  const arr=(recentClientItems||[]).slice(0,8),sec=$('clientRecentSection');
-  if(!sec)return;
-  sec.classList.toggle('hidden',!arr.length);
-  $('clientHistoryEmpty').classList.toggle('hidden',!!arr.length);
+  const arr=recentClientItems||[], signed=authProfile?.role==='client'&&!!authSession;
+  const activeCode=clientCurrentActiveCode();
+  const entries=arr.map((x,i)=>({x,i}));
+  const opened=entries.filter(({x})=>!clientIsFinal(x.status)&&(signed||x.code===activeCode));
+  const archived=entries.filter(({x})=>clientIsFinal(x.status)||(!signed&&x.code!==activeCode));
   const statuses={new:'In attesa',accepted:'Accettata',picked:'In consegna',arrived:'Rider arrivato',delivered:'Consegnata',completed:'Completata',cancelled:'Annullata',rejected:'Rifiutata'};
-  $('clientRecentList').innerHTML=arr.map((x,i)=>`<div class="client-recent"><div><b>${esc(x.requesterName||'Richiesta')} → ${esc(x.recipientName||'Cliente')}</b><small>${esc(x.deliveryAddress||'')} · ${vehicleLabel(x.service)}${x.quote?.total?' · '+money(x.quote.total):''}</small></div><button class="btn ghost small" type="button" data-repeat-client="${i}">RIPETI</button></div>`).join('');
-  $('clientRequestsList').innerHTML=arr.length?arr.map((x,i)=>`<div class="card client-request-row"><div><b>${esc(x.recipientName||'Destinatario')}</b><small>${esc(x.deliveryAddress||'')}</small><small>${esc(x.code||'')} · ${esc(statuses[x.status]||'Richiesta inviata')}</small></div><button type="button" class="btn ghost small" data-repeat-client="${i}">RIPETI</button></div>`).join(''):'<div class="card client-empty">Non hai ancora richieste. Tocca NUOVA per iniziare.</div>';
-  const amounts=arr.map(x=>Number(x.quote?.total)).filter(x=>Number.isFinite(x)&&x>0),total=amounts.reduce((a,b)=>a+b,0);
-  $('clientStatsCount').textContent=String(arr.length);
-  $('clientStatsTotal').textContent=money(total);
-  $('clientStatsAverage').textContent=money(amounts.length?total/amounts.length:0);
-  $('clientStatsLast').textContent=arr[0]?.at&&Number.isFinite(new Date(arr[0].at).getTime())?new Date(arr[0].at).toLocaleDateString('it-IT'):'—';
+  const card=({x,i})=>'<div class="client-recent"><div><b>'+esc(x.requesterName||'Richiesta')+' → '+esc(x.recipientName||'Cliente')+'</b><small>'+esc(x.deliveryAddress||'')+' · '+vehicleLabel(x.service)+(x.quote?.total?' · '+money(x.quote.total):'')+'</small><small>'+esc(statuses[x.status]||'Storico sul dispositivo')+'</small></div><div class="client-entry-actions"><button class="btn ghost small" type="button" data-repeat-client="'+i+'">RIPETI</button><button class="btn ghost small client-remove-btn" type="button" data-remove-client="'+i+'">'+(signed?'NASCONDI':'ELIMINA')+'</button></div></div>';
+  const sec=$('clientRecentSection');
+  if(!sec)return;
+  sec.classList.toggle('hidden',!archived.length);
+  $('clientHistoryEmpty').classList.toggle('hidden',!!archived.length);
+  $('clientRecentList').innerHTML=archived.map(card).join('');
+  $('clearClientHistory').disabled=!archived.length;
+  $('clientRequestsList').innerHTML=opened.length?opened.map(({x,i})=>'<div class="card client-request-row"><div><b>'+esc(x.recipientName||'Destinatario')+'</b><small>'+esc(x.deliveryAddress||'')+'</small><small>'+esc(x.code||'')+' · '+esc(statuses[x.status]||'Richiesta inviata')+'</small></div><button type="button" class="btn ghost small" data-repeat-client="'+i+'">RIPETI</button></div>').join(''):'<div class="card client-empty">Nessuna richiesta aperta. Gli ordini conclusi si trovano nello Storico.</div>';
+  renderClientAnalytics();
 }
+function renderClientAnalytics(){
+  const arr=recentClientItems||[];
+  const days=clientAnalyticsPeriod==='7d'?7:clientAnalyticsPeriod==='30d'?30:0;
+  const start=days?new Date():null;
+  if(start){start.setHours(0,0,0,0);start.setDate(start.getDate()-(days-1));}
+  const filtered=arr.filter(x=>{const d=new Date(x.at);return Number.isFinite(d.getTime())&&(!start||d>=start);});
+  const completed=filtered.filter(x=>['delivered','completed'].includes(x.status));
+  const billed=completed.filter(x=>Number(x.quote?.total)>0);
+  const sum=billed.reduce((v,x)=>v+Number(x.quote.total),0);
+  $('clientStatsCount').textContent=String(filtered.length);
+  $('clientStatsDelivered').textContent=String(completed.length);
+  $('clientStatsTotal').textContent=money(sum);
+  $('clientStatsAverage').textContent=money(billed.length?sum/billed.length:0);
+  $('clientStatsLast').textContent=filtered.length?new Date(filtered[0].at).toLocaleDateString('it-IT'):'—';
+  $('clientAnalyticsScope').textContent=(authProfile?.role==='client'&&authSession?'Ultime 50 richieste online del tuo account':'Storico salvato su questo dispositivo')+' · '+(days?'ultimi '+days+' giorni':'tutto il periodo disponibile');
+  const byDay=new Map();
+  for(const x of billed){const d=new Date(x.at);if(!Number.isFinite(d.getTime()))continue;const key=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');byDay.set(key,(byDay.get(key)||0)+Number(x.quote.total));}
+  let rows=[];
+  if(days){for(let i=0;i<days;i++){const d=new Date(start);d.setDate(start.getDate()+i);const key=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');rows.push({label:d.toLocaleDateString('it-IT',{day:'2-digit',month:'2-digit'}),value:byDay.get(key)||0});}}
+  else{rows=[...byDay].sort((a,b)=>a[0].localeCompare(b[0])).map(([key,value])=>({label:key.slice(8,10)+'/'+key.slice(5,7),value}));}
+  const chart=$('clientDailyChart'),max=Math.max(1,...rows.map(x=>x.value));
+  chart.innerHTML=rows.length?rows.map(x=>'<div class="bar-wrap"><div class="bar-value">'+money(x.value).replace(',00','')+'</div><div class="bar '+(x.value?'has-value':'zero')+'" style="height:'+(x.value?Math.max(5,Math.round(x.value/max*125)):3)+'px"></div><div class="bar-label">'+esc(x.label)+'</div></div>').join(''):'<p class="muted">Nessuna consegna completata nel periodo.</p>';
+}
+
 function repeatClientRequest(index){
   const x=recentClientItems[Number(index)];if(!x)return;
   switchClientPage('new'); $('clientPickupDetails').open=true;
@@ -914,7 +974,7 @@ function renderClientEta(r){
 }
 function updateClientStatusUI(r){
   const recent=(recentClientItems||[]).find(x=>x.code===r.code);
-  if(recent&&recent.status!==r.status){recent.status=r.status;renderClientRecent();}
+  if(recent&&recent.status!==r.status){recent.status=r.status;if(!(authProfile?.role==='client'&&authSession)){const rows=clientHistory();const match=rows.find(x=>x.code===r.code);if(match){match.status=r.status;localStorage.setItem(clientScopedKey(CLIENT_HISTORY_KEY),JSON.stringify(rows));}}renderClientRecent();}
   const s=r.status||'new',badge=$('clientStatusBadge');if(lastClientStatus&&lastClientStatus!==s)playDing();lastClientStatus=s;badge.className='request-state';const price=Number(r.totalFee||r.total_fee||0);$('clientConfirmedPrice').textContent=price?`Tariffa consegna: ${money(price)}`:'';renderClientEta(r);
   if(s==='new'){badge.classList.add('waiting');badge.textContent='IN ATTESA DEL RIDER';$('clientStatusText').textContent='La richiesta è arrivata nell’Area Rider. Attendi la conferma.';$('clientStatusIcon').textContent='…';}
   else if(s==='accepted'){badge.classList.add('accepted');const q=r?.eta?.queuePosition||1;badge.textContent=q>1?'ACCETTATA · IN CODA':'ACCETTATA · RIDER VERSO IL LOCALE';$('clientStatusText').textContent=q>1?`Richiesta confermata. Marcello ha ${q-1} consegna${q-1===1?'':'e'} prima della tua; l’orario di ritiro viene ricalcolato automaticamente.`:'Marcello ha accettato la consegna. L’ETA di ritiro viene aggiornato automaticamente.';$('clientStatusIcon').textContent='✓';}
@@ -1314,9 +1374,36 @@ function createManualFromParsed(d){
   });
 }
 
+// Local archive and cash summaries are not the authoritative D1 request database.
+function riderFinished(o){return o.status==='delivered'||o.status==='cancelled'||o.outcome==='cancelled';}
+function riderUnsettledCash(o){return o.status==='delivered'&&o.outcome!=='cancelled'&&o.payment==='cash'&&(!o.cashSorted||!o.restaurantSettled);}
+function deleteRiderLocalHistory(id){
+  const order=state.orders.find(o=>o.id===id);
+  if(!order)return;
+  if(!riderFinished(order)){alert('Questa consegna è ancora attiva.');return;}
+  if(state.currentShiftId&&order.shiftId===state.currentShiftId){alert('Chiudi prima il turno corrente.');return;}
+  if(riderUnsettledCash(order)){alert('Prima sistema i contanti e salda il locale: non possiamo cancellare un incasso da rendere.');return;}
+  if(!confirm('Eliminare '+String(order.code||'questa consegna')+' dallo storico e dalle analisi di QUESTO DISPOSITIVO? Sul server D1 non verrà cancellato nulla.'))return;
+  state.orders=state.orders.filter(o=>o.id!==id);
+  delete cashStacks[id];
+  saveState();renderRiderAll();
+}
+function resetRiderLocalRecords(){
+  if(state.currentShiftId){alert('Per azzerare chiudi prima il turno corrente.');return;}
+  if(state.orders.some(o=>!riderFinished(o))){alert('Ci sono consegne aperte: prima concludile o annullale in modo corretto.');return;}
+  if(state.orders.some(riderUnsettledCash)){alert('Hai incassi da sistemare o da rendere ai locali. Completa i saldi prima del reset.');return;}
+  if(!state.orders.length&&!state.shifts.length){alert('Lo storico locale è già vuoto.');return;}
+  if(prompt('AZZERAMENTO SOLO LOCALE. Verrà scaricato un backup e poi eliminati turni, ordini e importi registrati su questo telefono. Sul database Cloudflare D1 non cambia niente. Per confermare digita AZZERA:')!=='AZZERA')return;
+  const archive={exportedAt:nowIso(),version:APP_VERSION,shifts:state.shifts,orders:state.orders};
+  download('sos-rider-backup-locale-'+new Date().toISOString().slice(0,10)+'.json',JSON.stringify(archive,null,2),'application/json');
+  state.orders=[];state.shifts=[];state.currentShiftId=null;cashStacks={};
+  saveState();renderRiderAll();
+  alert('Storico, turni e analisi locali azzerati. Backup scaricato. I dati online D1 sono rimasti invariati.');
+}
+
 // ---------- Storico / analytics ----------
 function historyOrders(){const q=$('historySearch')?.value.trim().toLowerCase()||'';return state.orders.filter(o=>o.status==='delivered'||o.outcome==='cancelled').filter(o=>!q||[o.code,o.restaurant,o.customer,o.address,o.phone].join(' ').toLowerCase().includes(q)).sort((a,b)=>new Date(b.deliveredAt||b.createdAt)-new Date(a.deliveredAt||a.createdAt));}
-function renderHistory(){const arr=historyOrders();$('historyList').innerHTML=arr.length?arr.map(o=>`<article class="history-card ${o.outcome==='problem'?'problem':o.outcome==='cancelled'?'cancelled':''}"><div class="history-top"><div><div class="code">${esc(o.code)}</div><div class="tiny">${fmtDateTime(o.deliveredAt||o.createdAt)}</div></div><span class="pill ${o.outcome==='cancelled'?'':'green'}">${o.outcome==='cancelled'?'ANNULLATA':'CONSEGNATA'}</span></div><div class="request-grid"><div class="kv"><small>LOCALE</small><b>${esc(o.restaurant)}</b></div><div class="kv"><small>CLIENTE</small><b>${esc(o.customer)}</b></div><div class="kv"><small>TARIFFA SOS</small><b>${money(o.fee)}</b></div><div class="kv"><small>VALORE ORDINE</small><b>${money(o.total)}</b></div></div></article>`).join(''):'<section class="card"><p class="muted">Nessuna consegna nello storico.</p></section>'}
+function renderHistory(){const arr=historyOrders();$('historyList').innerHTML=arr.length?arr.map(o=>`<article class="history-card ${o.outcome==='problem'?'problem':o.outcome==='cancelled'?'cancelled':''}"><div class="history-top"><div><div class="code">${esc(o.code)}</div><div class="tiny">${fmtDateTime(o.deliveredAt||o.createdAt)}</div></div><span class="pill ${o.outcome==='cancelled'?'':'green'}">${o.outcome==='cancelled'?'ANNULLATA':'CONSEGNATA'}</span></div><div class="request-grid"><div class="kv"><small>LOCALE</small><b>${esc(o.restaurant)}</b></div><div class="kv"><small>CLIENTE</small><b>${esc(o.customer)}</b></div><div class="kv"><small>TARIFFA SOS</small><b>${money(o.fee)}</b></div><div class="kv"><small>VALORE ORDINE</small><b>${money(o.total)}</b></div></div><div class="archive-entry-actions"><button class="btn ghost small" type="button" data-delete-local-order="${esc(o.id)}">ELIMINA DAL DISPOSITIVO</button></div></article>`).join(''):'<section class="card"><p class="muted">Nessuna consegna nello storico.</p></section>'}
 function analyticsBounds(period=analyticsPeriod){
   const now=new Date();
   const dayStart=d=>{const x=new Date(d);x.setHours(0,0,0,0);return x};
@@ -1395,13 +1482,23 @@ function bindEvents(){
   $('signupAccountType').onchange=()=>{const business=$('signupAccountType').value==='business';$('signupNameLabel').textContent=business?'Nome locale / attività':'Nome e cognome';$('signupName').placeholder=business?'Es. Pizzeria Vesuvio':'Es. Mario Rossi';};
   document.querySelectorAll('[data-client-page]').forEach(b=>b.onclick=()=>switchClientPage(b.dataset.clientPage));
   $('clientFlowAction').onclick=()=>clientQuote?$('clientSendRequest').click():$('clientCalcQuote').click();
-  $('directWhatsapp').href=waLink('Ciao Marcello, avrei bisogno di una consegna SOS.');$('clientStatusWhatsapp').href=waLink('Ciao Marcello, avrei bisogno di informazioni sulla mia richiesta SOS Rider.');
+  $('directWhatsapp').href=waLink('Ciao Marcello, avrei bisogno di una consegna SOS.');
+  $('homeWhatsapp').href=waLink('Ciao Marcello, avrei bisogno di una consegna SOS.\nLocale/ritiro: \nDestinazione: \nOrario: \nMezzo (E-bike/Moto/Auto): \nSomma da riscuotere: \nNote: ');$('clientStatusWhatsapp').href=waLink('Ciao Marcello, avrei bisogno di informazioni sulla mia richiesta SOS Rider.');
   document.querySelectorAll('[data-client-vehicle]').forEach(b=>b.onclick=()=>setClientVehicle(b.dataset.clientVehicle));
   $('cReadyTime').addEventListener('input',()=>{updateLateHint();invalidateClientQuote();saveClientDraft()});$('cPayment').addEventListener('change',()=>{toggleOrderTotal();invalidateClientQuote();saveClientDraft()});
   $('clientRequestForm').addEventListener('input',e=>{if(!['cReadyTime','cPayment'].includes(e.target.id)){invalidateClientQuote();saveClientDraft();updateClientPickupSummary()}});
   $('clientCalcQuote').onclick=calculateClientQuote;$('clientEditQuote').onclick=()=>{$('clientQuoteSection').classList.add('hidden');$('clientFormCard').scrollIntoView({behavior:'smooth',block:'start'})};$('clientSendRequest').onclick=submitClientRequest;
   $('clientNewRequest').onclick=()=>{switchClientPage('new');localStorage.removeItem(clientScopedKey(CLIENT_ACTIVE_KEY));stopClientPolling();lastClientStatus=null;$('clientRequestStatus').classList.add('hidden');$('clientFormCard').classList.remove('hidden');clearClientDeliveryFields();updateClientFlowUI();$('clientFormCard').scrollIntoView({behavior:'smooth'})};
-  for(const id of ['clientRecentList','clientRequestsList']) $(id).addEventListener('click',e=>{const b=e.target.closest('[data-repeat-client]');if(b)repeatClientRequest(b.dataset.repeatClient)});
+  for(const id of ['clientRecentList','clientRequestsList']) $(id).addEventListener('click',e=>{
+    const remove=e.target.closest('[data-remove-client]');if(remove)return hideClientHistory(remove.dataset.removeClient);
+    const repeat=e.target.closest('[data-repeat-client]');if(repeat)repeatClientRequest(repeat.dataset.repeatClient);
+  });
+  $('clearClientHistory').onclick=clearClientHistory;
+  document.querySelectorAll('[data-client-period]').forEach(btn=>btn.onclick=()=>{
+    clientAnalyticsPeriod=btn.dataset.clientPeriod;
+    document.querySelectorAll('[data-client-period]').forEach(b=>b.classList.toggle('active',b===btn));
+    renderClientAnalytics();
+  });
   $('riderRefresh').onclick=manualRiderRefresh;$('openSettings').onclick=openSettings;$('riderAvailableBtn').onclick=()=>setRiderAvailability(true);$('riderOfflineBtn').onclick=()=>setRiderAvailability(false);$('riderEtaSelect').onchange=()=>{if(currentAvailability)setRiderAvailability(!!currentAvailability.enabled)};if($('riderGpsRefresh'))$('riderGpsRefresh').onclick=()=>{riderLocationError='';renderRiderGpsStatus();captureRiderLocationOnce(true).catch(e=>{riderLocationError=e?.message||'GPS non disponibile';renderRiderGpsStatus()})};
   document.querySelectorAll('[data-rider-page]').forEach(b=>b.onclick=()=>switchRiderPage(b.dataset.riderPage));
   $('remoteRequestsList').addEventListener('click',e=>{const a=e.target.closest('[data-accept]');if(a)return acceptRemote(a.dataset.accept);const r=e.target.closest('[data-reject]');if(r)return rejectRemote(r.dataset.reject);const m=e.target.closest('[data-map-remote]');if(m){const x=normalizeRemote(findRemote(m.dataset.mapRemote));window.open(mapsRoute({label:x.pickupAddress,lat:x.pickupLat,lon:x.pickupLon},{label:x.deliveryAddress,lat:x.deliveryLat,lon:x.deliveryLon},x.service),'_blank','noopener');return}const o=e.target.closest('[data-open-delivery]');if(o){const rr=findRemote(o.dataset.openDelivery);if(rr&&!state.orders.some(x=>x.remoteCode===rr.code))ensureShiftThen(()=>createLocalOrderFromRemote(rr));switchRiderPage('deliveries')}});
@@ -1426,7 +1523,11 @@ function bindEvents(){
   });
   $('activeOrders').addEventListener('input',e=>{const i=e.target.closest('[data-received]');if(!i)return;const o=state.orders.find(x=>x.id===i.dataset.received);if(!o)return;cashStacks[o.id]=[];o.received=num(i.value);o.change=o.received>=o.total?roundHalf(o.received-o.total):0;saveState();const b=i.closest('.order-card')?.querySelector('.change-box b');if(b)b.textContent=money(o.change)});
   $('restaurantCash').addEventListener('click',e=>{const a=e.target.closest('[data-sort-cash]');if(a)return sortCashForRestaurant(a.dataset.sortCash);const t=e.target.closest('[data-settle]');if(t)return settleRestaurant(t.dataset.settle)});
-  $('historySearch').addEventListener('input',renderHistory);$('exportHistory').onclick=()=>download('sos-rider-storico.csv',csvExport(),'text/csv;charset=utf-8');
+  $('historySearch').addEventListener('input',renderHistory);
+  $('historyList').addEventListener('click',e=>{const b=e.target.closest('[data-delete-local-order]');if(b)deleteRiderLocalHistory(b.dataset.deleteLocalOrder);});
+  $('exportHistory').onclick=()=>download('sos-rider-storico.csv',csvExport(),'text/csv;charset=utf-8');
+  $('resetRiderLocal').onclick=resetRiderLocalRecords;
+  $('resetRiderAnalyticsLocal').onclick=resetRiderLocalRecords;
   document.querySelectorAll('[data-period]').forEach(b=>b.onclick=()=>{analyticsPeriod=b.dataset.period;document.querySelectorAll('[data-period]').forEach(x=>x.classList.toggle('active',x===b));renderAnalytics()});
   $('modalClose').onclick=closeModal;$('modalBackdrop').addEventListener('click',e=>{if(e.target===$('modalBackdrop'))closeModal()});$('clientInstallBtn').onclick=installApp;
 }

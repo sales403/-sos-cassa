@@ -603,3 +603,21 @@ html[data-theme="day"] .client-pickup-details{background:#fff}
 
 /* Un solo pulsante primario di calcolo: la barra fissa lo richiama. */
 #clientPageNew #clientCalcQuote{display:none}
+
+/* V11.5.1 · Home WhatsApp, history cleanup and analytics */
+.home-route-actions .home-whatsapp{grid-column:1/-1;min-height:53px;border:2px solid #27c96b;background:linear-gradient(120deg,#123c24,#075226);color:#edfff4;box-shadow:0 0 13px #15ae5950;letter-spacing:.03em}
+.home-route-actions .home-whatsapp:hover{filter:brightness(1.15)}
+html[data-theme="day"] .home-route-actions .home-whatsapp{background:#e4f9eb;border-color:#26ad5d;color:#12552c}
+.client-entry-actions{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}
+.client-remove-btn{border-color:#60504a!important;color:#e9b7b0!important}
+.client-period-tabs{margin:12px 0}
+.client-analytics-chart{padding-bottom:17px}
+.client-analytics-chart .chart{height:190px;max-width:100%;overflow-x:auto}
+.client-analytics-chart .bar-wrap{min-width:44px}
+.client-analytics-chart .bar-value{font-size:8px;white-space:nowrap}
+.client-analytics-chart .bar-label{white-space:nowrap}
+.archive-actions{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}
+.archive-entry-actions{display:flex;justify-content:flex-end;margin-top:9px}
+.archive-entry-actions .btn{border-color:#665049;color:#ffc8bd}
+#clientPageAnalytics .stat-card b{font-variant-numeric:tabular-nums}
+@media(max-width:390px){.archive-actions .btn{font-size:9px;padding:6px 8px}.client-entry-actions{flex-direction:column}.client-period-tabs .chip{font-size:9px}}

@@ -9,7 +9,7 @@
   <meta name="apple-mobile-web-app-title" content="SOS Rider V11 STAGING">
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="apple-touch-icon" href="icon-192.png">
-  <link rel="stylesheet" href="styles.css?v=11.5.0-client-ux">
+  <link rel="stylesheet" href="styles.css?v=11.5.1-client-history-analytics">
   <title>SOS Rider Carpi-Soliera · V11 STAGING</title>
 </head>
 <body>
@@ -47,6 +47,7 @@
       <div class="home-route-actions">
         <button id="openLoginHub" class="btn primary full big" type="button">RICHIEDI UNA CONSEGNA</button>
         <button id="openClientHub" class="btn ghost full" type="button">CONTINUA SENZA ACCOUNT</button>
+        <a id="homeWhatsapp" class="btn whatsapp-btn home-whatsapp full" target="_blank" rel="noopener" href="https://wa.me/393495153092">💬 ORDINA SU WHATSAPP</a>
       </div>
     </section>
 
@@ -176,9 +177,9 @@
           <div class="full">
             <label>Servizio</label>
             <div class="vehicle-grid" id="clientVehicles">
-              <button type="button" class="vehicle-card active" data-client-vehicle="ebike"><span>🚲</span><b>ECONOMY</b><small>E-bike · <strong>da €6,50</strong></small></button>
-              <button type="button" class="vehicle-card" data-client-vehicle="moto"><span>🏍️</span><b>EXPRESS</b><small>Moto · <strong>da €9,50</strong></small></button>
-              <button type="button" class="vehicle-card" data-client-vehicle="auto"><span>🚗</span><b>CARGO</b><small>Auto · <strong>da €12,50</strong></small></button>
+              <button type="button" class="vehicle-card active" data-client-vehicle="ebike"><span>🚲</span><b>ECONOMY</b><small>E-bike · <strong>da €4,50</strong></small></button>
+              <button type="button" class="vehicle-card" data-client-vehicle="moto"><span>🏍️</span><b>EXPRESS</b><small>Moto · <strong>da €7,50</strong></small></button>
+              <button type="button" class="vehicle-card" data-client-vehicle="auto"><span>🚗</span><b>CARGO</b><small>Auto · <strong>da €10,50</strong></small></button>
             </div>
             <div id="serviceSuggestion" class="service-suggestion hidden"></div>
           </div>
@@ -246,12 +247,13 @@
 
     <section id="clientPageRequests" class="client-page" aria-label="Richieste inviate">
       <div class="page-title-row"><div><div class="eyebrow">ORDINI</div><h1>Le tue richieste</h1></div></div>
-      <p class="client-list-hint">Richieste inviate e stato dell’ultimo ordine.</p>
+      <p class="client-list-hint">Qui vedi gli ordini ancora aperti. Quelli conclusi passano nello Storico.</p>
       <div id="clientRequestsList" class="client-list-stack"></div>
     </section>
 
     <section id="clientPageHistory" class="client-page" aria-label="Storico richieste">
-      <div class="page-title-row"><div><div class="eyebrow">ARCHIVIO</div><h1>Storico consegne</h1></div></div>
+      <div class="page-title-row"><div><div class="eyebrow">ARCHIVIO</div><h1>Storico consegne</h1></div><button id="clearClientHistory" class="btn ghost small" type="button">PULISCI STORICO</button></div>
+      <p class="client-list-hint">Rimuovi le vecchie consegne dalla tua vista. Gli ordini online restano registrati sul server.</p>
       <section id="clientRecentSection" class="card section hidden">
       <div class="section-head"><div><div class="eyebrow">RIPETI IN UN TAP</div><h2>Ultime richieste</h2></div></div>
       <div id="clientRecentList"></div>
@@ -261,14 +263,17 @@
 
     <section id="clientPageAnalytics" class="client-page" aria-label="Analisi delle consegne">
       <div class="page-title-row"><div><div class="eyebrow">PANORAMICA</div><h1>Analisi</h1></div></div>
-      <p class="client-list-hint">Riepilogo delle richieste disponibili nel tuo storico recente.</p>
+      <p class="client-list-hint" id="clientAnalyticsScope">Riepilogo delle richieste disponibili nello storico.</p>
+      <div class="period-tabs client-period-tabs"><button class="chip" data-client-period="7d" type="button">7 GIORNI</button><button class="chip active" data-client-period="30d" type="button">30 GIORNI</button><button class="chip" data-client-period="all" type="button">TUTTO</button></div>
       <div class="client-analytics-grid">
         <div class="stat-card"><small>Richieste</small><b id="clientStatsCount">0</b></div>
-        <div class="stat-card"><small>Tariffe SOS totali</small><b id="clientStatsTotal">€0,00</b></div>
+        <div class="stat-card"><small>Consegne completate</small><b id="clientStatsDelivered">0</b></div>
+        <div class="stat-card"><small>Tariffe consegne completate</small><b id="clientStatsTotal">€0,00</b></div>
         <div class="stat-card"><small>Media tariffa</small><b id="clientStatsAverage">€0,00</b></div>
         <div class="stat-card"><small>Ultima richiesta</small><b id="clientStatsLast">—</b></div>
       </div>
-      <p class="client-list-hint">Dati indicativi sulle ultime richieste caricate, non un rendiconto contabile completo.</p>
+      <section class="card section analytics-chart-card client-analytics-chart"><div class="section-title-with-icon"><span class="section-icon">📊</span><div><h2>Andamento tariffe</h2><small>Solo consegne completate</small></div></div><div id="clientDailyChart" class="chart" aria-label="Grafico delle tariffe completate per giorno"></div></section>
+      <p class="client-list-hint">Dati sulle ultime 50 richieste dell’account (ospite: massimo 50 su questo telefono). Le tariffe non includono il valore del cibo; non è un rendiconto contabile completo.</p>
     </section>
     <div id="clientFloatingAction" class="client-floating-action">
       <button id="clientFlowAction" class="btn primary full big" type="button">CALCOLA TARIFFA →</button>
@@ -350,13 +355,14 @@
     </section>
 
     <section id="riderPageHistory" class="rider-page">
-      <div class="page-title-row"><div><div class="eyebrow">ARCHIVIO</div><h1>Storico</h1></div><button id="exportHistory" class="btn ghost small" type="button">CSV</button></div>
+      <div class="page-title-row"><div><div class="eyebrow">ARCHIVIO</div><h1>Storico</h1></div><div class="archive-actions"><button id="exportHistory" class="btn ghost small" type="button">CSV</button><button id="resetRiderLocal" class="btn ghost small" type="button">AZZERA DATI LOCALI</button></div></div>
+      <p class="client-list-hint">Elimina singole consegne chiuse e saldate o azzera turni, storico e incassi solo su questo dispositivo. Le richieste su D1 restano conservate.</p>
       <section class="card"><input id="historySearch" placeholder="Cerca cliente, locale, indirizzo, codice…"></section>
       <section id="historyList" class="section"></section>
     </section>
 
     <section id="riderPageAnalytics" class="rider-page">
-      <div class="page-title-row"><div><div class="eyebrow">NUMERI</div><h1>Analytics</h1></div></div>
+      <div class="page-title-row"><div><div class="eyebrow">NUMERI</div><h1>Analytics</h1></div><button id="resetRiderAnalyticsLocal" class="btn ghost small" type="button">AZZERA DATI LOCALI</button></div>
       <div class="period-tabs"><button class="chip active" data-period="7d">7 GIORNI</button><button class="chip" data-period="today">OGGI</button><button class="chip" data-period="yesterday">IERI</button><button class="chip" data-period="30d">30 GIORNI</button><button class="chip" data-period="lastMonth">MESE SCORSO</button><button class="chip" data-period="all">TUTTO</button></div>
       <section class="stats-grid analytics-grid section">
         <div class="stat-card hot"><div class="stat-card-head"><span class="stat-icon"><svg class="ui-icon" aria-hidden="true"><use href="icons.svg#icon-bolt-coin"></use></svg></span><small>Guadagno SOS</small></div><b id="aRevenue">€0</b></div>
@@ -385,6 +391,6 @@
   </div>
 
   <script src="config.js?v=11.0.1-staging"></script>
-  <script type="module" src="app.js?v=11.5.0-client-ux"></script>
+  <script type="module" src="app.js?v=11.5.1-client-history-analytics"></script>
 </body>
 </html>
