@@ -537,7 +537,7 @@ body{padding-top:24px}
 .password-toggle.is-visible .password-eye-off{display:block}
 
 /* SOS RIDER V11.5 — Cliente veloce: quattro schede, CTA fissa, account compatto */
-#clientHub{padding-bottom:calc(198px + env(safe-area-inset-bottom))}
+#clientHub{padding-bottom:calc(104px + env(safe-area-inset-bottom))}
 #clientAvailability{margin:8px 0 18px}
 #clientAccountCard,#clientGuestCard{margin:0 0 16px}
 #clientHub .client-account-strip{display:flex;flex-direction:row;align-items:center;gap:12px;padding:12px 14px}
@@ -568,10 +568,10 @@ body{padding-top:24px}
 .client-form-section-heading{border-top:1px solid var(--line);padding-top:14px}
 .client-form-section-heading b{display:block;font-size:15px}
 .client-form-section-heading small{display:block;color:var(--muted);font-size:11px;margin-top:3px}
-.client-floating-action{position:fixed;z-index:95;left:50%;transform:translateX(-50%);bottom:calc(80px + env(safe-area-inset-bottom));width:min(820px,100%);padding:10px 12px 8px;text-align:center;background:var(--navbg,rgba(7,7,7,.96));border-top:1px solid var(--line);box-shadow:0 -10px 28px rgba(0,0,0,.16);backdrop-filter:blur(15px)}
-.client-floating-action .btn{min-height:51px}
+.client-floating-action{position:static;z-index:auto;width:100%;margin:12px 0 0;padding:0;text-align:center;background:transparent;border:0;box-shadow:none;backdrop-filter:none}
+.client-floating-action .btn{min-height:51px;margin-top:0}
 .client-floating-action small{display:block;color:var(--muted);font-size:10px;padding-top:4px}
-.client-bottom-nav{width:min(820px,100%)}
+.client-bottom-nav{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:min(820px,100%);z-index:200}
 .client-list-hint{font-size:12px;color:var(--muted);margin:0 2px 14px}
 .client-list-stack{display:grid;gap:10px}
 .client-request-row{display:flex;gap:10px;justify-content:space-between;align-items:center;margin:0}

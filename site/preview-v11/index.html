@@ -9,7 +9,7 @@
   <meta name="apple-mobile-web-app-title" content="SOS Rider V11 STAGING">
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="apple-touch-icon" href="icon-192.png">
-  <link rel="stylesheet" href="styles.css?v=11.5.3-rider-off-highlight">
+  <link rel="stylesheet" href="styles.css?v=11.5.4-client-footer-layout">
   <title>SOS Rider Carpi-Soliera · V11 STAGING</title>
 </head>
 <body>
@@ -228,6 +228,11 @@
       <div id="clientSendStatus" class="status-line"></div>
     </section>
 
+    <div id="clientFloatingAction" class="client-floating-action">
+      <button id="clientFlowAction" class="btn primary full big" type="button">CALCOLA TARIFFA →</button>
+      <small id="clientFlowActionHint">Poi vedi il prezzo e decidi se inviare</small>
+    </div>
+
     <section id="clientRequestStatus" class="card section hidden">
       <div class="status-hero">
         <span id="clientStatusIcon" class="status-icon">✓</span>
@@ -275,17 +280,15 @@
       <section class="card section analytics-chart-card client-analytics-chart"><div class="section-title-with-icon"><span class="section-icon">📊</span><div><h2>Andamento tariffe</h2><small>Solo consegne completate</small></div></div><div id="clientDailyChart" class="chart" aria-label="Grafico delle tariffe completate per giorno"></div></section>
       <p class="client-list-hint">Dati sulle ultime 50 richieste dell’account (ospite: massimo 50 su questo telefono). Le tariffe non includono il valore del cibo; non è un rendiconto contabile completo.</p>
     </section>
-    <div id="clientFloatingAction" class="client-floating-action">
-      <button id="clientFlowAction" class="btn primary full big" type="button">CALCOLA TARIFFA →</button>
-      <small id="clientFlowActionHint">Poi vedi il prezzo e decidi se inviare</small>
-    </div>
-    <nav class="bottom-nav bottom-nav-v2 client-bottom-nav" aria-label="Menu cliente">
+
+  </main>
+
+  <nav id="clientBottomNav" class="bottom-nav bottom-nav-v2 client-bottom-nav hidden" aria-label="Menu cliente">
       <button class="nav-btn active" type="button" data-client-page="new"><svg class="nav-icon" aria-hidden="true"><use href="icons.svg#icon-delivery-box"></use></svg><small>NUOVA</small></button>
       <button class="nav-btn" type="button" data-client-page="requests"><svg class="nav-icon" aria-hidden="true"><use href="icons.svg#icon-bell"></use></svg><small>RICHIESTE</small></button>
       <button class="nav-btn" type="button" data-client-page="history"><svg class="nav-icon" aria-hidden="true"><use href="icons.svg#icon-history"></use></svg><small>STORICO</small></button>
       <button class="nav-btn" type="button" data-client-page="analytics"><svg class="nav-icon" aria-hidden="true"><use href="icons.svg#icon-analytics"></use></svg><small>ANALISI</small></button>
-    </nav>
-  </main>
+  </nav>
 
   <main id="riderLogin" class="app-shell narrow hidden">
     <header class="app-topbar"><button class="icon-btn" data-back-home type="button">‹</button><div class="compact-brand"><img src="logo-sos-rider.png" alt="SOS Rider"><div><b>AREA RIDER</b><small>Accesso riservato</small></div></div><button class="icon-btn" data-theme-toggle type="button">◐</button></header>
@@ -391,6 +394,6 @@
   </div>
 
   <script src="config.js?v=11.0.1-staging"></script>
-  <script type="module" src="app.js?v=11.5.3-rider-off-highlight"></script>
+  <script type="module" src="app.js?v=11.5.4-client-footer-layout"></script>
 </body>
 </html>

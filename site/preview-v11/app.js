@@ -171,6 +171,7 @@ function waLink(text){ return `https://wa.me/${SOS_WHATSAPP}?text=${encodeURICom
 
 function showOnly(view){
   ['hubHome','authHub','clientHub','riderLogin','riderHub'].forEach(id => $(id).classList.toggle('hidden', id!==view));
+  $('clientBottomNav').classList.toggle('hidden',view!=='clientHub');
   window.scrollTo({top:0,behavior:'instant'});
 }
 function openHome(){
