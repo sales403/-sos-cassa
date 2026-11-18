@@ -1,9 +1,10 @@
-const CACHE='sos-rider-v11-20261118-shift-deliveries-11512';
+const CACHE='sos-rider-v11-20261118-euro-cash-pad-11513';
+const CASH_NOTES=[5,10,20,50,100,200,500].map(amount=>'./cash-notes/'+amount+'.jpg');
 const ASSETS=['./','./index.html','./styles.css','./app.js','./config.js','./manifest.webmanifest','./icon-192.png','./icon-512.png','./logo-sos-rider.png','./rider-banner-v2-live.png','./icons.svg'];
 
 self.addEventListener('install',e=>{
   self.skipWaiting();
-  e.waitUntil(caches.open(CACHE).then(c=>c.addAll(ASSETS)));
+  e.waitUntil(caches.open(CACHE).then(c=>c.addAll([...ASSETS,...CASH_NOTES])));
 });
 
 self.addEventListener('activate',e=>{

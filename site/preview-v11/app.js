@@ -1,7 +1,7 @@
 (() => {
 'use strict';
 
-const APP_VERSION = '11.5.11-rider-balances';
+const APP_VERSION = '11.5.13-euro-cash-pad';
 const KEY = 'sosRiderUnifiedV10';
 const V9_KEY = 'sosRiderUnifiedV9';
 const OLD_KEY = 'sosRiderGestV7';
@@ -55,7 +55,6 @@ let alarmActiveCode = null;
 let alarmEnabled = localStorage.getItem('sosRiderAlarmEnabledV10') === '1';
 let alarmUiText = '';
 let lastRemoteNewCodes = new Set();
-let cashStacks = {};
 let riderGeoWatchId = null;
 let riderLocation = null;
 let serverRiderLocation = null;
@@ -1207,7 +1206,7 @@ function editCurrentFund(){
   const available=currentFundAvailable();
   openModal('Modifica fondo resto',`<p class="muted">Imposta quanto contante hai davvero disponibile adesso per dare il resto.</p><label>Fondo resto disponibile<input id="mAvailableFund" type="number" min="0" step="0.01" value="${available.toFixed(2)}"></label><div class="notice yellow" style="margin-top:8px">Il sistema aggiornerà il fondo iniziale in modo da mantenere corretti i resti già anticipati nel turno.</div>`,[
     {label:'ANNULLA',cls:'ghost'},
-    {label:'SALVA FONDO',cls:'primary',keep:true,fn:()=>{const desired=num($('mAvailableFund').value);s.fundStart=roundHalf(desired+num(cash.change));saveState();closeModal();renderDeliveries();}}
+    {label:'SALVA FONDO',cls:'primary',keep:true,fn:()=>{const desired=num($('mAvailableFund').value);s.fundStart=(cents(desired)+cents(cash.change))/100;saveState();closeModal();renderDeliveries();}}
   ]);
 }
 function editInitialFund(){
@@ -1217,7 +1216,7 @@ function editInitialFund(){
     {label:'CONFERMA E MODIFICA',cls:'primary',keep:true,fn:()=>{
       openModal('Nuovo fondo iniziale',`<p class="muted">Inserisci il nuovo importo iniziale del turno.</p><label>Fondo iniziale<input id="mInitialFund" type="number" min="0" step="0.01" value="${num(s.fundStart).toFixed(2)}"></label>`,[
         {label:'ANNULLA',cls:'ghost'},
-        {label:'SALVA IMPORTO',cls:'primary',keep:true,fn:()=>{s.fundStart=roundHalf(num($('mInitialFund').value));saveState();closeModal();renderDeliveries();}}
+        {label:'SALVA IMPORTO',cls:'primary',keep:true,fn:()=>{s.fundStart=cents($('mInitialFund').value)/100;saveState();closeModal();renderDeliveries();}}
       ]);
     }}
   ]);
@@ -1228,50 +1227,79 @@ function renderDeliveries(){
   $('statFund').textContent=money(s.fundStart);$('statAvailable').textContent=money(Math.max(0,s.fundStart-cash.change));$('statUnsorted').textContent=money(cash.unsorted);$('statDue').textContent=money(cash.due);$('statFees').textContent=money(delivered.reduce((a,o)=>a+num(o.fee),0));$('shiftName').textContent=s.name;$('shiftMeta').textContent=`Iniziato ${fmtDateTime(s.startAt)} · ${orders.length} consegne registrate`;
   const active=orders.filter(o=>!['delivered','cancelled'].includes(o.status)&&o.outcome!=='cancelled');$('activeCount').textContent=active.length;$('activeOrders').innerHTML=active.length?active.slice().reverse().map(orderCard).join(''):'<p class="muted">Nessuna consegna attiva.</p>';
 }
+const cashNotes=[500,1000,2000,5000,10000,20000,50000];
+const cashCoins=[1,2,5,10,20,50,100,200];
+const cashTags=new Set([...cashNotes,...cashCoins]);
+const cashTagLabel=value=>value<100?value+' ¢':value/100+' €';
+
+function cashPaymentAmounts(order,available){
+  const received=cents(order.received),total=cents(order.total);
+  const fund=cents(available),change=Math.max(0,received-total);
+  return {received,missing:Math.max(0,total-received),change,fund,after:Math.max(0,fund-change),shortfall:Math.max(0,change-fund)};
+}
+function applyCashInput(order,action,value){
+  const taps=Array.isArray(order.cashDenominations)?order.cashDenominations:[];
+  let received=cents(order.received);
+  if(action==='add'&&cashTags.has(value)){
+    order.cashDenominations=[...taps,value];
+    received+=value;
+  }else if(action==='undo'&&taps.length){
+    order.cashDenominations=taps.slice(0,-1);
+    received=Math.max(0,received-taps.at(-1));
+  }else if(action==='exact'||action==='reset'||action==='manual'){
+    order.cashDenominations=[];
+    received=action==='exact'?cents(order.total):action==='manual'?cents(value):0;
+  }else{
+    return false;
+  }
+  order.received=received/100;
+  order.change=Math.max(0,received-cents(order.total))/100;
+  return true;
+}
+function cashSummary(o){
+  const amounts=cashPaymentAmounts(o,currentFundAvailable());
+  const counts=new Map();
+  const taps=Array.isArray(o.cashDenominations)?o.cashDenominations:[];
+  for(const value of taps)counts.set(value,(counts.get(value)||0)+1);
+  const stack=[...counts].map(([value,count])=>cashTagLabel(value)+' × '+count).join(' · ');
+  const difference=amounts.missing?`<div class="change-box cash-change missing"><small>MANCANO</small><b>${money(amounts.missing/100)}</b></div>`
+    :`<div class="change-box cash-change"><small>RESTO DA DARE</small><b>${money(amounts.change/100)}</b></div>`;
+  const fundMessage=amounts.shortfall?`<div class="cash-warning">Fondo resto insufficiente di <b>${money(amounts.shortfall/100)}</b></div>`
+    :amounts.change?`<div class="cash-after">Fondo dopo il resto <b>${money(amounts.after/100)}</b></div>`:'';
+  return `<div class="cash-total-box"><small>RICEVUTO</small><b>${money(amounts.received/100)}</b>${stack?`<div class="cash-stack">${stack}</div>`:''}</div>${difference}${fundMessage}`;
+}
 function cashPanel(o){
-  const rec=num(o.received);
-  const missing=Math.max(0,(cents(o.total)-cents(rec))/100);
-  const change=rec>=o.total?(cents(rec)-cents(o.total))/100:0;
-  const fund=currentFundAvailable();
-  const fundAfter=Math.max(0,cents(fund)-cents(change))/100;
-  const stack=cashStacks[o.id]||[];
-  const counts={}; stack.forEach(v=>counts[v]=(counts[v]||0)+1);
-  const stackText=Object.entries(counts).map(([v,n])=>`€${v} × ${n}`).join(' · ');
-  const deltaBox=missing>0
-    ? `<div class="change-box cash-change missing"><small>MANCANO AL PAGAMENTO</small><b>${money(missing)}</b></div>`
-    : `<div class="change-box cash-change"><small>RESTO DA DARE</small><b>${money(change)}</b></div>`;
-  const fundWarning=change>fund
-    ? `<div class="cash-warning">${icon('warning','mini-inline-icon')} Fondo resto insufficiente di <b>${money(change-fund)}</b></div>`
-    : change>0
-      ? `<div class="cash-after">Dopo il resto ti rimangono <b>${money(fundAfter)}</b> nel fondo.</div>`
-      : `<div class="cash-after">Fondo disponibile per eventuale resto.</div>`;
+  const button=(value,isNote)=>`<button class="cash-tag ${isNote?'cash-tag-note':'cash-tag-coin'}" type="button" data-cash-action="add" data-order-id="${o.id}" data-cents="${value}" aria-label="Aggiungi ${value<100?value+(value===1?' centesimo':' centesimi'):value/100+' euro'}">
+      ${isNote?`<img src="cash-notes/${value/100}.jpg" alt="" draggable="false">`:`<span class="cash-coin-face" aria-hidden="true"><b>${cashTagLabel(value)}</b></span>`}
+      ${isNote?`<b class="cash-note-value">${cashTagLabel(value)}</b>`:''}
+    </button>`;
   return `<div class="cash-panel">
-    <div class="cash-note"><b>${icon('cash','mini-inline-icon')} CASSA ALLA PORTA</b><br>Tocca le banconote che il cliente ti dà oppure inserisci l'importo manualmente.</div>
-
-    <button type="button" class="fund-rest-box" data-cash-action="editfund" data-order-id="${o.id}">
-      <small>FONDO RESTO DISPONIBILE · TOCCA PER MODIFICARE</small>
-      <b>${money(fund)}</b>
-      ${fundWarning}
-    </button>
-
-    <div class="cash-total-box"><small>CLIENTE TI DÀ</small><b>${money(rec)}</b><div class="cash-stack">${stackText||'Nessuna banconota selezionata'}</div></div>
-    ${deltaBox}
-
-    <div class="quick-cash">
-      <button class="btn ghost cash-exact" data-cash-action="exact" data-order-id="${o.id}">PRECISO ${money(o.total)}</button>
-      <button class="btn ghost" data-cash-action="add" data-value="5" data-order-id="${o.id}">+ €5</button>
-      <button class="btn ghost" data-cash-action="add" data-value="10" data-order-id="${o.id}">+ €10</button>
-      <button class="btn ghost" data-cash-action="add" data-value="20" data-order-id="${o.id}">+ €20</button>
-      <button class="btn ghost" data-cash-action="add" data-value="50" data-order-id="${o.id}">+ €50</button>
-      <button class="btn ghost" data-cash-action="add" data-value="100" data-order-id="${o.id}">+ €100</button>
-      <button class="btn ghost" data-cash-action="undo" data-order-id="${o.id}">↶ ULTIMA</button>
-      <button class="btn ghost" data-cash-action="reset" data-order-id="${o.id}">AZZERA</button>
+    <div class="cash-note">${icon('cash','mini-inline-icon')} <b>CASSA ALLA PORTA</b> · ${money(o.total)} da incassare</div>
+    <button type="button" class="fund-rest-box" data-cash-action="editfund" data-order-id="${o.id}"><small>FONDO RESTO DISPONIBILE · TOCCA PER MODIFICARE</small><b>${money(currentFundAvailable())}</b></button>
+    <div data-cash-summary role="status" aria-live="polite" aria-atomic="true">${cashSummary(o)}</div>
+    <div class="cash-keypad">
+      <div class="cash-keypad-heading">Banconote</div>
+      <div class="cash-note-grid">${cashNotes.filter(value=>value!==50000).map(value=>button(value,true)).join('')}</div>
+      <div class="cash-keypad-heading">Monete</div>
+      <div class="cash-coin-grid">${cashCoins.map(value=>button(value,false)).join('')}</div>
+      <div class="quick-cash cash-keypad-actions">
+        <button class="btn ghost cash-exact" type="button" data-cash-action="exact" data-order-id="${o.id}">PRECISO ${money(o.total)}</button>
+        <button class="btn ghost" type="button" data-cash-action="undo" data-order-id="${o.id}" ${o.cashDenominations?.length?'':'disabled'}>↶ ANNULLA ULTIMO</button>
+        <button class="btn ghost" type="button" data-cash-action="reset" data-order-id="${o.id}" ${cents(o.received)?'':'disabled'}>AZZERA</button>
+      </div>
+      <details class="cash-other"><summary>500 € o inserimento manuale</summary>
+        <div class="cash-note-grid">${button(50000,true)}</div>
+        <label class="cash-manual">Importo ricevuto<input data-received="${o.id}" type="number" inputmode="decimal" min="0" step="0.01" value="${cents(o.received)?(cents(o.received)/100).toFixed(2):''}" placeholder="0,00"></label>
+      </details>
+      <small class="cash-image-credit">Banconote: © BCE · esemplari</small>
     </div>
-
-    <label class="cash-manual">Oppure importo ricevuto manuale
-      <input data-received="${o.id}" type="number" inputmode="decimal" min="0" step="0.01" value="${rec||''}" placeholder="Importo ricevuto">
-    </label>
   </div>`;
+}
+function refreshCashInput(panel,order,syncInput){
+  panel.querySelector('[data-cash-summary]').innerHTML=cashSummary(order);
+  panel.querySelector('[data-cash-action="undo"]').disabled=!order.cashDenominations?.length;
+  panel.querySelector('[data-cash-action="reset"]').disabled=!cents(order.received);
+  if(syncInput)panel.querySelector('[data-received]').value=cents(order.received)?order.received.toFixed(2):'';
 }
 function riderEtaMarkup(eta,status){
   if(!eta)return'';
@@ -1306,7 +1334,7 @@ async function orderAction(id,action){
   else if(action==='arrived'){o.status='arrived';o.arrivedAt=nowIso();}
   else if(action==='delivered'){
     if(o.payment==='cash'){
-      o.received=num(o.received);if(o.received<o.total){alert(`Inserisci almeno ${money(o.total)} ricevuti dal cliente.`);return;}o.change=Math.max(0,cents(o.received)-cents(o.total))/100;
+      o.received=cents(o.received)/100;if(cents(o.received)<cents(o.total)){alert(`Inserisci almeno ${money(o.total)} ricevuti dal cliente.`);return;}o.change=Math.max(0,cents(o.received)-cents(o.total))/100;
     }
     o.status='delivered';o.deliveredAt=nowIso();o.outcome=o.outcome||'success';
   } else if(action==='cancel'){
@@ -1590,7 +1618,6 @@ function deleteRiderLocalHistory(id){
   if(riderUnsettledCash(order)){alert('Prima sistema i contanti e salda il locale: non possiamo cancellare un incasso da rendere.');return;}
   if(!confirm('Eliminare '+String(order.code||'questa consegna')+' dallo storico e dalle analisi di QUESTO DISPOSITIVO? Sul server D1 non verrà cancellato nulla.'))return;
   state.orders=state.orders.filter(o=>o.id!==id);
-  delete cashStacks[id];
   saveState();renderRiderAll();
 }
 function resetRiderLocalRecords(){
@@ -1601,7 +1628,7 @@ function resetRiderLocalRecords(){
   if(prompt('AZZERAMENTO SOLO LOCALE. Verrà scaricato un backup e poi eliminati turni, ordini e importi registrati su questo telefono. Sul database Cloudflare D1 non cambia niente. Per confermare digita AZZERA:')!=='AZZERA')return;
   const archive={exportedAt:nowIso(),version:APP_VERSION,shifts:state.shifts,orders:state.orders};
   download('sos-rider-backup-locale-'+new Date().toISOString().slice(0,10)+'.json',JSON.stringify(archive,null,2),'application/json');
-  state.orders=[];state.shifts=[];state.currentShiftId=null;cashStacks={};
+  state.orders=[];state.shifts=[];state.currentShiftId=null;
   saveState();renderRiderAll();
   alert('Storico, turni e analisi locali azzerati. Backup scaricato. I dati online D1 sono rimasti invariati.');
 }
@@ -1732,15 +1759,22 @@ function bindEvents(){
       const o=state.orders.find(x=>x.id===cashBtn.dataset.orderId);if(!o)return;
       const action=cashBtn.dataset.cashAction;
       if(action==='editfund'){editCurrentFund();return;}
-      if(action==='exact'){cashStacks[o.id]=[];o.received=num(o.total);o.change=0;}
-      else if(action==='add'){cashStacks[o.id]=cashStacks[o.id]||[];cashStacks[o.id].push(num(cashBtn.dataset.value));o.received=cashStacks[o.id].reduce((a,v)=>a+v,0);o.change=o.received>=o.total?(cents(o.received)-cents(o.total))/100:0;}
-      else if(action==='undo'){cashStacks[o.id]=cashStacks[o.id]||[];cashStacks[o.id].pop();o.received=cashStacks[o.id].reduce((a,v)=>a+v,0);o.change=o.received>=o.total?(cents(o.received)-cents(o.total))/100:0;}
-      else if(action==='reset'){cashStacks[o.id]=[];o.received=0;o.change=0;}
-      saveState();renderDeliveries();return;
+      if(o.status!=='arrived'||o.payment!=='cash')return;
+      if(applyCashInput(o,action,Number(cashBtn.dataset.cents))){
+        saveState();
+        refreshCashInput(cashBtn.closest('.cash-panel'),o,true);
+      }
+      return;
     }
     const b=e.target.closest('[data-order-action]');if(b)orderAction(b.dataset.orderId,b.dataset.orderAction);
   });
-  $('activeOrders').addEventListener('input',e=>{const i=e.target.closest('[data-received]');if(!i)return;const o=state.orders.find(x=>x.id===i.dataset.received);if(!o)return;cashStacks[o.id]=[];o.received=num(i.value);o.change=o.received>=o.total?(cents(o.received)-cents(o.total))/100:0;saveState();const b=i.closest('.order-card')?.querySelector('.change-box b');if(b)b.textContent=money(o.change)});
+  $('activeOrders').addEventListener('input',e=>{
+    const input=e.target.closest('[data-received]');if(!input)return;
+    const order=state.orders.find(o=>o.id===input.dataset.received);
+    if(!order||order.status!=='arrived'||order.payment!=='cash')return;
+    applyCashInput(order,'manual',input.value);
+    saveState();refreshCashInput(input.closest('.cash-panel'),order,false);
+  });
   $('restaurantCash').addEventListener('click',e=>{const a=e.target.closest('[data-sort-cash]');if(a)return sortCashForRestaurant(a.dataset.sortCash);const t=e.target.closest('[data-settle]');if(t)return settleRestaurant(t.dataset.settle)});
   $('historySearch').addEventListener('input',renderHistory);
   $('historyList').addEventListener('click',e=>{const f=e.target.closest('[data-record-rider-fee]');if(f)return editMissingRiderFee(f.dataset.recordRiderFee);const b=e.target.closest('[data-delete-local-order]');if(b)deleteRiderLocalHistory(b.dataset.deleteLocalOrder);});

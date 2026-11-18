@@ -658,3 +658,24 @@ html[data-theme="day"] #riderAvailabilityControl .operator-toggle .btn:not(.is-s
 .shift-deliveries-list-heading h3{margin:0;font-size:15px}
 .shift-deliveries #activeOrders>.order-card{padding-inline:0;border:0;background:transparent;border-radius:0}
 .shift-deliveries #activeOrders>.order-card+.order-card{border-top:1px solid var(--line2)}
+
+.cash-keypad{margin-top:12px}
+.cash-keypad-heading{margin:13px 0 6px;font-size:13px;font-weight:800;color:inherit}
+.cash-note-grid,.cash-coin-grid{display:grid;gap:7px}
+.cash-note-grid{grid-template-columns:repeat(3,minmax(0,1fr))}
+.cash-coin-grid{grid-template-columns:repeat(4,minmax(0,1fr))}
+.cash-tag{display:grid;place-items:center;min-width:0;min-height:46px;padding:3px;border:1px solid var(--line2);border-radius:9px;background:transparent;color:inherit;font:inherit;touch-action:manipulation}
+.cash-tag:active{border-color:#c89800;background:#ffcf2720;transform:scale(.96)}
+.cash-tag:focus-visible{outline:2px solid #ffcb2c;outline-offset:2px}
+.cash-tag-note img{display:block;width:100%;aspect-ratio:2/1;object-fit:contain;border-radius:5px;pointer-events:none}
+.cash-note-value{font-size:14px;line-height:1.25}
+.cash-coin-face{display:grid;place-items:center;width:44px;height:44px;max-width:100%;border:2px solid #714526;border-radius:50%;color:#221404;background:radial-gradient(circle at 34% 28%,#f7c9a5,#bf805a 72%);box-shadow:inset 0 0 0 2px #fff3}
+.cash-coin-face b{font-size:13px;white-space:nowrap}
+.cash-tag-coin:is([data-cents="10"],[data-cents="20"],[data-cents="50"]) .cash-coin-face{border-color:#856620;background:radial-gradient(circle at 34% 27%,#fff1aa,#c29838 76%)}
+.cash-tag-coin[data-cents="100"] .cash-coin-face{border-color:#91712c;background:radial-gradient(circle,#e6e8e8 58%,#d4aa54 62%)}
+.cash-tag-coin[data-cents="200"] .cash-coin-face{border-color:#737878;background:radial-gradient(circle,#f1d27b 58%,#c5cbcf 62%)}
+.cash-keypad .cash-keypad-actions{grid-template-columns:repeat(2,minmax(0,1fr))}
+.cash-keypad .cash-keypad-actions button:disabled{opacity:.45}
+.cash-other{margin-top:10px;font-size:12px}
+.cash-other summary{cursor:pointer;min-height:29px}
+.cash-image-credit{display:block;margin-top:8px;font-size:9px;opacity:.75}
