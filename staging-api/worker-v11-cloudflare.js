@@ -1,4 +1,4 @@
-const VERSION = 'SOS Rider API 11.4.1-pricing-4band-staging';
+const VERSION = 'SOS Rider API 11.4.2-client-push-staging';
 const V11_BATCH_FEATURE = true;
 const WEATHER_FEE_EUR = 3;
 let batchSchemaReady = false;
@@ -57,7 +57,8 @@ export default {
             partnerPages: !!env.DB,
             batch: !!env.DB,
             weatherAdverse: !!env.DB,
-            push: !!(env.DB && env.VAPID_PRIVATE_JWK)
+            push: !!(env.DB && env.VAPID_PRIVATE_JWK),
+            clientPush: !!(env.DB && env.VAPID_PRIVATE_JWK)
           }
         }, 200, cors);
       }
@@ -232,6 +233,12 @@ export default {
         return await getRiderRequestShare(riderShareMatch[1], env, cors);
       }
 
+      if (url.pathname === '/api/client/push/subscribe' && request.method === 'POST') {
+        requireDb(env); return await subscribeClientPush(request,env,cors);
+      }
+      if (url.pathname === '/api/client/push/status' && request.method === 'POST') {
+        requireDb(env); return await getClientPushStatus(request,env,cors);
+      }
       if (url.pathname === '/api/rider/push/subscribe' && request.method === 'POST') {
         requireDb(env);
         const a = await requireRole(request, env, 'rider');
@@ -249,14 +256,14 @@ export default {
       if (riderBatchMatch && request.method === 'PATCH') {
         requireDb(env);
         await requireRole(request, env, 'rider');
-        return await updateRiderBatch(riderBatchMatch[1], request, env, cors);
+        return await updateRiderBatch(riderBatchMatch[1], request, env, cors, ctx);
       }
 
       const riderMatch = url.pathname.match(/^\/api\/rider\/requests\/([^/]+)$/);
       if (riderMatch && request.method === 'PATCH') {
         requireDb(env);
         await requireRole(request, env, 'rider');
-        return await updateRiderRequest(riderMatch[1], request, env, cors);
+        return await updateRiderRequest(riderMatch[1], request, env, cors, ctx);
       }
 
       return json({ error: 'Not found' }, 404, cors);
@@ -270,7 +277,8 @@ export default {
         detail: status === 500 ? String(e.message || e) : undefined
       }, status, cors);
     }
-  }
+  },
+  async scheduled(event,env,ctx){ctx.waitUntil(sendClientLocationUpdates(env).catch(e=>console.warn('Client GPS push',e)));}
 };
 
 function corsHeaders(origin, env) {
@@ -1294,7 +1302,7 @@ async function getGuestBatch(batchId, url, env, cors) {
   return json({ ok: true, ...data, events }, 200, cors);
 }
 
-async function updateRiderBatch(batchId, request, env, cors) {
+async function updateRiderBatch(batchId, request, env, cors, ctx) {
   await ensureBatchSchema(env);
   const p = await request.json().catch(() => fail('JSON non valido'));
   const status = cleanText(p.status, 20);
@@ -1325,6 +1333,7 @@ async function updateRiderBatch(batchId, request, env, cors) {
   }
   await syncBatchStatus(env, batchId);
   for (const r of rows) await safeLogEvent(env, r.code, 'batch_status_changed', r.status, status, 'rider', { batchId });
+  if(ctx?.waitUntil)ctx.waitUntil(Promise.allSettled(rows.filter(r=>r.status!==status).map(r=>sendClientStatusPush(env,r.code,status))));
   return json({ ok: true, ...(await getBatchPayload(env, batchId, false)) }, 200, cors);
 }
 
@@ -2240,6 +2249,97 @@ async function sendPushToAll(env) {
   return { sent, failed };
 }
 
+
+const CLIENT_PUSH_LABELS={accepted:'Marcello ha accettato la richiesta.',picked:'Ordine ritirato, rider in consegna.',arrived:'Il rider è arrivato dal cliente.',delivered:'Consegna completata.',rejected:'Richiesta non accettata.',cancelled:'Richiesta annullata.'};
+async function ensureClientPushSchema(env){
+  await env.DB.prepare("CREATE TABLE IF NOT EXISTS client_push_subscriptions(code TEXT NOT NULL,endpoint TEXT NOT NULL,p256dh TEXT NOT NULL,auth TEXT NOT NULL,created_at TEXT NOT NULL,updated_at TEXT NOT NULL,last_location_sent_at TEXT NOT NULL,PRIMARY KEY(code,endpoint))").run();
+  await env.DB.prepare("CREATE INDEX IF NOT EXISTS idx_client_push_code ON client_push_subscriptions(code)").run();
+}
+async function authorizedClientPushOrders(env,p){
+  const token=String(p.token||'');
+  if(token.length<15)fail('Token ordine richiesto',403);
+  if(p.batchId){
+    const b=await getBatchRows(env,cleanText(p.batchId,80));
+    if(!b.batch||b.batch.client_token!==token)fail('Giro non autorizzato',403);
+    return b.rows.map(x=>x.code);
+  }
+  const code=cleanText(p.code,60),row=await getByCode(env,code);
+  if(!row||row.client_token!==token)fail('Ordine non autorizzato',403);
+  return [code];
+}
+async function subscribeClientPush(req,env,cors){
+  if(!env.VAPID_PRIVATE_JWK)fail('Web Push non configurata',503);
+  const p=await req.json().catch(()=>fail('JSON non valido'));
+  const codes=await authorizedClientPushOrders(env,p),s=p.subscription||{},
+    ep=cleanText(s.endpoint,1500),pub=cleanText(s.keys?.p256dh,180),auth=cleanText(s.keys?.auth,180);
+  if(!/^https:\/\//.test(ep)||!pub||!auth)fail('Subscription non valida');
+  await ensureClientPushSchema(env);const now=new Date().toISOString();
+  for(const code of codes){
+    const count=await env.DB.prepare("SELECT COUNT(*) AS n FROM client_push_subscriptions WHERE code=?").bind(code).first();
+    const exist=await env.DB.prepare("SELECT 1 AS yes FROM client_push_subscriptions WHERE code=? AND endpoint=?").bind(code,ep).first();
+    if(Number(count?.n)>=10&&!exist)fail('Troppi dispositivi per ordine',429);
+    await env.DB.prepare("INSERT INTO client_push_subscriptions(code,endpoint,p256dh,auth,created_at,updated_at,last_location_sent_at) VALUES(?,?,?,?,?,?,?) ON CONFLICT(code,endpoint) DO UPDATE SET p256dh=excluded.p256dh,auth=excluded.auth,updated_at=excluded.updated_at")
+      .bind(code,ep,pub,auth,now,now,now).run();
+  }
+  return json({ok:true,push:true,orders:codes.length},200,cors);
+}
+async function getClientPushStatus(req,env,cors){
+  const p=await req.json().catch(()=>fail('JSON non valido'));
+  const codes=await authorizedClientPushOrders(env,p);
+  await ensureClientPushSchema(env);
+  const ep=cleanText(p.endpoint,1500);
+  const r=await env.DB.prepare("SELECT COUNT(*) AS n FROM client_push_subscriptions WHERE endpoint=? AND code IN ("+codes.map(()=>'?').join(',')+")").bind(ep,...codes).first();
+  return json({ok:true,registered:Number(r?.n)===codes.length},200,cors);
+}
+const pb=s=>new TextEncoder().encode(s);
+const pc=(...a)=>{const o=new Uint8Array(a.reduce((n,x)=>n+x.length,0));let i=0;for(const x of a){o.set(x,i);i+=x.length}return o};
+const pdec=s=>{const v=String(s||'').replace(/-/g,'+').replace(/_/g,'/');return Uint8Array.from(atob(v+'='.repeat((4-v.length%4)%4)),c=>c.charCodeAt(0))};
+async function phkdf(v,salt,info,n){const k=await crypto.subtle.importKey('raw',v,'HKDF',false,['deriveBits']);return new Uint8Array(await crypto.subtle.deriveBits({name:'HKDF',hash:'SHA-256',salt,info},k,n*8))}
+async function encryptPushForClient(data,p256dh,auth){
+  const up=pdec(p256dh),ua=pdec(auth);if(up.length!==65||ua.length<12)throw Error('Push client key invalid');
+  const ep=await crypto.subtle.generateKey({name:'ECDH',namedCurve:'P-256'},true,['deriveBits']);
+  const uk=await crypto.subtle.importKey('raw',up,{name:'ECDH',namedCurve:'P-256'},false,[]);
+  const sp=new Uint8Array(await crypto.subtle.exportKey('raw',ep.publicKey));
+  const shared=new Uint8Array(await crypto.subtle.deriveBits({name:'ECDH',public:uk},ep.privateKey,256));
+  const ikm=await phkdf(shared,ua,pc(pb('WebPush: info\0'),up,sp),32);
+  const salt=crypto.getRandomValues(new Uint8Array(16));
+  const cek=await phkdf(ikm,salt,pb('Content-Encoding: aes128gcm\0'),16);
+  const nonce=await phkdf(ikm,salt,pb('Content-Encoding: nonce\0'),12);
+  const key=await crypto.subtle.importKey('raw',cek,'AES-GCM',false,['encrypt']);
+  const ciphertext=new Uint8Array(await crypto.subtle.encrypt({name:'AES-GCM',iv:nonce},key,pc(pb(JSON.stringify(data)),new Uint8Array([2]))));
+  return pc(salt,new Uint8Array([0,0,16,0,sp.length]),sp,ciphertext);
+}
+async function sendClientPushRow(env,row,data){
+  const headers=await vapidHeaders(row.endpoint,env),body=await encryptPushForClient(data,row.p256dh,row.auth);
+  const r=await fetch(row.endpoint,{method:'POST',headers:{...headers,'Content-Encoding':'aes128gcm','Content-Type':'application/octet-stream',TTL:'300'},body});
+  if([404,410].includes(r.status))await env.DB.prepare('DELETE FROM client_push_subscriptions WHERE code=? AND endpoint=?').bind(row.code,row.endpoint).run();
+  return r.ok;
+}
+async function sendClientStatusPush(env,code,status){
+  if(!CLIENT_PUSH_LABELS[status]||!env.VAPID_PRIVATE_JWK)return 0;
+  await ensureClientPushSchema(env);
+  const q=await env.DB.prepare('SELECT * FROM client_push_subscriptions WHERE code=? LIMIT 10').bind(code).all();
+  const results=await Promise.allSettled((q.results||[]).map(r=>sendClientPushRow(env,r,{
+    title:'SOS Rider · Aggiornamento',body:CLIENT_PUSH_LABELS[status],tag:'sos-client-'+code+'-'+status,url:'./?hub=client'})));
+  return results.filter(x=>x.status==='fulfilled'&&x.value).length;
+}
+async function sendClientLocationUpdates(env){
+  if(!env.DB||!env.VAPID_PRIVATE_JWK)return 0;
+  const loc=await getRiderLocation(env),presence=await ensurePresence(env);
+  if(!loc?.fresh||(loc.accuracyM&&loc.accuracyM>150)||!Number(presence?.enabled))return 0;
+  await ensureClientPushSchema(env);
+  const q=await env.DB.prepare("SELECT s.* FROM client_push_subscriptions s JOIN requests r ON r.code=s.code WHERE r.status IN ('accepted','picked','arrived') AND datetime(s.last_location_sent_at)<=datetime('now','-8 minutes') LIMIT 50").all();
+  let sent=0;
+  for(const row of(q.results||[])){
+    try{
+      const ok=await sendClientPushRow(env,row,{title:'SOS Rider · Posizione',body:'Il rider è in viaggio: apri il tracking per vedere il GPS aggiornato.',tag:'sos-client-gps-'+row.code,url:'./?hub=client'});
+      if(ok){sent++;await env.DB.prepare('UPDATE client_push_subscriptions SET last_location_sent_at=? WHERE code=? AND endpoint=?').bind(new Date().toISOString(),row.code,row.endpoint).run()}
+    }catch(e){console.warn('Client GPS push failed',e)}
+  }
+  await env.DB.prepare("DELETE FROM client_push_subscriptions WHERE updated_at < datetime('now','-30 day')").run();
+  return sent;
+}
+
 // ---------- Richieste ----------
 
 function makeCode() {
@@ -2835,7 +2935,7 @@ const TRANSITIONS = {
   cancelled: new Set()
 };
 
-async function updateRiderRequest(code, request, env, cors) {
+async function updateRiderRequest(code, request, env, cors, ctx) {
   const p = await request.json().catch(() => fail('JSON non valido'));
 
   const status = cleanText(
@@ -2904,6 +3004,7 @@ async function updateRiderRequest(code, request, env, cors) {
   await safeLogEvent(env, code, 'status_changed', row.status, status, 'rider', { rejectionReason: reason || '' });
   await syncBatchStatusForCode(env, code);
   const updatedRow = await getByCode(env, code);
+  if(ctx?.waitUntil)ctx.waitUntil(sendClientStatusPush(env,code,status).catch(e=>console.warn('Client push',e)));
   const etaState = await buildEtaState(env);
   return json({
     ok: true,
