@@ -536,209 +536,159 @@ body{padding-top:24px}
 .password-toggle.is-visible .password-eye-open{display:none}
 .password-toggle.is-visible .password-eye-off{display:block}
 
+/* SOS RIDER V11.5 — Cliente veloce: quattro schede, CTA fissa, account compatto */
+#clientHub{padding-bottom:calc(104px + env(safe-area-inset-bottom))}
+#clientAvailability{margin:8px 0 18px}
+#clientAccountCard,#clientGuestCard{margin:0 0 16px}
+#clientHub .client-account-strip{display:flex;flex-direction:row;align-items:center;gap:12px;padding:12px 14px}
+.client-account-identity{flex:1;min-width:0}
+#clientHub #clientAccountName{font-size:clamp(21px,4vw,27px);line-height:1.15;font-weight:1000;letter-spacing:-.02em;overflow-wrap:anywhere;margin:5px 0}
+#clientHub .client-account-identity small{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:100%}
+#clientHub .account-actions{display:flex;flex:0 0 auto;align-items:center;justify-content:flex-end;flex-wrap:nowrap}
+#clientHub .account-actions .btn{min-width:64px}
+#clientHub .account-actions .hidden{display:none!important}
+.client-page{display:none}.client-page.active{display:block}
+.client-flow-head{display:flex;align-items:flex-end;justify-content:space-between;gap:10px;padding:6px 2px 13px}
+.client-flow-head h1{margin:4px 0 0;font-size:clamp(24px,5vw,32px);line-height:1.1}
+.client-flow-hint{color:var(--muted);font-size:10px;text-align:right;max-width:115px;line-height:1.3}
+.client-flow-steps{display:grid;grid-template-columns:repeat(3,1fr);gap:7px;margin:0 0 13px}
+.client-flow-steps span{border-bottom:4px solid var(--line2);color:var(--muted);font-size:10px;font-weight:900;padding:6px 2px 9px;text-align:center;white-space:nowrap}
+.client-flow-steps span.active{border-color:var(--yellow);color:var(--text)}
+.client-pickup-details{display:block;border:1px solid var(--line2);background:var(--surface,#111);border-radius:15px;padding:11px 12px}
+.client-pickup-details summary{display:flex;gap:8px;justify-content:space-between;align-items:center;cursor:pointer;list-style:none}
+.client-pickup-details summary::-webkit-details-marker{display:none}
+.client-pickup-details summary b{font-size:14px;display:block}
+.client-pickup-details summary small{font-size:11px;color:var(--muted);margin-top:4px;display:block;line-height:1.35;max-width:480px;overflow-wrap:anywhere}
+.client-change-hint{color:var(--yellow);font-size:10px;font-weight:900;white-space:nowrap}
+.client-pickup-details[open] .client-change-hint{font-size:0}
+.client-pickup-details[open] .client-change-hint::after{content:'CHIUDI ▴';font-size:10px}
+.client-pickup-fields{margin-top:13px;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.client-pickup-fields>.address-field{grid-column:1/-1}
+.client-pickup-fields label{min-width:0}
+.client-form-section-heading{border-top:1px solid var(--line);padding-top:14px}
+.client-form-section-heading b{display:block;font-size:15px}
+.client-form-section-heading small{display:block;color:var(--muted);font-size:11px;margin-top:3px}
+.client-floating-action{position:static;z-index:auto;width:100%;margin:12px 0 0;padding:0;text-align:center;background:transparent;border:0;box-shadow:none;backdrop-filter:none}
+.client-floating-action .btn{min-height:51px;margin-top:0}
+.client-floating-action small{display:block;color:var(--muted);font-size:10px;padding-top:4px}
+.client-bottom-nav{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:min(820px,100%);z-index:200}
+.client-list-hint{font-size:12px;color:var(--muted);margin:0 2px 14px}
+.client-list-stack{display:grid;gap:10px}
+.client-request-row{display:flex;gap:10px;justify-content:space-between;align-items:center;margin:0}
+.client-request-row div{min-width:0}
+.client-request-row b{display:block;font-size:14px;line-height:1.3}
+.client-request-row small{display:block;color:var(--muted);font-size:11px;line-height:1.4;margin-top:4px;overflow-wrap:anywhere}
+.client-empty{padding:18px;font-size:13px;color:var(--muted);line-height:1.5}
+.client-analytics-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px;margin-bottom:13px}
+.client-analytics-grid .stat-card{min-width:0}
+.client-analytics-grid .stat-card b{font-size:clamp(17px,4vw,24px);overflow-wrap:anywhere}
+.client-help{text-align:center;padding:18px 0 6px}
+.client-help a{color:var(--muted);font-size:12px;text-decoration:underline;text-underline-offset:3px}
+#clientPageHistory .client-recent{margin-bottom:9px}
+#clientPageHistory #clientRecentSection{margin-top:0}
+#clientHub .client-quote-success{color:var(--green)}
+@media(max-width:700px){
+  #clientHub .client-account-strip{align-items:center;flex-direction:row}
+  #clientHub .client-account-strip .account-actions{justify-content:flex-end}
+  #clientHub #clientAccountName{font-size:21px}
+  .client-pickup-fields{grid-template-columns:1fr}
+}
+@media(max-width:390px){
+  .client-flow-steps span{font-size:9px}
+  #clientHub #clientAccountName{font-size:19px}
+  #clientHub .client-account-strip{padding:10px}
+}
+html[data-theme="day"] .client-floating-action{background:rgba(244,245,246,.97)}
+html[data-theme="day"] .client-pickup-details{background:#fff}
 
-/* V11 client pickup availability preview */
-.pickup-availability{
-  margin:14px 0;
-  padding:14px 15px;
-  border:1px solid var(--line,#2f2f2f);
-  border-radius:16px;
-  display:flex;
-  gap:10px;
-  align-items:flex-start;
-}
-.pickup-availability b{
-  display:block;
-  font-weight:900;
-  margin-bottom:5px;
-}
-.pickup-availability small{
-  display:block;
-  line-height:1.35;
-  opacity:.9;
-}
-.pickup-availability small + small{
-  margin-top:4px;
-  opacity:.72;
-}
-.pickup-availability.green{
-  border-color:rgba(57,190,110,.55);
-  background:rgba(57,190,110,.08);
-}
-.pickup-availability.yellow{
-  border-color:rgba(255,208,0,.65);
-  background:rgba(255,208,0,.08);
-}
-.pickup-availability.red{
-  border-color:rgba(255,78,78,.65);
-  background:rgba(255,78,78,.08);
-}
-.pickup-availability.unknown{
-  border-color:rgba(160,160,160,.35);
-  background:rgba(160,160,160,.05);
-}
-.pickup-availability-icon{
-  font-size:22px;
-  line-height:1;
-}
+/* Un solo pulsante primario di calcolo: la barra fissa lo richiama. */
+#clientPageNew #clientCalcQuote{display:none}
 
+/* V11.5.1 · Home WhatsApp, history cleanup and analytics */
+.home-route-actions .home-whatsapp{grid-column:1/-1;min-height:53px;border:2px solid #27c96b;background:linear-gradient(120deg,#123c24,#075226);color:#edfff4;box-shadow:0 0 13px #15ae5950;letter-spacing:.03em}
+.home-route-actions .home-whatsapp:hover{filter:brightness(1.15)}
+html[data-theme="day"] .home-route-actions .home-whatsapp{background:#e4f9eb;border-color:#26ad5d;color:#12552c}
+.client-entry-actions{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}
+.client-remove-btn{border-color:#60504a!important;color:#e9b7b0!important}
+.client-period-tabs{margin:12px 0}
+.client-analytics-chart{padding-bottom:17px}
+.client-analytics-chart .chart{height:190px;max-width:100%;overflow-x:auto}
+.client-analytics-chart .bar-wrap{min-width:44px}
+.client-analytics-chart .bar-value{font-size:8px;white-space:nowrap}
+.client-analytics-chart .bar-label{white-space:nowrap}
+.archive-actions{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}
+.archive-entry-actions{display:flex;justify-content:flex-end;margin-top:9px}
+.archive-entry-actions .btn{border-color:#665049;color:#ffc8bd}
+#clientPageAnalytics .stat-card b{font-variant-numeric:tabular-nums}
+@media(max-width:390px){.archive-actions .btn{font-size:9px;padding:6px 8px}.client-entry-actions{flex-direction:column}.client-period-tabs .chip{font-size:9px}}
 
-/* V11 batch / multi-stop */
-.batch-add-wrap{margin-top:6px;padding:13px;border:1px dashed rgba(255,208,0,.55);border-radius:16px;background:rgba(255,208,0,.045)}
-.batch-add-wrap small{display:block;margin-top:7px;opacity:.72;line-height:1.35}.batch-add-btn{width:100%;border-color:rgba(255,208,0,.75)!important;color:var(--accent,#ffd000)!important;background:rgba(255,208,0,.08)!important;font-weight:900}
-.second-delivery-panel{padding:14px;border:1px solid rgba(255,208,0,.45);border-radius:18px;background:rgba(255,208,0,.04)}.second-delivery-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}.second-delivery-head b{font-size:1.05rem}.batch-route-preview{margin:12px 0;padding:13px;border:1px solid rgba(255,208,0,.42);border-radius:15px;background:rgba(255,208,0,.055)}.batch-route-preview>b{display:block;color:var(--accent,#ffd000);margin-bottom:8px}.batch-route-preview span{display:block;padding:6px 0;border-top:1px solid rgba(255,255,255,.07);font-size:.9rem}.batch-request,.batch-order{border-color:rgba(255,208,0,.6)!important}.batch-pickup,.batch-next-stop{display:flex;flex-direction:column;gap:4px;margin:10px 0;padding:12px;border-radius:13px;background:rgba(255,208,0,.07);border:1px solid rgba(255,208,0,.26)}.batch-pickup b,.batch-next-stop small{color:var(--accent,#ffd000);font-weight:900}.batch-stop-list{display:grid;gap:8px;margin:10px 0}.batch-stop-list>div{display:flex;flex-direction:column;gap:2px;padding:10px 11px;border-radius:12px;background:rgba(127,127,127,.08);border:1px solid rgba(127,127,127,.14)}.batch-stop-list small,.batch-stop-list span{opacity:.75}.batch-stop-list.compact>div{padding:7px 9px}.batch-stop-list .done{opacity:.55}.batch-status-stops{display:grid;gap:8px;margin-top:8px}.batch-status-stops>div{display:flex;flex-direction:column;gap:3px;padding:9px;border-radius:10px;background:rgba(127,127,127,.08)}
-
-
-/* V11.3 · Suggerimenti indirizzi in tempo reale nell'importatore WhatsApp.
-   Elenco nel flusso del modale, non sovrapposto né tagliato dall'overflow. */
-.modal .wa-import-address-field{min-width:0;position:relative}
-.modal .wa-import-suggestions{
-  position:relative;left:auto;right:auto;z-index:1;
-  margin-top:5px;max-height:224px;overflow:auto;
-  overscroll-behavior:contain;box-shadow:0 9px 20px rgba(0,0,0,.20)
+/* Stato operatore: un solo tasto evidenziato, coerente con la risposta del server. */
+#riderAvailabilityControl .operator-toggle .btn{
+  background:var(--surface2,#141414);color:var(--text);border:1px solid var(--line2);
+  box-shadow:none;transition:background .16s,border-color .16s,box-shadow .16s,color .16s;
 }
-.modal .wa-import-suggestions .suggestion{cursor:pointer}
-.modal .wa-import-suggestions .suggestion.is-active,
-.modal .wa-import-suggestions .suggestion:focus-visible{
-  outline:2px solid var(--yellow);outline-offset:-2px;
-  background:#403600
+#riderAvailabilityControl .operator-toggle .btn.is-selected{
+  background:#ffd000;color:#171300;border-color:#ffd000;
+  box-shadow:0 0 0 2px rgba(255,208,0,.20),0 0 16px rgba(255,208,0,.42);
 }
-.modal .wa-autocomplete-message{
-  padding:13px;font-size:12px;line-height:1.5;color:#dedede
+#riderAvailabilityControl .operator-toggle .btn.is-selected .status-led{
+  box-shadow:0 0 0 2px rgba(0,0,0,.16);
 }
-.modal .wa-address-feedback{
-  margin-top:6px;font-size:12px;line-height:1.45;color:#afafaf
+#riderAvailabilityControl .operator-toggle .btn:focus-visible{
+  outline:2px solid #ffd000;outline-offset:2px;
 }
-.modal .wa-civic-ack{
-  display:flex;align-items:flex-start;gap:9px;margin-top:7px;
-  padding:11px;border:1px solid #e5b333;border-radius:10px;
-  color:#f8d875;background:rgba(255,208,0,.10);font-size:12px;line-height:1.35
-}
-.modal .wa-civic-ack input{
-  flex:0 0 18px;width:18px;height:18px;min-height:18px;margin:1px 0 0;
-  accent-color:#ffd000
-}
-html[data-theme="day"] .modal .wa-autocomplete-message,
-html[data-theme="day"] .modal .wa-address-feedback{color:#5f6671}
-html[data-theme="day"] .modal .wa-civic-ack{
-  color:#5d4b00;background:#fff8dd;border-color:#d5b642
-}
-html[data-theme="day"] .modal .wa-import-suggestions .suggestion.is-active,
-html[data-theme="day"] .modal .wa-import-suggestions .suggestion:focus-visible{
-  background:#fff1ac;color:#17191c
-}
-
-/* V11.3 · Logout Rider sempre visibile nell'intestazione */
-.rider-topbar .rider-exit-btn{
-  width:auto;min-width:62px;height:44px;padding:0 12px;
-  font-size:12px;font-weight:900;letter-spacing:.045em;
-  color:var(--yellow);white-space:nowrap;line-height:1;
-}
-.rider-topbar .rider-exit-btn:focus-visible{
-  outline:3px solid var(--yellow);outline-offset:2px;
-}
-html[data-theme="day"] .rider-topbar .rider-exit-btn{
-  color:#493a00;background:#fff8e0;border-color:#d2b84b;
-}
-@media(max-width:460px){
-  .rider-topbar .top-actions{gap:4px;flex-shrink:0}
-  .rider-topbar .top-actions .icon-btn:not(.rider-exit-btn){width:35px;height:38px}
-  .rider-topbar .rider-exit-btn{min-width:48px;height:38px;padding:0 6px;font-size:11px}
-  .rider-topbar .compact-brand img{width:42px;height:42px}
-  .rider-topbar .compact-brand b{font-size:12px}
-  .rider-topbar .compact-brand small{font-size:9px}
+html[data-theme="day"] #riderAvailabilityControl .operator-toggle .btn:not(.is-selected){
+  background:#fff;color:#24272b;border-color:#cfd3d8;
 }
 
-/* V11.3.3 · Stato selezionato riconoscibile: DISPONIBILE/OFF, meteo AUTO/FORZA/NO.
-   Solo Area Rider: il colore segue il valore confermato dal server. */
-#riderAvailabilityControl .operator-toggle .btn[aria-pressed="true"],
-html[data-theme="day"] #riderAvailabilityControl .operator-toggle .btn[aria-pressed="true"]{
-  background:var(--yellow)!important;
-  border:1px solid var(--yellow)!important;
-  color:#111!important;
-  box-shadow:inset 0 0 0 1px rgba(0,0,0,.06);
-}
-#riderAvailabilityControl .operator-toggle .btn[aria-pressed="false"]{
-  background:var(--surface2,#141414)!important;
-  border:1px solid var(--line2)!important;
-  color:var(--text)!important;
-  box-shadow:none;
-}
-html[data-theme="day"] #riderAvailabilityControl .operator-toggle .btn[aria-pressed="false"]{
-  background:#fff!important;
-  border:1px solid #cfd3d8!important;
-  color:#24272b!important;
-}
-#riderAvailabilityControl .weather-mode-toggle .btn:disabled{
-  opacity:.55;cursor:not-allowed;
-}
-#riderAvailabilityControl .weather-mode-toggle{flex-wrap:wrap;justify-content:flex-end}
-@media(max-width:660px){
-  #riderAvailabilityControl .rider-gps-row:has(.weather-mode-toggle){
-    flex-wrap:wrap;align-items:flex-start;
-  }
-  #riderAvailabilityControl .weather-mode-toggle{
-    justify-content:flex-start;width:100%;gap:5px;
-  }
-  #riderAvailabilityControl .weather-mode-toggle .btn{flex:1 1 auto}
-}
+.wa-address-suggestions{position:static;max-height:12rem;overflow:auto;box-shadow:none}
 
-/* V11.3.5 · iOS bottom navigation anchored to the visible viewport.
-   The nav is moved under <body> by app.js to avoid ancestor scroll/transform bugs. */
-.bottom-nav.bottom-nav-v2{
-  position:fixed;
-  left:0;
-  right:0;
-  bottom:0;
-  transform:none;
-  -webkit-transform:none;
-  margin-inline:auto;
-  width:min(1080px,100%);
-  max-width:100vw;
-  z-index:250;
-  touch-action:manipulation;
-}
-.rider-shell{
-  padding-bottom:calc(var(--sos-rider-nav-height, 105px) + env(safe-area-inset-bottom) + 20px);
-}
+.order-actions-with-call{grid-template-columns:repeat(2,minmax(0,1fr))}
+.order-actions-with-call .order-call{flex-direction:column;gap:2px;padding:7px 5px;text-align:center}
+.order-actions-with-call .order-call b{font-size:11px;line-height:1.2;overflow-wrap:anywhere}
+.order-actions-with-call [data-order-action="cancel"]{grid-column:1/-1}
 
-/* V11.3.7 · Timeline persistente degli eventi per locale/cliente. */
-.client-timeline{margin:16px 0;padding:16px;border:1px solid var(--line);border-radius:17px;background:var(--surface2)}
-.client-timeline h3{margin:0 0 14px;font-size:13px;font-weight:1000;letter-spacing:.065em;color:var(--text)}
-.client-timeline-note{margin:8px 0 0;color:var(--muted);font-size:12px;line-height:1.5}
-.client-timeline-list{margin:0 0 12px 8px;padding:0;list-style:none;border-left:2px solid var(--line2)}
-.client-timeline-item{display:flex;align-items:flex-start;gap:12px;margin-left:-11px;padding:0 0 17px}
-.client-timeline-item:last-child{padding-bottom:2px}
-.client-timeline-dot{display:flex;align-items:center;justify-content:center;flex:0 0 20px;width:20px;height:20px;border-radius:50%;background:var(--green-soft);border:2px solid var(--green);color:var(--green);font-weight:1000;font-size:11px}
-.client-timeline-item.current .client-timeline-dot{background:var(--yellow);border-color:var(--yellow2);color:#171717}
-.client-timeline-item b{display:block;color:var(--text);font-size:13px;line-height:1.4}
-.client-timeline-item.current b{color:var(--green)}
-.client-timeline-item small{display:block;color:var(--muted);font-size:11px;margin-top:3px}
-.client-recent-actions{display:flex;flex-wrap:wrap;justify-content:flex-end;gap:6px}
-@media(max-width:420px){.client-recent{grid-template-columns:1fr}.client-recent-actions{justify-content:flex-start}}
+.rider-balance-row{display:flex;justify-content:space-between;gap:8px;align-items:baseline;padding:8px 0;border-bottom:1px solid var(--line2)}
+.rider-balance-row b{text-align:right}
+.wa-rider-quote{margin-top:12px}
+.wa-rider-quote small{display:block;margin:7px 0}
+.wa-rider-quote .btn{margin-top:8px}
 
+.shift-deliveries-list-heading{margin-top:14px}
+.shift-deliveries-list-heading h3{margin:0;font-size:15px}
+.shift-deliveries #activeOrders>.order-card{padding-inline:0;border:0;background:transparent;border-radius:0}
+.shift-deliveries #activeOrders>.order-card+.order-card{border-top:1px solid var(--line2)}
 
-/* Rider: un solo passaggio alla volta alla porta del cliente. */
-.order-actions .rider-door-step{
-  grid-column:1/-1;
-  display:flex;flex-direction:column;gap:4px;
-  padding:11px 13px;margin:2px 0 4px;
-  border:1px solid rgba(255,208,0,.38);
-  border-radius:12px;background:var(--accent-soft,rgba(255,208,0,.09));
-}
-.rider-door-step span{font-size:10px;letter-spacing:.1em;font-weight:900;color:var(--muted,#aaa)}
-.rider-door-step b{font-size:15px;font-weight:900;color:var(--text,#fff)}
-.order-actions .rider-door-step + [data-order-action="delivered"]{grid-column:1/-1;min-height:52px}
-.order-actions .rider-door-no-phone{align-self:center;font-size:12px;color:var(--muted,#aaa)}
-.order-actions [data-order-action="arrived_skip"]{min-height:44px}
-@media(max-width:400px){.rider-door-step b{font-size:13px}}
+.cash-keypad{margin-top:12px}
+.cash-keypad-heading{margin:13px 0 6px;font-size:13px;font-weight:800;color:inherit}
+.cash-note-grid,.cash-coin-grid{display:grid;gap:7px}
+.cash-note-grid{grid-template-columns:repeat(3,minmax(0,1fr))}
+.cash-coin-grid{grid-template-columns:repeat(4,minmax(0,1fr))}
+.cash-tag{display:grid;place-items:center;min-width:0;min-height:46px;padding:3px;border:1px solid var(--line2);border-radius:9px;background:transparent;color:inherit;font:inherit;touch-action:manipulation}
+.cash-tag:active{border-color:#c89800;background:#ffcf2720;transform:scale(.96)}
+.cash-tag:focus-visible{outline:2px solid #ffcb2c;outline-offset:2px}
+.cash-tag-note img{display:block;width:100%;aspect-ratio:2/1;object-fit:contain;border-radius:5px;pointer-events:none}
+.cash-note-value{font-size:14px;line-height:1.25}
+.cash-coin-face{display:grid;place-items:center;width:44px;height:44px;max-width:100%;border:2px solid #714526;border-radius:50%;color:#221404;background:radial-gradient(circle at 34% 28%,#f7c9a5,#bf805a 72%);box-shadow:inset 0 0 0 2px #fff3}
+.cash-coin-face b{font-size:13px;white-space:nowrap}
+.cash-tag-coin:is([data-cents="10"],[data-cents="20"],[data-cents="50"]) .cash-coin-face{border-color:#856620;background:radial-gradient(circle at 34% 27%,#fff1aa,#c29838 76%)}
+.cash-tag-coin[data-cents="100"] .cash-coin-face{border-color:#91712c;background:radial-gradient(circle,#e6e8e8 58%,#d4aa54 62%)}
+.cash-tag-coin[data-cents="200"] .cash-coin-face{border-color:#737878;background:radial-gradient(circle,#f1d27b 58%,#c5cbcf 62%)}
+.cash-keypad .cash-keypad-actions{grid-template-columns:repeat(2,minmax(0,1fr))}
+.cash-keypad .cash-keypad-actions button:disabled{opacity:.45}
+.cash-other{margin-top:10px;font-size:12px}
+.cash-other summary{cursor:pointer;min-height:29px}
+.cash-image-credit{display:block;margin-top:8px;font-size:9px;opacity:.75}
 
-/* Un solo controllo di iscrizione agli aggiornamenti del locale, discreto. */
-.client-push-row{display:flex;align-items:center;flex-wrap:wrap;gap:8px;margin:10px 0 12px}
-.client-push-row .btn{min-height:40px;white-space:nowrap}
-.client-push-row small{flex:1;min-width:150px;color:var(--muted,#999);font-size:11px;line-height:1.4}
+#dailyChart{justify-content:flex-start}
+#dailyChart.chart-fit-days{gap:3px;padding-inline:0}
+#dailyChart.chart-fit-days .bar-wrap{flex:1 1 0;min-width:0}
+#dailyChart.chart-fit-days .bar{max-width:90%}
 
-/* Navigazione de-enfatizzata: le uniche CTA principali del rider sono Chiama e Arrivato. */
-.order-actions .rider-route-link{grid-column:1/-1;display:inline-flex;align-items:center;gap:6px;width:max-content;max-width:100%;padding:7px 2px;font-size:12px;font-weight:700;color:var(--muted,#aaa);text-decoration:underline;text-underline-offset:3px}
+/* V11.5.17: singolo opt-in notifiche cliente e priorità a Chiama / Arrivato */
+.client-push-row{display:flex;align-items:center;gap:9px;flex-wrap:wrap;margin:10px 0 13px}
+.client-push-row .btn{min-height:42px}
+.client-push-row small{color:var(--muted,#999);font-size:11px;line-height:1.5;flex:1;min-width:150px}
+.order-actions .rider-route-link{grid-column:1/-1;display:inline-flex;align-items:center;gap:6px;width:max-content;max-width:100%;font-size:12px;font-weight:700;color:var(--muted,#aaa);padding:6px 0;text-decoration:underline;text-underline-offset:3px}
 .order-actions .rider-route-link .btn-icon{width:17px;height:17px}
 .order-actions [data-order-action="arrived"]{min-height:48px}
