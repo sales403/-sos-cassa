@@ -732,3 +732,8 @@ html[data-theme="day"] #riderAvailabilityControl .operator-toggle .btn[aria-pres
 .order-actions .rider-door-no-phone{align-self:center;font-size:12px;color:var(--muted,#aaa)}
 .order-actions [data-order-action="arrived_skip"]{min-height:44px}
 @media(max-width:400px){.rider-door-step b{font-size:13px}}
+
+/* Un solo controllo di iscrizione agli aggiornamenti del locale, discreto. */
+.client-push-row{display:flex;align-items:center;flex-wrap:wrap;gap:8px;margin:10px 0 12px}
+.client-push-row .btn{min-height:40px;white-space:nowrap}
+.client-push-row small{flex:1;min-width:150px;color:var(--muted,#999);font-size:11px;line-height:1.4}
