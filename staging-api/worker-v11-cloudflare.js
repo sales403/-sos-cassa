@@ -1,4 +1,4 @@
-const VERSION = 'SOS Rider API 11.4.2-client-push-staging';
+const VERSION = 'SOS Rider API 11.4.3-client-push-cors-staging';
 const V11_BATCH_FEATURE = true;
 const WEATHER_FEE_EUR = 3;
 let batchSchemaReady = false;
@@ -287,7 +287,7 @@ function corsHeaders(origin, env) {
     .map(s => s.trim())
     .filter(Boolean);
 
-  const allowed = new Set([...DEFAULT_ORIGINS, ...extra]);
+  const allowed = new Set([...DEFAULT_ORIGINS, ...extra, 'https://sos-rider-v11-full-staging.sales-3c8.workers.dev']);
 
   const headers = {
     'Access-Control-Allow-Methods': 'GET,POST,PATCH,DELETE,OPTIONS',
