@@ -9,7 +9,7 @@
   <meta name="apple-mobile-web-app-title" content="SOS Rider V11 STAGING">
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="apple-touch-icon" href="icon-192.png">
-  <link rel="stylesheet" href="styles.css?v=11.5.10-rider-call">
+  <link rel="stylesheet" href="styles.css?v=11.5.11-rider-balances">
   <title>SOS Rider Carpi-Soliera · V11 STAGING</title>
 </head>
 <body>
@@ -350,12 +350,12 @@
           <div class="stat-card stat-available hot fund-clickable" title="Tocca per modificare il fondo resto"><div class="stat-card-head"><span class="stat-icon"><svg class="ui-icon" aria-hidden="true"><use href="icons.svg#icon-wallet"></use></svg></span><small>Fondo disponibile · tocca</small></div><b id="statAvailable">€0</b></div>
           <div class="stat-card stat-reconcile"><div class="stat-card-head"><span class="stat-icon"><svg class="ui-icon" aria-hidden="true"><use href="icons.svg#icon-reconcile"></use></svg></span><small>Da sistemare</small></div><b id="statUnsorted">€0</b></div>
           <div class="stat-card stat-due"><div class="stat-card-head"><span class="stat-icon"><svg class="ui-icon" aria-hidden="true"><use href="icons.svg#icon-store-euro"></use></svg></span><small>Da rendere locali</small></div><b id="statDue">€0</b></div>
-          <div class="stat-card stat-profit hot"><div class="stat-card-head"><span class="stat-icon"><svg class="ui-icon" aria-hidden="true"><use href="icons.svg#icon-bolt-coin"></use></svg></span><small>Guadagno SOS</small></div><b id="statFees">€0</b></div>
+          <div class="stat-card stat-profit hot"><div class="stat-card-head"><span class="stat-icon"><svg class="ui-icon" aria-hidden="true"><use href="icons.svg#icon-bolt-coin"></use></svg></span><small>Tariffe SOS maturate</small></div><b id="statFees">€0</b></div>
         </section>
         <section class="card section operational-card"><div class="section-head"><div class="section-title-with-icon"><span class="section-icon"><svg class="ui-icon" aria-hidden="true"><use href="icons.svg#icon-shift-clock"></use></svg></span><div><div class="eyebrow">TURNO ATTUALE</div><h2 id="shiftName">—</h2></div></div><button id="closeShiftBtn" class="btn ghost small" type="button">CHIUDI</button></div><p id="shiftMeta" class="muted"></p></section>
         <section class="card section operational-card"><div class="section-head"><div class="section-title-with-icon"><span class="section-icon"><svg class="ui-icon" aria-hidden="true"><use href="icons.svg#icon-delivery-box"></use></svg></span><h2>Consegne attive</h2></div><span id="activeCount" class="pill yellow">0</span></div><div id="activeOrders"></div></section>
-        <section class="card section operational-card"><div class="section-title-with-icon"><span class="section-icon"><svg class="ui-icon" aria-hidden="true"><use href="icons.svg#icon-store-euro"></use></svg></span><h2>Incassi locali</h2></div><div id="restaurantCash"></div></section>
       </div>
+        <section class="card section operational-card"><div class="section-title-with-icon"><span class="section-icon"><svg class="ui-icon" aria-hidden="true"><use href="icons.svg#icon-store-euro"></use></svg></span><h2>Saldi con i locali</h2></div><div id="restaurantCash"></div></section>
     </section>
 
     <section id="riderPageHistory" class="rider-page">
@@ -369,12 +369,14 @@
       <div class="page-title-row"><div><div class="eyebrow">NUMERI</div><h1>Analytics</h1></div><button id="resetRiderAnalyticsLocal" class="btn ghost small" type="button">AZZERA DATI LOCALI</button></div>
       <div class="period-tabs"><button class="chip active" data-period="7d">7 GIORNI</button><button class="chip" data-period="today">OGGI</button><button class="chip" data-period="yesterday">IERI</button><button class="chip" data-period="30d">30 GIORNI</button><button class="chip" data-period="lastMonth">MESE SCORSO</button><button class="chip" data-period="all">TUTTO</button></div>
       <section class="stats-grid analytics-grid section">
-        <div class="stat-card hot"><div class="stat-card-head"><span class="stat-icon"><svg class="ui-icon" aria-hidden="true"><use href="icons.svg#icon-bolt-coin"></use></svg></span><small>Guadagno SOS</small></div><b id="aRevenue">€0</b></div>
+        <div class="stat-card hot"><div class="stat-card-head"><span class="stat-icon"><svg class="ui-icon" aria-hidden="true"><use href="icons.svg#icon-bolt-coin"></use></svg></span><small>Tariffe SOS maturate</small></div><b id="aRevenue">€0</b></div>
         <div class="stat-card"><div class="stat-card-head"><span class="stat-icon"><svg class="ui-icon" aria-hidden="true"><use href="icons.svg#icon-delivery-box"></use></svg></span><small>Consegne</small></div><b id="aOrders">0</b></div>
         <div class="stat-card"><div class="stat-card-head"><span class="stat-icon"><svg class="ui-icon" aria-hidden="true"><use href="icons.svg#icon-average"></use></svg></span><small>Media consegna</small></div><b id="aAvg">€0</b></div>
         <div class="stat-card"><div class="stat-card-head"><span class="stat-icon"><svg class="ui-icon" aria-hidden="true"><use href="icons.svg#icon-cash"></use></svg></span><small>Valore ordini</small></div><b id="aOrderValue">€0</b></div>
+        <div class="stat-card"><small>Tariffe incassate</small><b id="aRiderPaid">€0</b></div>
+        <div class="stat-card"><small>Tariffe da incassare</small><b id="aRiderDue">€0</b></div>
       </section>
-      <section class="card section analytics-chart-card"><div class="section-title-with-icon"><span class="section-icon"><svg class="ui-icon" aria-hidden="true"><use href="icons.svg#icon-analytics"></use></svg></span><div><h2>Incassi</h2><small id="analyticsRangeLabel" class="analytics-range-label">Ultimi 7 giorni</small></div></div><div id="dailyChart" class="chart"></div></section>
+      <section class="card section analytics-chart-card"><div class="section-title-with-icon"><span class="section-icon"><svg class="ui-icon" aria-hidden="true"><use href="icons.svg#icon-analytics"></use></svg></span><div><h2>Tariffe SOS per giorno</h2><small id="analyticsRangeLabel" class="analytics-range-label">Ultimi 7 giorni</small></div></div><div id="dailyChart" class="chart"></div></section>
       <section class="card section"><div class="section-title-with-icon"><span class="section-icon"><svg class="ui-icon" aria-hidden="true"><use href="icons.svg#icon-store"></use></svg></span><h2>Locali migliori</h2></div><div id="restaurantRank"></div></section>
     </section>
 
@@ -395,6 +397,6 @@
   </div>
 
   <script src="config.js?v=11.0.1-staging"></script>
-  <script type="module" src="app.js?v=11.5.10-rider-call"></script>
+  <script type="module" src="app.js?v=11.5.11-rider-balances"></script>
 </body>
 </html>

@@ -1,7 +1,7 @@
 (() => {
 'use strict';
 
-const APP_VERSION = '11.5.10-rider-call';
+const APP_VERSION = '11.5.11-rider-balances';
 const KEY = 'sosRiderUnifiedV10';
 const V9_KEY = 'sosRiderUnifiedV9';
 const OLD_KEY = 'sosRiderGestV7';
@@ -811,23 +811,29 @@ function validateClientForm(forQuote=true){
 }
 function hideClientQuote(){ $('clientQuoteSection').classList.add('hidden'); updateClientFlowUI(); }
 function invalidateClientQuote(){ clientQuote=null; clientSubmissionId=null; hideClientQuote(); }
+async function getValidatedDeliveryQuote(d){
+  await requireCurrentPricingBackend();
+  const res=await fetchJson(apiBase()+'/api/quote',{method:'POST',headers:{'Accept':'application/json','Content-Type':'application/json'},body:JSON.stringify({pickupLat:d.pickupLat,pickupLon:d.pickupLon,deliveryLat:d.deliveryLat,deliveryLon:d.deliveryLon,service:d.service,readyTime:d.readyTime})},10000);
+  const q=res.quote;if(!q||![q.distanceKm,q.totalFee,q.baseFee,q.lateFee].every(v=>v!=null&&Number.isFinite(Number(v))))throw new Error('Preventivo server non disponibile.');
+  const expected=tariffFor(Number(q.distanceKm),d.service,d.readyTime);
+  const weatherFee=Number(q.weatherFee||0);
+  if(![0,3].includes(weatherFee)||
+     Math.abs(Number(q.baseFee)-expected.base)>0.001||
+     Math.abs(Number(q.lateFee)-expected.lateFee)>0.001||
+     Math.abs(Number(q.totalFee)-(expected.total+weatherFee))>0.001||
+     Number(q.extraStopFee||0)!==0){
+    throw new Error('Tariffario in aggiornamento sul server. Per ora richiedi il preventivo su WhatsApp.');
+  }
+  const quote={distanceKm:Number(q.distanceKm),durationMin:Number(q.durationMin)||0,source:q.routeSource||'server',base:Number(q.baseFee),lateFee:Number(q.lateFee)||0,weatherFee,total:Number(q.totalFee),micro:!!q.microDelivery,service:d.service,readyTime:d.readyTime,createdAt:Date.now()};
+  return {quote,availability:res.availability};
+}
+
 async function calculateClientQuote(){
   const status=$('clientFormStatus'); status.className='status-line'; status.textContent='Calcolo percorso e tariffa sul server…';
   try{
     const d=validateClientForm(true);
-    await requireCurrentPricingBackend();
-    const res=await fetchJson(apiBase()+'/api/quote',{method:'POST',headers:{'Accept':'application/json','Content-Type':'application/json'},body:JSON.stringify({pickupLat:d.pickupLat,pickupLon:d.pickupLon,deliveryLat:d.deliveryLat,deliveryLon:d.deliveryLon,service:d.service,readyTime:d.readyTime})},10000);
-    const q=res.quote;if(!q||!Number.isFinite(Number(q.totalFee)))throw new Error('Preventivo server non disponibile.');
-    const expected=tariffFor(Number(q.distanceKm),d.service,d.readyTime);
-    const weatherFee=Number(q.weatherFee||0);
-    if(![0,3].includes(weatherFee)||
-       Math.abs(Number(q.baseFee)-expected.base)>0.001||
-       Math.abs(Number(q.lateFee)-expected.lateFee)>0.001||
-       Math.abs(Number(q.totalFee)-(expected.total+weatherFee))>0.001||
-       Number(q.extraStopFee||0)!==0){
-      throw new Error('Tariffario in aggiornamento sul server. Per ora richiedi il preventivo su WhatsApp.');
-    }
-    clientQuote={distanceKm:Number(q.distanceKm),durationMin:Number(q.durationMin)||0,source:q.routeSource||'server',base:Number(q.baseFee),lateFee:Number(q.lateFee)||0,weatherFee,total:Number(q.totalFee),micro:!!q.microDelivery,service:d.service,readyTime:d.readyTime,createdAt:Date.now()};
+    const res=await getValidatedDeliveryQuote(d);
+    clientQuote=res.quote;
     clientSubmissionId=null;
     currentAvailability=res.availability||currentAvailability;renderAvailability();renderClientQuote();await generateClientQuoteImage();
     $('clientQuoteSection').classList.remove('hidden');updateClientFlowUI();$('clientQuoteSection').scrollIntoView({behavior:'smooth',block:'start'});
@@ -1186,7 +1192,7 @@ async function rejectRemote(code){if(!confirm(`Rifiutare ${code}? Il cliente ved
 // ---------- Operatività rider ----------
 function cashTotals(shiftId){
   const arr=state.orders.filter(o=>o.shiftId===shiftId&&o.status==='delivered'&&o.payment==='cash'&&o.outcome!=='cancelled');
-  const unsorted=arr.filter(o=>!o.cashSorted), unsettled=arr.filter(o=>!o.restaurantSettled);
+  const unsorted=arr.filter(o=>!o.cashSorted), unsettled=state.orders.filter(o=>deliveredOrder(o)&&localCashDue(o)>0);
   return {change:unsorted.reduce((a,o)=>a+num(o.change),0),unsorted:unsorted.reduce((a,o)=>a+num(o.received),0),due:unsettled.reduce((a,o)=>a+num(o.total),0)};
 }
 function currentFundAvailable(){
@@ -1217,17 +1223,17 @@ function editInitialFund(){
   ]);
 }
 function renderDeliveries(){
-  const s=currentShift(), has=!!s;$('noShiftCard').classList.toggle('hidden',has);$('shiftWork').classList.toggle('hidden',!has);if(!has)return;
+  const s=currentShift(), has=!!s;renderRestaurantCash(s?.id);$('noShiftCard').classList.toggle('hidden',has);$('shiftWork').classList.toggle('hidden',!has);if(!has)return;
   const orders=state.orders.filter(o=>o.shiftId===s.id), cash=cashTotals(s.id), delivered=orders.filter(o=>o.status==='delivered'&&o.outcome!=='cancelled');
   $('statFund').textContent=money(s.fundStart);$('statAvailable').textContent=money(Math.max(0,s.fundStart-cash.change));$('statUnsorted').textContent=money(cash.unsorted);$('statDue').textContent=money(cash.due);$('statFees').textContent=money(delivered.reduce((a,o)=>a+num(o.fee),0));$('shiftName').textContent=s.name;$('shiftMeta').textContent=`Iniziato ${fmtDateTime(s.startAt)} · ${orders.length} consegne registrate`;
-  const active=orders.filter(o=>!['delivered','cancelled'].includes(o.status)&&o.outcome!=='cancelled');$('activeCount').textContent=active.length;$('activeOrders').innerHTML=active.length?active.slice().reverse().map(orderCard).join(''):'<p class="muted">Nessuna consegna attiva.</p>';renderRestaurantCash(s.id);
+  const active=orders.filter(o=>!['delivered','cancelled'].includes(o.status)&&o.outcome!=='cancelled');$('activeCount').textContent=active.length;$('activeOrders').innerHTML=active.length?active.slice().reverse().map(orderCard).join(''):'<p class="muted">Nessuna consegna attiva.</p>';
 }
 function cashPanel(o){
   const rec=num(o.received);
-  const missing=Math.max(0,roundHalf(num(o.total)-rec));
-  const change=rec>=o.total?roundHalf(rec-o.total):0;
+  const missing=Math.max(0,(cents(o.total)-cents(rec))/100);
+  const change=rec>=o.total?(cents(rec)-cents(o.total))/100:0;
   const fund=currentFundAvailable();
-  const fundAfter=Math.max(0,roundHalf(fund-change));
+  const fundAfter=Math.max(0,cents(fund)-cents(change))/100;
   const stack=cashStacks[o.id]||[];
   const counts={}; stack.forEach(v=>counts[v]=(counts[v]||0)+1);
   const stackText=Object.entries(counts).map(([v,n])=>`€${v} × ${n}`).join(' · ');
@@ -1300,7 +1306,7 @@ async function orderAction(id,action){
   else if(action==='arrived'){o.status='arrived';o.arrivedAt=nowIso();}
   else if(action==='delivered'){
     if(o.payment==='cash'){
-      o.received=num(o.received);if(o.received<o.total){alert(`Inserisci almeno ${money(o.total)} ricevuti dal cliente.`);return;}o.change=roundHalf(Math.max(0,o.received-o.total));
+      o.received=num(o.received);if(o.received<o.total){alert(`Inserisci almeno ${money(o.total)} ricevuti dal cliente.`);return;}o.change=Math.max(0,cents(o.received)-cents(o.total))/100;
     }
     o.status='delivered';o.deliveredAt=nowIso();o.outcome=o.outcome||'success';
   } else if(action==='cancel'){
@@ -1313,34 +1319,80 @@ async function orderAction(id,action){
     await refreshRemoteRequests().catch(e=>console.warn('Refresh stato remoto fallito',e));
   }
 }
-function renderRestaurantCash(shiftId){
-  const cashOrders=state.orders.filter(o=>o.shiftId===shiftId&&o.status==='delivered'&&o.payment==='cash'&&o.outcome!=='cancelled');
-  const groups={};cashOrders.forEach(o=>(groups[o.restaurant]||(groups[o.restaurant]=[])).push(o));const names=Object.keys(groups);
-  if(!names.length){$('restaurantCash').innerHTML='<p class="muted">Nessun incasso in contanti da gestire.</p>';return;}
-  $('restaurantCash').innerHTML=names.map(name=>{
-    const arr=groups[name],uns=arr.filter(o=>!o.cashSorted),due=arr.filter(o=>!o.restaurantSettled);
-    const first=arr[0]||{};
-    const saved=state.settings.restaurantAddresses?.[name];
-    const destination=(saved&&typeof saved==='object')
-      ? {label:saved.label||first.pickupAddress||name,lat:saved.lat??first.pickupLat,lon:saved.lon??first.pickupLon}
-      : {label:(typeof saved==='string'&&saved)||first.pickupAddress||name,lat:first.pickupLat,lon:first.pickupLon};
-    const vehicle=arr[arr.length-1]?.vehicle||'auto';
-    const navHref=mapsNavigate(destination,vehicle);
-    const baseLabel=destination.label||first.pickupAddress||name;
-    const returnMap=due.length?`<div class="restaurant-return"><div><small>BASE / LOCALE</small><b>${icon('pin','mini-inline-icon')} ${esc(baseLabel)}</b></div><a class="btn map-return-btn" href="${esc(navHref)}" target="_blank" rel="noopener">${icon('navigation','btn-icon')} TORNA AL LOCALE</a></div>`:'';
-    return `<article class="restaurant-card"><div class="restaurant-top"><div><b>${esc(name)}</b><div class="tiny">${arr.length} ordini in contanti</div></div>${due.length?'<span class="pill yellow">DA SALDARE</span>':'<span class="pill green">SALDATO</span>'}</div><div class="restaurant-money"><div class="kv"><small>DA SISTEMARE</small><b>${money(uns.reduce((a,o)=>a+o.received,0))}</b></div><div class="kv"><small>DA RENDERE</small><b>${money(due.reduce((a,o)=>a+o.total,0))}</b></div><div class="kv"><small>CONSEGNE</small><b>${arr.length}</b></div></div>${returnMap}<div class="request-actions">${uns.length?`<button class="btn ghost" data-sort-cash="${esc(name)}">✓ SOLDI SISTEMATI</button>`:'<span></span>'}${due.length?`<button class="btn primary" data-settle="${esc(name)}">SALDA LOCALE</button>`:''}</div></article>`;
-  }).join('');
+const cents=value=>Math.round(num(value)*100);
+const deliveredOrder=o=>o.status==='delivered'&&o.outcome!=='cancelled';
+const localCashDue=o=>o.payment==='cash'&&!o.restaurantSettled?cents(o.total):0;
+const riderFeeDue=o=>Math.max(0,cents(o.fee)-(Number(o.riderPaidCents)||0));
+
+function settlementTotals(orders){
+  const local=orders.reduce((sum,o)=>sum+localCashDue(o),0);
+  const rider=orders.reduce((sum,o)=>sum+riderFeeDue(o),0);
+  const offset=Math.min(local,rider);
+  return {local,rider,offset,net:local-offset,remaining:rider-offset};
 }
-function sortCashForRestaurant(name){state.orders.filter(o=>o.restaurant===name&&o.payment==='cash'&&o.status==='delivered').forEach(o=>o.cashSorted=true);saveState();renderDeliveries()}
-function settleRestaurant(name){const arr=state.orders.filter(o=>o.restaurant===name&&o.payment==='cash'&&o.status==='delivered'&&!o.restaurantSettled&&o.outcome!=='cancelled');const total=arr.reduce((a,o)=>a+num(o.total),0);if(!arr.length)return;if(confirm(`Confermi di aver restituito ${money(total)} a ${name}?`)){arr.forEach(o=>o.restaurantSettled=true);saveState();renderDeliveries()}}
+function recordSettlement(orders,mode){
+  const totals=settlementTotals(orders);
+  let credit=mode==='offset'?totals.offset:mode==='rider'?totals.rider:0;
+  for(const o of orders){
+    if(mode!=='rider'&&localCashDue(o))o.restaurantSettled=true;
+    const payment=Math.min(credit,riderFeeDue(o));
+    if(payment){
+      o.riderPaidCents=cents(o.fee)-riderFeeDue(o)+payment;
+      credit-=payment;
+    }
+  }
+}
+function restaurantOrders(name,shiftId){
+  return state.orders.filter(o=>deliveredOrder(o)&&(name==null||o.restaurant===name)&&
+    (o.shiftId===shiftId||localCashDue(o)>0||riderFeeDue(o)>0||(o.payment==='cash'&&!o.cashSorted)));
+}
+function renderRestaurantCash(shiftId){
+  const orders=restaurantOrders(null,shiftId);
+  const all=settlementTotals(orders);
+  const names=[...new Set(orders.map(o=>o.restaurant))];
+  const summary=`<div class="restaurant-money"><div class="kv"><small>TARIFFE RIDER DA INCASSARE</small><b>${money(all.rider/100)}</b></div><div class="kv"><small>CONTANTI DA RENDERE</small><b>${money(all.local/100)}</b></div></div>`;
+  $('restaurantCash').innerHTML=names.length?summary+names.map(name=>{
+    const arr=orders.filter(o=>o.restaurant===name), totals=settlementTotals(arr);
+    const unsorted=arr.filter(o=>o.payment==='cash'&&!o.cashSorted);
+    const details=arr.map(o=>{
+      const fee=cents(o.fee), due=riderFeeDue(o);
+      return `<div class="rider-balance-row"><span>${esc(o.code)} · ${esc(o.customer||'Consegna')}</span><b>${fee?money(fee/100):'Tariffa assente'}${fee?(due?' · da incassare '+money(due/100):' · incassata'):''}</b></div>`;
+    }).join('');
+    const first=arr[0], saved=state.settings.restaurantAddresses?.[name];
+    const dest=typeof saved==='object'&&saved?saved:{label:saved||first.pickupAddress||name,lat:first.pickupLat,lon:first.pickupLon};
+    const back=totals.local?`<a class="btn map-return-btn" href="${esc(mapsNavigate(dest,arr.at(-1).vehicle))}" target="_blank" rel="noopener">TORNA AL LOCALE</a>`:'';
+    return `<article class="restaurant-card"><b>${esc(name)}</b><div class="restaurant-money"><div class="kv"><small>DA RENDERE AL LOCALE</small><b>${money(totals.local/100)}</b></div><div class="kv"><small>DA INCASSARE DAL LOCALE</small><b>${money(totals.rider/100)}</b></div></div><details><summary>Tariffe per consegna · ${arr.length}</summary>${details}</details><div class="request-actions">${unsorted.length?`<button class="btn ghost" data-sort-cash="${esc(name)}">SOLDI SISTEMATI</button>`:''}${totals.local||totals.rider?`<button class="btn primary" data-settle="${esc(name)}">SALDO CON IL LOCALE</button>`:''}${back}</div></article>`;
+  }).join(''):'<p class="muted">Nessuna consegna da riepilogare.</p>';
+}
+function sortCashForRestaurant(name){
+  restaurantOrders(name,currentShift()?.id).filter(o=>o.payment==='cash').forEach(o=>o.cashSorted=true);
+  saveState();renderDeliveries();
+}
+function settleRestaurant(name){
+  const orders=restaurantOrders(name,currentShift()?.id);
+  const totals=settlementTotals(orders);
+  if(!totals.local&&!totals.rider)return;
+  const actions=[{label:'ANNULLA',cls:'ghost'}];
+  const commit=mode=>{
+    const current=restaurantOrders(name,currentShift()?.id);
+    if(JSON.stringify(settlementTotals(current))!==JSON.stringify(totals)){settleRestaurant(name);return;}
+    recordSettlement(current,mode);
+    saveState();closeModal();renderRiderAll();
+  };
+  if(totals.local)actions.push({label:'HO RESO '+money(totals.local/100),cls:'ghost',keep:true,fn:()=>commit('gross')});
+  if(totals.offset)actions.push({label:'CONFERMA TRATTENUTA',cls:'primary',keep:true,fn:()=>commit('offset')});
+  if(totals.rider)actions.push({label:'TARIFFE GIÀ RICEVUTE',cls:'ghost',keep:true,fn:()=>commit('rider')});
+  openModal('Saldo con '+name,`<div class="rider-balance-row"><span>Incasso del locale da rendere</span><b>${money(totals.local/100)}</b></div><div class="rider-balance-row"><span>Tariffe che ti deve il locale</span><b>${money(totals.rider/100)}</b></div>
+    ${totals.offset?`<p>Con la trattenuta di ${money(totals.offset/100)} dai al locale <b>${money(totals.net/100)}</b>.${totals.remaining?' Il locale ti deve ancora '+money(totals.remaining/100)+'.':''}</p>`:''}`,actions);
+}
 function closeCurrentShift(){const s=currentShift();if(!s)return;const active=state.orders.some(o=>o.shiftId===s.id&&!['delivered','cancelled'].includes(o.status));if(active){alert('Chiudi prima le consegne attive.');return;}if(!confirm('Chiudere il turno attuale?'))return;s.status='closed';s.endAt=nowIso();state.currentShiftId=null;saveState();renderRiderAll()}
 
 // ---------- WhatsApp fallback parser ----------
-const LABELS = ['Nome destinatario','Destinatario','Nome cliente','Cliente','Tel destinatario','Telefono destinatario','Tel cliente','Telefono cliente','Telefono','Indirizzo destinatario','Indirizzo consegna','Consegna','Indirizzo','Nome locale','Locale','Ristorante','Pizzeria','Tel locale','Telefono locale','Indirizzo locale','Indirizzo ritiro','Ritiro','Ordine pronto','Orario ritiro','Ritiro previsto','Pronto alle','Contenuto','Servizio','Pagamento','Importo ordine','Totale ordine','Tariffa SOS','Prezzo','Note'];
+const LABELS = ['Nome destinatario','Destinatario','Nome cliente','Cliente','Tel destinatario','Telefono destinatario','Tel cliente','Telefono cliente','Telefono','Indirizzo destinatario','Indirizzo consegna','Consegna','Indirizzo','Nome locale','Locale','Ristorante','Pizzeria','Tel locale','Telefono locale','Indirizzo locale','Indirizzo ritiro','Ritiro','Ordine pronto','Orario ritiro','Ritiro previsto','Pronto alle','Contenuto','Servizio','Pagamento','Importo ordine','Totale ordine','Tariffa SOS','Tariffa consegna','Costo consegna','Prezzo','Note'];
 function sanitizeWa(raw){return String(raw||'').replace(/\uFFFD/g,' ').replace(/[�]+/g,' ').replace(/\r/g,'\n').replace(/\*+/g,'*').replace(/\s+\n/g,'\n').trim();}
 function splitLabelledMessage(raw){
   let text=sanitizeWa(raw).replace(/\n+/g,' ');
-  const labelPattern=LABELS.map(s=>s.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')).join('|');
+  const labelPattern=[...LABELS].sort((a,b)=>b.length-a.length).map(s=>s.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')).join('|');
   text=text.replace(new RegExp(`\\s*\\*?(${labelPattern})\\s*:?\\*?\\s*`,'gi'),'\n$1: ');
   const rows={};
   text.split('\n').map(s=>s.trim()).filter(Boolean).forEach(line=>{const m=line.match(/^([^:]{2,30}):\s*(.*)$/);if(m)rows[m[1].trim().toLowerCase()]=m[2].trim();});
@@ -1402,6 +1454,7 @@ function parseWa(raw){
   const ready=waPickupTime(get('Ordine pronto','Orario ritiro','Ritiro previsto','Pronto alle')||clean);
   return {
     restaurant,
+    restaurantPhone:get('Telefono locale','Tel locale'),
     pickupAddress,
     readyTime:ready,
     customer,
@@ -1410,7 +1463,7 @@ function parseWa(raw){
     vehicle:detectVehicle(get('Servizio')||clean),
     payment:detectPayment(get('Pagamento')||clean),
     orderTotal:moneyFrom(get('Importo ordine','Totale ordine')),
-    fee:moneyFrom(get('Tariffa SOS','Prezzo')),
+    fee:moneyFrom(get('Tariffa SOS','Tariffa consegna','Costo consegna','Prezzo')),
     notes:get('Note'),
     quickRecipient:!labelled
   };
@@ -1446,24 +1499,83 @@ function renderWaParsed(d){
     <label>Servizio<select id="mPVehicle"><option value="ebike" ${d.vehicle==='ebike'?'selected':''}>Economy E-bike</option><option value="moto" ${d.vehicle==='moto'?'selected':''}>Moto Express</option><option value="auto" ${d.vehicle==='auto'?'selected':''}>Auto Cargo</option></select></label>
     <label>Pagamento<select id="mPPayment"><option value="paid" ${d.payment==='paid'?'selected':''}>Già pagato</option><option value="cash" ${d.payment==='cash'?'selected':''}>Contanti da incassare</option><option value="pos" ${d.payment==='pos'?'selected':''}>POS locale</option></select></label>
     <label>Importo ordine<input id="mPOrderTotal" type="number" min="0" step="0.01" value="${num(d.orderTotal)||''}"></label>
-    <label>Tariffa SOS<input id="mPFee" type="number" min="0" step="0.01" value="${num(d.fee)||''}"></label>
+    <label>Tariffa concordata (€)<input id="mPFee" placeholder="Usa il calcolo automatico" type="number" min="0" step="0.01" value="${num(d.fee)||''}"></label>
     <label class="full">Note<textarea id="mPNotes" rows="2">${esc(d.notes||'')}</textarea></label>
   </div>
+  <section class="wa-rider-quote" aria-label="Preventivo consegna">
+    <div id="mPQuoteStatus" class="status-line" aria-live="polite"></div>
+    <div id="mPQuoteSummary"></div>
+    <a id="mPQuoteShare" class="btn ghost full hidden" target="_blank" rel="noopener noreferrer">APRI BOZZA WHATSAPP</a>
+  </section>
   <button id="mCreateParsed" class="btn primary full" style="margin-top:8px">CREA CONSEGNA</button>`;
   const signal=waAddressListeners.signal;
   const createButton=$('mCreateParsed');
-  const updateCreateButton=()=>{createButton.disabled=!pickup||!delivery;};
-  wireAutocomplete({inputId:'mPPickup',boxId:'mPPickupSuggestions',statusId:'mPPickupStatus',slotKey:'wa-pickup',signal,verifyExact:true,onSelect:v=>{pickup=v;updateCreateButton();}});
-  wireAutocomplete({inputId:'mPAddress',boxId:'mPAddressSuggestions',statusId:'mPAddressStatus',slotKey:'wa-delivery',signal,verifyExact:true,onSelect:v=>{delivery=v;updateCreateButton();}});
+  const ready=$('mPReady'),vehicle=$('mPVehicle'),feeInput=$('mPFee'),payment=$('mPPayment'),orderTotal=$('mPOrderTotal');
+  const summary=$('mPQuoteSummary'),status=$('mPQuoteStatus'),share=$('mPQuoteShare');
+  let quote=null,revision=0,quoteTimer,quotePending=false;
+  const agreedFee=()=>cents(feeInput.value)/100;
+  const effectiveFee=()=>agreedFee()||quote?.total||0;
+  const updateSummary=()=>{
+    const fee=effectiveFee(),readyToQuote=!!(pickup&&delivery&&ready.value);
+    const cash=payment.value==='cash'?cents(orderTotal.value)/100:0;
+    const amountKnown=payment.value!=='cash'||cash>0;
+    createButton.disabled=quotePending||!(readyToQuote&&fee&&amountKnown);
+    summary.innerHTML=fee&&readyToQuote?`<div class="rider-balance-row"><span>Totale consegna SOS</span><b>${money(fee)}</b></div>
+      ${quote?`<small>${quote.distanceKm.toFixed(2)} km · base ${money(quote.base)}${quote.lateFee?' · serale '+money(quote.lateFee):''}${quote.weatherFee?' · meteo '+money(quote.weatherFee):''}${agreedFee()?' · tariffa effettiva concordata':''}</small>`:''}
+      ${payment.value==='cash'?`<div class="rider-balance-row"><span>Contanti per il locale</span><b>${cash?money(cash):'Inserisci l’importo'}</b></div>`:''}`:'';
+    share.classList.toggle('hidden',!(readyToQuote&&fee));
+    if(!readyToQuote||!fee){share.removeAttribute('href');return;}
+    const phone=digits(d.restaurantPhone);
+    const international=phone.startsWith('00')?phone.slice(2):/^39\d{9,11}$/.test(phone)?phone:/^[03]\d{8,10}$/.test(phone)?'39'+phone:'';
+    const recipient=/^[1-9]\d{8,14}$/.test(international)&&!/^0+$/.test(international.replace(/^39/,''))?international:'';
+    const text=`Ciao, ecco il preventivo SOS Rider\nDa: ${pickup.label}\nA: ${delivery.label}\nServizio: ${vehicleLabel(vehicle.value)}${quote?' · '+quote.distanceKm.toFixed(2)+' km':''}\n${quote&&!agreedFee()?`Base: ${money(quote.base)}${quote.lateFee?' · Serale: '+money(quote.lateFee):''}${quote.weatherFee?' · Meteo: '+money(quote.weatherFee):''}\n`:''}Totale consegna: ${money(fee)}${cash?'\nImporto dell’ordine da incassare per il locale: '+money(cash):''}`;
+    share.href='https://wa.me/'+recipient+'?text='+encodeURIComponent(text);
+  };
+  const refreshQuote=()=>{
+    const run=++revision;
+    clearTimeout(quoteTimer);
+    quote=null;
+    quotePending=!!(pickup&&delivery&&ready.value);
+    updateSummary();
+    status.className='status-line';
+    if(!pickup||!delivery||!ready.value){
+      status.textContent='Verifica entrambi gli indirizzi e inserisci l’orario di ritiro.';
+      return;
+    }
+    status.textContent='Calcolo distanza e tariffa…';
+    quoteTimer=setTimeout(async()=>{
+      try{
+        const result=await getValidatedDeliveryQuote({pickupLat:pickup.lat,pickupLon:pickup.lon,deliveryLat:delivery.lat,deliveryLon:delivery.lon,service:vehicle.value,readyTime:ready.value});
+        if(signal.aborted||run!==revision)return;
+        quote=result.quote;
+        status.className='status-line ok';
+        status.textContent='✓ Preventivo verificato dal server';
+      }catch(error){
+        if(signal.aborted||run!==revision)return;
+        status.className='status-line error';
+        status.textContent=error.message+' Puoi inserire una tariffa già concordata.';
+      }
+      quotePending=false;
+      updateSummary();
+    },250);
+  };
+  signal.addEventListener('abort',()=>clearTimeout(quoteTimer),{once:true});
+  ready.addEventListener('input',refreshQuote);
+  vehicle.addEventListener('change',refreshQuote);
+  feeInput.addEventListener('input',updateSummary);
+  orderTotal.addEventListener('input',updateSummary);
+  payment.addEventListener('change',updateSummary);
+  wireAutocomplete({inputId:'mPPickup',boxId:'mPPickupSuggestions',statusId:'mPPickupStatus',slotKey:'wa-pickup',signal,verifyExact:true,onSelect:v=>{pickup=v;refreshQuote();}});
+  wireAutocomplete({inputId:'mPAddress',boxId:'mPAddressSuggestions',statusId:'mPAddressStatus',slotKey:'wa-delivery',signal,verifyExact:true,onSelect:v=>{delivery=v;refreshQuote();}});
   createButton.onclick=()=>{
-    if(!pickup||!delivery)return;
-    createManualFromParsed({pickup,delivery,restaurant:$('mPRestaurant').value.trim(),pickupAddress:$('mPPickup').value.trim(),readyTime:$('mPReady').value,customer:$('mPCustomer').value.trim(),phone:digits($('mPPhone').value),address:$('mPAddress').value.trim(),vehicle:$('mPVehicle').value,payment:$('mPPayment').value,orderTotal:num($('mPOrderTotal').value),fee:num($('mPFee').value),notes:$('mPNotes').value.trim()});
+    if(createButton.disabled)return;
+    createManualFromParsed({pickup,delivery,quote,restaurant:$('mPRestaurant').value.trim(),pickupAddress:$('mPPickup').value.trim(),readyTime:ready.value,customer:$('mPCustomer').value.trim(),phone:digits($('mPPhone').value),address:$('mPAddress').value.trim(),vehicle:vehicle.value,payment:payment.value,orderTotal:cents(orderTotal.value)/100,fee:effectiveFee(),notes:$('mPNotes').value.trim()});
   };
 }
 function createManualFromParsed(d){
   ensureShiftThen(()=>{
     if(!d.restaurant||!d.pickupAddress||!d.customer||!d.address){alert('Completa almeno locale, ritiro, cliente e indirizzo di consegna.');return;}
-    const o={id:uid('ORD'),remoteCode:null,shiftId:currentShift().id,code:`SOS-${String(state.orders.length+1).padStart(3,'0')}`,restaurant:d.restaurant,pickupAddress:d.pickupAddress,readyTime:d.readyTime,customer:d.customer,phone:d.phone,address:d.address,total:num(d.orderTotal),fee:num(d.fee),payment:d.payment,vehicle:d.vehicle,distanceKm:0,durationMin:0,baseFee:num(d.fee),lateFee:isLateTime(d.readyTime)?2:0,pickupLat:d.pickup?.lat??null,pickupLon:d.pickup?.lon??null,lat:d.delivery?.lat??null,lon:d.delivery?.lon??null,received:0,change:0,status:'to_pickup',outcome:null,problemNote:'',cashSorted:false,restaurantSettled:false,createdAt:nowIso(),pickedAt:null,arrivedAt:null,deliveredAt:null,notes:d.notes||''};state.orders.push(o);saveState();closeModal();renderRiderAll();switchRiderPage('deliveries');
+    const o={id:uid('ORD'),remoteCode:null,shiftId:currentShift().id,code:`SOS-${String(state.orders.length+1).padStart(3,'0')}`,restaurant:d.restaurant,pickupAddress:d.pickupAddress,readyTime:d.readyTime,customer:d.customer,phone:d.phone,address:d.address,total:num(d.orderTotal),fee:num(d.fee),payment:d.payment,vehicle:d.vehicle,distanceKm:d.quote?.distanceKm??0,durationMin:d.quote?.durationMin??0,baseFee:d.quote?.base??num(d.fee),lateFee:d.quote?.lateFee??0,weatherFee:d.quote?.weatherFee??0,pickupLat:d.pickup?.lat??null,pickupLon:d.pickup?.lon??null,lat:d.delivery?.lat??null,lon:d.delivery?.lon??null,received:0,change:0,status:'to_pickup',outcome:null,problemNote:'',cashSorted:false,restaurantSettled:false,createdAt:nowIso(),pickedAt:null,arrivedAt:null,deliveredAt:null,notes:d.notes||''};state.orders.push(o);saveState();closeModal();renderRiderAll();switchRiderPage('deliveries');
   });
 }
 
@@ -1496,7 +1608,21 @@ function resetRiderLocalRecords(){
 
 // ---------- Storico / analytics ----------
 function historyOrders(){const q=$('historySearch')?.value.trim().toLowerCase()||'';return state.orders.filter(o=>o.status==='delivered'||o.outcome==='cancelled').filter(o=>!q||[o.code,o.restaurant,o.customer,o.address,o.phone].join(' ').toLowerCase().includes(q)).sort((a,b)=>new Date(b.deliveredAt||b.createdAt)-new Date(a.deliveredAt||a.createdAt));}
-function renderHistory(){const arr=historyOrders();$('historyList').innerHTML=arr.length?arr.map(o=>`<article class="history-card ${o.outcome==='problem'?'problem':o.outcome==='cancelled'?'cancelled':''}"><div class="history-top"><div><div class="code">${esc(o.code)}</div><div class="tiny">${fmtDateTime(o.deliveredAt||o.createdAt)}</div></div><span class="pill ${o.outcome==='cancelled'?'':'green'}">${o.outcome==='cancelled'?'ANNULLATA':'CONSEGNATA'}</span></div><div class="request-grid"><div class="kv"><small>LOCALE</small><b>${esc(o.restaurant)}</b></div><div class="kv"><small>CLIENTE</small><b>${esc(o.customer)}</b></div><div class="kv"><small>TARIFFA SOS</small><b>${money(o.fee)}</b></div><div class="kv"><small>VALORE ORDINE</small><b>${money(o.total)}</b></div></div><div class="archive-entry-actions"><button class="btn ghost small" type="button" data-delete-local-order="${esc(o.id)}">ELIMINA DAL DISPOSITIVO</button></div></article>`).join(''):'<section class="card"><p class="muted">Nessuna consegna nello storico.</p></section>'}
+function renderHistory(){const arr=historyOrders();$('historyList').innerHTML=arr.length?arr.map(o=>`<article class="history-card ${o.outcome==='problem'?'problem':o.outcome==='cancelled'?'cancelled':''}"><div class="history-top"><div><div class="code">${esc(o.code)}</div><div class="tiny">${fmtDateTime(o.deliveredAt||o.createdAt)}</div></div><span class="pill ${o.outcome==='cancelled'?'':'green'}">${o.outcome==='cancelled'?'ANNULLATA':'CONSEGNATA'}</span></div><div class="request-grid"><div class="kv"><small>LOCALE</small><b>${esc(o.restaurant)}</b></div><div class="kv"><small>CLIENTE</small><b>${esc(o.customer)}</b></div><div class="kv"><small>TARIFFA SOS</small><b>${money(o.fee)}</b></div><div class="kv"><small>VALORE ORDINE</small><b>${money(o.total)}</b></div></div><div class="archive-entry-actions">${deliveredOrder(o)&&!o.remoteCode&&!cents(o.fee)?`<button class="btn ghost small" type="button" data-record-rider-fee="${esc(o.id)}">REGISTRA TARIFFA</button>`:''}<button class="btn ghost small" type="button" data-delete-local-order="${esc(o.id)}">ELIMINA DAL DISPOSITIVO</button></div></article>`).join(''):'<section class="card"><p class="muted">Nessuna consegna nello storico.</p></section>'}
+function editMissingRiderFee(id){
+  const order=state.orders.find(o=>o.id===id);
+  if(!order||!deliveredOrder(order)||order.remoteCode||cents(order.fee))return;
+  openModal('Registra tariffa concordata',`<label>Tariffa della consegna (€)<input id="agreedRiderFee" type="number" min="0.01" step="0.01" inputmode="decimal"></label><div id="agreedRiderFeeError" class="status-line error"></div>`,[
+    {label:'ANNULLA',cls:'ghost'},
+    {label:'SALVA',cls:'primary',keep:true,fn:()=>{
+      const amount=cents($('agreedRiderFee').value);
+      if(!amount){$('agreedRiderFeeError').textContent='Inserisci la tariffa concordata.';return;}
+      if(cents(order.fee))return;
+      order.fee=amount/100;
+      saveState();closeModal();renderRiderAll();
+    }}
+  ]);
+}
 function analyticsBounds(period=analyticsPeriod){
   const now=new Date();
   const dayStart=d=>{const x=new Date(d);x.setHours(0,0,0,0);return x};
@@ -1531,7 +1657,7 @@ function analyticsSeries(arr){
 }
 function renderAnalytics(){
   const arr=analyticsOrders(),rev=arr.reduce((a,o)=>a+num(o.fee),0),value=arr.reduce((a,o)=>a+num(o.total),0);
-  $('aRevenue').textContent=money(rev);$('aOrders').textContent=arr.length;$('aAvg').textContent=money(arr.length?rev/arr.length:0);$('aOrderValue').textContent=money(value);
+  $('aRevenue').textContent=money(rev);$('aRiderPaid').textContent=money(arr.reduce((sum,o)=>sum+cents(o.fee)-riderFeeDue(o),0)/100);$('aRiderDue').textContent=money(arr.reduce((sum,o)=>sum+riderFeeDue(o),0)/100);$('aOrders').textContent=arr.length;$('aAvg').textContent=money(arr.length?rev/arr.length:0);$('aOrderValue').textContent=money(value);
   const bounds=analyticsBounds();if($('analyticsRangeLabel'))$('analyticsRangeLabel').textContent=bounds.label;
   const days=analyticsSeries(arr),max=Math.max(1,...days.map(x=>x.value));
   $('dailyChart').innerHTML=days.length?days.map(x=>`<div class="bar-wrap"><div class="bar-value">${money(x.value).replace(',00','')}</div><div class="bar ${x.value?'has-value':'zero'}" style="height:${x.value?Math.max(6,x.value/max*130):3}px"></div><div class="bar-label">${x.label}</div></div>`).join(''):'<p class="muted">Nessun dato nel periodo.</p>';
@@ -1539,7 +1665,7 @@ function renderAnalytics(){
   const list=Object.entries(ranks).sort((a,b)=>b[1].v-a[1].v).slice(0,8);
   $('restaurantRank').innerHTML=list.length?list.map(([name,x],i)=>`<div class="rank-row"><div class="rank-num">${i+1}</div><div><b>${esc(name)}</b><div class="tiny">${x.n} consegne</div></div><b>${money(x.v)}</b></div>`).join(''):'<p class="muted">Nessun dato.</p>';
 }
-function csvExport(){const rows=[['Codice','Locale','Cliente','Telefono','Ritiro','Consegna','Pronto','Servizio','Pagamento','Valore ordine','Tariffa SOS','Stato','Creata','Consegnata']];state.orders.forEach(o=>rows.push([o.code,o.restaurant,o.customer,o.phone,o.pickupAddress,o.address,o.readyTime,vehicleLabel(o.vehicle),paymentLabel(o.payment),num(o.total).toFixed(2),num(o.fee).toFixed(2),o.status,o.createdAt,o.deliveredAt||'']));return rows.map(r=>r.map(v=>`"${String(v??'').replace(/"/g,'""')}"`).join(';')).join('\n')}
+function csvExport(){const rows=[['Codice','Locale','Cliente','Telefono','Ritiro','Consegna','Pronto','Servizio','Pagamento','Valore ordine','Tariffa SOS','Tariffa incassata','Tariffa da incassare','Stato','Creata','Consegnata']];state.orders.forEach(o=>rows.push([o.code,o.restaurant,o.customer,o.phone,o.pickupAddress,o.address,o.readyTime,vehicleLabel(o.vehicle),paymentLabel(o.payment),num(o.total).toFixed(2),num(o.fee).toFixed(2),(deliveredOrder(o)?(cents(o.fee)-riderFeeDue(o))/100:0).toFixed(2),(deliveredOrder(o)?riderFeeDue(o)/100:0).toFixed(2),o.status,o.createdAt,o.deliveredAt||'']));return rows.map(r=>r.map(v=>`"${String(v??'').replace(/"/g,'""')}"`).join(';')).join('\n')}
 function download(name,text,type='text/plain;charset=utf-8'){const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([text],{type}));a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),500)}
 
 // ---------- Modal / settings ----------
@@ -1607,17 +1733,17 @@ function bindEvents(){
       const action=cashBtn.dataset.cashAction;
       if(action==='editfund'){editCurrentFund();return;}
       if(action==='exact'){cashStacks[o.id]=[];o.received=num(o.total);o.change=0;}
-      else if(action==='add'){cashStacks[o.id]=cashStacks[o.id]||[];cashStacks[o.id].push(num(cashBtn.dataset.value));o.received=cashStacks[o.id].reduce((a,v)=>a+v,0);o.change=o.received>=o.total?roundHalf(o.received-o.total):0;}
-      else if(action==='undo'){cashStacks[o.id]=cashStacks[o.id]||[];cashStacks[o.id].pop();o.received=cashStacks[o.id].reduce((a,v)=>a+v,0);o.change=o.received>=o.total?roundHalf(o.received-o.total):0;}
+      else if(action==='add'){cashStacks[o.id]=cashStacks[o.id]||[];cashStacks[o.id].push(num(cashBtn.dataset.value));o.received=cashStacks[o.id].reduce((a,v)=>a+v,0);o.change=o.received>=o.total?(cents(o.received)-cents(o.total))/100:0;}
+      else if(action==='undo'){cashStacks[o.id]=cashStacks[o.id]||[];cashStacks[o.id].pop();o.received=cashStacks[o.id].reduce((a,v)=>a+v,0);o.change=o.received>=o.total?(cents(o.received)-cents(o.total))/100:0;}
       else if(action==='reset'){cashStacks[o.id]=[];o.received=0;o.change=0;}
       saveState();renderDeliveries();return;
     }
     const b=e.target.closest('[data-order-action]');if(b)orderAction(b.dataset.orderId,b.dataset.orderAction);
   });
-  $('activeOrders').addEventListener('input',e=>{const i=e.target.closest('[data-received]');if(!i)return;const o=state.orders.find(x=>x.id===i.dataset.received);if(!o)return;cashStacks[o.id]=[];o.received=num(i.value);o.change=o.received>=o.total?roundHalf(o.received-o.total):0;saveState();const b=i.closest('.order-card')?.querySelector('.change-box b');if(b)b.textContent=money(o.change)});
+  $('activeOrders').addEventListener('input',e=>{const i=e.target.closest('[data-received]');if(!i)return;const o=state.orders.find(x=>x.id===i.dataset.received);if(!o)return;cashStacks[o.id]=[];o.received=num(i.value);o.change=o.received>=o.total?(cents(o.received)-cents(o.total))/100:0;saveState();const b=i.closest('.order-card')?.querySelector('.change-box b');if(b)b.textContent=money(o.change)});
   $('restaurantCash').addEventListener('click',e=>{const a=e.target.closest('[data-sort-cash]');if(a)return sortCashForRestaurant(a.dataset.sortCash);const t=e.target.closest('[data-settle]');if(t)return settleRestaurant(t.dataset.settle)});
   $('historySearch').addEventListener('input',renderHistory);
-  $('historyList').addEventListener('click',e=>{const b=e.target.closest('[data-delete-local-order]');if(b)deleteRiderLocalHistory(b.dataset.deleteLocalOrder);});
+  $('historyList').addEventListener('click',e=>{const f=e.target.closest('[data-record-rider-fee]');if(f)return editMissingRiderFee(f.dataset.recordRiderFee);const b=e.target.closest('[data-delete-local-order]');if(b)deleteRiderLocalHistory(b.dataset.deleteLocalOrder);});
   $('exportHistory').onclick=()=>download('sos-rider-storico.csv',csvExport(),'text/csv;charset=utf-8');
   $('resetRiderLocal').onclick=resetRiderLocalRecords;
   $('resetRiderAnalyticsLocal').onclick=resetRiderLocalRecords;

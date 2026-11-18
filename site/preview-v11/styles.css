@@ -647,3 +647,9 @@ html[data-theme="day"] #riderAvailabilityControl .operator-toggle .btn:not(.is-s
 .order-actions-with-call .order-call{flex-direction:column;gap:2px;padding:7px 5px;text-align:center}
 .order-actions-with-call .order-call b{font-size:11px;line-height:1.2;overflow-wrap:anywhere}
 .order-actions-with-call [data-order-action="cancel"]{grid-column:1/-1}
+
+.rider-balance-row{display:flex;justify-content:space-between;gap:8px;align-items:baseline;padding:8px 0;border-bottom:1px solid var(--line2)}
+.rider-balance-row b{text-align:right}
+.wa-rider-quote{margin-top:12px}
+.wa-rider-quote small{display:block;margin:7px 0}
+.wa-rider-quote .btn{margin-top:8px}
