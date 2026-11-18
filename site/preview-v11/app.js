@@ -1,7 +1,7 @@
 (() => {
 'use strict';
 
-const APP_VERSION = '11.5.15-history-reset';
+const APP_VERSION = '11.5.16-locale-whatsapp';
 const KEY = 'sosRiderUnifiedV10';
 const V9_KEY = 'sosRiderUnifiedV9';
 const OLD_KEY = 'sosRiderGestV7';
@@ -1171,7 +1171,7 @@ function currentShift(){return state.shifts.find(s=>s.id===state.currentShiftId 
 function startShift(name,fund){const s={id:uid('SHIFT'),name:name||`${new Date().toLocaleDateString('it-IT')} sera`,startAt:nowIso(),endAt:null,fundStart:num(fund),status:'open'};state.shifts.push(s);state.currentShiftId=s.id;saveState();renderDeliveries();return s;}
 function ensureShiftThen(done){if(currentShift()){done();return;}openModal('Apri turno per accettare',`<p class="muted">La richiesta può essere accettata appena apri il turno.</p><label>Nome turno<input id="mShiftName" value="${esc(new Date().toLocaleDateString('it-IT',{weekday:'long',day:'2-digit',month:'2-digit'})+' sera')}"></label><label style="margin-top:8px">Fondo resto<input id="mFund" type="number" min="0" value="100"></label>`,[{label:'ANNULLA',cls:'ghost'},{label:'APRI TURNO E CONTINUA',cls:'primary',fn:()=>{startShift($('mShiftName').value.trim(),num($('mFund').value));closeModal();done();}}]);}
 function normalizeRemote(r){return{code:r.code,requesterName:r.requesterName||r.requester_name,requesterPhone:r.requesterPhone||r.requester_phone,pickupAddress:r.pickupAddress||r.pickup_address,pickupLat:Number(r.pickupLat??r.pickup_lat),pickupLon:Number(r.pickupLon??r.pickup_lon),readyTime:r.readyTime||r.ready_time,recipientName:r.recipientName||r.recipient_name,recipientPhone:r.recipientPhone||r.recipient_phone,deliveryAddress:r.deliveryAddress||r.delivery_address,deliveryLat:Number(r.deliveryLat??r.delivery_lat),deliveryLon:Number(r.deliveryLon??r.delivery_lon),service:r.service,payment:r.payment,orderTotal:Number(r.orderTotal??r.order_total)||0,notes:r.notes||'',distanceKm:Number(r.distanceKm??r.distance_km)||0,durationMin:Number(r.durationMin??r.duration_min)||0,baseFee:Number(r.baseFee??r.base_fee)||0,lateFee:Number(r.lateFee??r.late_fee)||0,totalFee:Number(r.totalFee??r.total_fee)||0,microDelivery:!!(r.microDelivery??r.micro_delivery),createdAt:r.createdAt||r.created_at||nowIso(),status:r.status,eta:r.eta||null};}
-function createLocalOrderFromRemote(raw){const r=normalizeRemote(raw);let o=state.orders.find(o=>o.remoteCode===r.code);if(o)return o;const s=currentShift(),localStatus=localStatusFromRemote(r.status);o={id:uid('ORD'),remoteCode:r.code,shiftId:s?.id||null,code:r.code,restaurant:r.requesterName,pickupAddress:r.pickupAddress,readyTime:r.readyTime,customer:r.recipientName,phone:r.recipientPhone,address:r.deliveryAddress,total:r.orderTotal,fee:r.totalFee,payment:r.payment,vehicle:r.service,distanceKm:r.distanceKm,durationMin:r.durationMin,baseFee:r.baseFee,lateFee:r.lateFee,microDelivery:r.microDelivery,pickupLat:r.pickupLat,pickupLon:r.pickupLon,lat:r.deliveryLat,lon:r.deliveryLon,received:0,change:0,status:localStatus,outcome:localStatus==='delivered'?'success':localStatus==='cancelled'?'cancelled':null,problemNote:'',cashSorted:false,restaurantSettled:false,createdAt:r.createdAt,pickedAt:['picked','arrived','delivered'].includes(localStatus)?nowIso():null,arrivedAt:['arrived','delivered'].includes(localStatus)?nowIso():null,deliveredAt:localStatus==='delivered'?nowIso():null,notes:r.notes||''};state.orders.push(o);state.settings.restaurantAddresses[o.restaurant]={label:o.pickupAddress,lat:o.pickupLat,lon:o.pickupLon};saveState();renderRiderAll();return o;}
+function createLocalOrderFromRemote(raw){const r=normalizeRemote(raw);let o=state.orders.find(o=>o.remoteCode===r.code);if(o)return o;const s=currentShift(),localStatus=localStatusFromRemote(r.status);o={id:uid('ORD'),remoteCode:r.code,shiftId:s?.id||null,code:r.code,restaurant:r.requesterName,restaurantPhone:r.requesterPhone,pickupAddress:r.pickupAddress,readyTime:r.readyTime,customer:r.recipientName,phone:r.recipientPhone,address:r.deliveryAddress,total:r.orderTotal,fee:r.totalFee,payment:r.payment,vehicle:r.service,distanceKm:r.distanceKm,durationMin:r.durationMin,baseFee:r.baseFee,lateFee:r.lateFee,microDelivery:r.microDelivery,pickupLat:r.pickupLat,pickupLon:r.pickupLon,lat:r.deliveryLat,lon:r.deliveryLon,received:0,change:0,status:localStatus,outcome:localStatus==='delivered'?'success':localStatus==='cancelled'?'cancelled':null,problemNote:'',cashSorted:false,restaurantSettled:false,createdAt:r.createdAt,pickedAt:['picked','arrived','delivered'].includes(localStatus)?nowIso():null,arrivedAt:['arrived','delivered'].includes(localStatus)?nowIso():null,deliveredAt:localStatus==='delivered'?nowIso():null,notes:r.notes||''};state.orders.push(o);state.settings.restaurantAddresses[o.restaurant]={label:o.pickupAddress,lat:o.pickupLat,lon:o.pickupLon};saveState();renderRiderAll();return o;}
 async function acceptRemote(code){
   const r=findRemote(code);if(!r)return;
   const dsc=r.dispatch;
@@ -1510,6 +1510,24 @@ function openWhatsAppImporter(){
     }}
   ]);
 }
+function localeWhatsAppNumber(value){
+  const raw=String(value||'').trim(), phone=digits(raw);
+  const n=phone.startsWith('00')?phone.slice(2):raw.startsWith('+')?phone:/^39\d{9,11}$/.test(phone)?phone:/^[03]\d{8,10}$/.test(phone)?'39'+phone:'';
+  return /^[1-9]\d{8,14}$/.test(n)&&!/^0+$/.test(n.replace(/^39/,''))?n:'';
+}
+function savedLocalePhone(name){
+  const key=String(name||'').trim().toLowerCase();
+  if(!key)return '';
+  const saved=state.settings.restaurantPhones?.[key];
+  if(saved)return saved;
+  const candidates=[...state.orders.map(o=>({name:o.restaurant,phone:o.restaurantPhone})),...remoteRequests.map(r=>({name:r.requesterName||r.requester_name,phone:r.requesterPhone||r.requester_phone}))];
+  const numbers=[...new Set(candidates.filter(x=>String(x.name||'').trim().toLowerCase()===key).map(x=>localeWhatsAppNumber(x.phone)).filter(Boolean))];
+  return numbers.length===1?numbers[0]:'';
+}
+function rememberLocalePhone(name,phone){
+  const key=String(name||'').trim().toLowerCase(),number=localeWhatsAppNumber(phone);
+  if(key&&number){state.settings.restaurantPhones={...state.settings.restaurantPhones,[key]:number};saveState();}
+}
 let waAddressListeners;
 function renderWaParsed(d){
   waAddressListeners?.abort();
@@ -1519,6 +1537,7 @@ function renderWaParsed(d){
   r.innerHTML=`<div class="notice blue"><b>Controlla i campi prima di creare la consegna.</b><br>Il parser non sovrascrive dati nascosti: qui vedi esattamente cosa verrà registrato.</div>
   <div class="form-grid" style="margin-top:9px">
     <label>Locale<input id="mPRestaurant" value="${esc(d.restaurant||'')}"></label>
+    <label>Telefono WhatsApp del locale<input id="mPRestaurantPhone" type="tel" placeholder="Es. +39…" value="${esc(d.restaurantPhone||savedLocalePhone(d.restaurant)||'')}"></label>
     <label>Ordine pronto<input id="mPReady" type="time" value="${esc(d.readyTime||'')}"></label>
     <div class="full"><label>Indirizzo ritiro<input id="mPPickup" autocomplete="off" value="${esc(d.pickupAddress||'')}"></label><div id="mPPickupSuggestions" class="suggestions wa-address-suggestions hidden"></div><small id="mPPickupStatus" class="status-line" aria-live="polite"></small></div>
     <label>Cliente<input id="mPCustomer" value="${esc(d.customer||'')}"></label>
@@ -1533,6 +1552,7 @@ function renderWaParsed(d){
   <section class="wa-rider-quote" aria-label="Preventivo consegna">
     <div id="mPQuoteStatus" class="status-line" aria-live="polite"></div>
     <div id="mPQuoteSummary"></div>
+    <small id="mPRecipientHint" class="status-line" aria-live="polite"></small>
     <a id="mPQuoteShare" class="btn ghost full hidden" target="_blank" rel="noopener noreferrer">APRI BOZZA WHATSAPP</a>
   </section>
   <button id="mCreateParsed" class="btn primary full" style="margin-top:8px">CREA CONSEGNA</button>`;
@@ -1553,12 +1573,23 @@ function renderWaParsed(d){
       ${payment.value==='cash'?`<div class="rider-balance-row"><span>Contanti per il locale</span><b>${cash?money(cash):'Inserisci l’importo'}</b></div>`:''}`:'';
     share.classList.toggle('hidden',!(readyToQuote&&fee));
     if(!readyToQuote||!fee){share.removeAttribute('href');return;}
-    const phone=digits(d.restaurantPhone);
-    const international=phone.startsWith('00')?phone.slice(2):/^39\d{9,11}$/.test(phone)?phone:/^[03]\d{8,10}$/.test(phone)?'39'+phone:'';
-    const recipient=/^[1-9]\d{8,14}$/.test(international)&&!/^0+$/.test(international.replace(/^39/,''))?international:'';
+    const recipient=localeWhatsAppNumber($('mPRestaurantPhone').value);
+    $('mPRecipientHint').textContent=recipient?'Bozza per '+$('mPRestaurant').value.trim()+' · +'+recipient:'Inserisci un numero WhatsApp valido del locale per aprire la sua chat.';
+    share.textContent='APRI BOZZA AL LOCALE';
+    share.setAttribute('aria-disabled',String(!recipient));
+    if(!recipient){share.removeAttribute('href');return;}
     const text=`Ciao, ecco il preventivo SOS Rider\nDa: ${pickup.label}\nA: ${delivery.label}\nServizio: ${vehicleLabel(vehicle.value)}${quote?' · '+quote.distanceKm.toFixed(2)+' km':''}\n${quote&&!agreedFee()?`Base: ${money(quote.base)}${quote.lateFee?' · Serale: '+money(quote.lateFee):''}${quote.weatherFee?' · Meteo: '+money(quote.weatherFee):''}\n`:''}Totale consegna: ${money(fee)}${cash?'\nImporto dell’ordine da incassare per il locale: '+money(cash):''}`;
     share.href='https://wa.me/'+recipient+'?text='+encodeURIComponent(text);
   };
+  share.addEventListener('click',e=>{
+    if(!share.hasAttribute('href')){e.preventDefault();$('mPRestaurantPhone').focus();return;}
+    rememberLocalePhone($('mPRestaurant').value,$('mPRestaurantPhone').value);
+  });
+  $('mPRestaurantPhone').addEventListener('input',updateSummary);
+  $('mPRestaurant').addEventListener('input',()=>{
+    $('mPRestaurantPhone').value=savedLocalePhone($('mPRestaurant').value);
+    updateSummary();
+  });
   const refreshQuote=()=>{
     const run=++revision;
     clearTimeout(quoteTimer);
@@ -1597,13 +1628,13 @@ function renderWaParsed(d){
   wireAutocomplete({inputId:'mPAddress',boxId:'mPAddressSuggestions',statusId:'mPAddressStatus',slotKey:'wa-delivery',signal,verifyExact:true,onSelect:v=>{delivery=v;refreshQuote();}});
   createButton.onclick=()=>{
     if(createButton.disabled)return;
-    createManualFromParsed({pickup,delivery,quote,restaurant:$('mPRestaurant').value.trim(),pickupAddress:$('mPPickup').value.trim(),readyTime:ready.value,customer:$('mPCustomer').value.trim(),phone:digits($('mPPhone').value),address:$('mPAddress').value.trim(),vehicle:vehicle.value,payment:payment.value,orderTotal:cents(orderTotal.value)/100,fee:effectiveFee(),notes:$('mPNotes').value.trim()});
+    createManualFromParsed({pickup,delivery,quote,restaurant:$('mPRestaurant').value.trim(),restaurantPhone:$('mPRestaurantPhone').value.trim(),pickupAddress:$('mPPickup').value.trim(),readyTime:ready.value,customer:$('mPCustomer').value.trim(),phone:digits($('mPPhone').value),address:$('mPAddress').value.trim(),vehicle:vehicle.value,payment:payment.value,orderTotal:cents(orderTotal.value)/100,fee:effectiveFee(),notes:$('mPNotes').value.trim()});
   };
 }
 function createManualFromParsed(d){
   ensureShiftThen(()=>{
     if(!d.restaurant||!d.pickupAddress||!d.customer||!d.address){alert('Completa almeno locale, ritiro, cliente e indirizzo di consegna.');return;}
-    const o={id:uid('ORD'),remoteCode:null,shiftId:currentShift().id,code:`SOS-${String(state.orders.length+1).padStart(3,'0')}`,restaurant:d.restaurant,pickupAddress:d.pickupAddress,readyTime:d.readyTime,customer:d.customer,phone:d.phone,address:d.address,total:num(d.orderTotal),fee:num(d.fee),payment:d.payment,vehicle:d.vehicle,distanceKm:d.quote?.distanceKm??0,durationMin:d.quote?.durationMin??0,baseFee:d.quote?.base??num(d.fee),lateFee:d.quote?.lateFee??0,weatherFee:d.quote?.weatherFee??0,pickupLat:d.pickup?.lat??null,pickupLon:d.pickup?.lon??null,lat:d.delivery?.lat??null,lon:d.delivery?.lon??null,received:0,change:0,status:'to_pickup',outcome:null,problemNote:'',cashSorted:false,restaurantSettled:false,createdAt:nowIso(),pickedAt:null,arrivedAt:null,deliveredAt:null,notes:d.notes||''};state.orders.push(o);saveState();closeModal();renderRiderAll();switchRiderPage('deliveries');
+    const o={id:uid('ORD'),remoteCode:null,shiftId:currentShift().id,code:`SOS-${String(state.orders.length+1).padStart(3,'0')}`,restaurant:d.restaurant,restaurantPhone:localeWhatsAppNumber(d.restaurantPhone),pickupAddress:d.pickupAddress,readyTime:d.readyTime,customer:d.customer,phone:d.phone,address:d.address,total:num(d.orderTotal),fee:num(d.fee),payment:d.payment,vehicle:d.vehicle,distanceKm:d.quote?.distanceKm??0,durationMin:d.quote?.durationMin??0,baseFee:d.quote?.base??num(d.fee),lateFee:d.quote?.lateFee??0,weatherFee:d.quote?.weatherFee??0,pickupLat:d.pickup?.lat??null,pickupLon:d.pickup?.lon??null,lat:d.delivery?.lat??null,lon:d.delivery?.lon??null,received:0,change:0,status:'to_pickup',outcome:null,problemNote:'',cashSorted:false,restaurantSettled:false,createdAt:nowIso(),pickedAt:null,arrivedAt:null,deliveredAt:null,notes:d.notes||''};state.orders.push(o);rememberLocalePhone(d.restaurant,d.restaurantPhone);saveState();closeModal();renderRiderAll();switchRiderPage('deliveries');
   });
 }
 
