@@ -642,3 +642,8 @@ html[data-theme="day"] #riderAvailabilityControl .operator-toggle .btn:not(.is-s
 }
 
 .wa-address-suggestions{position:static;max-height:12rem;overflow:auto;box-shadow:none}
+
+.order-actions-with-call{grid-template-columns:repeat(2,minmax(0,1fr))}
+.order-actions-with-call .order-call{flex-direction:column;gap:2px;padding:7px 5px;text-align:center}
+.order-actions-with-call .order-call b{font-size:11px;line-height:1.2;overflow-wrap:anywhere}
+.order-actions-with-call [data-order-action="cancel"]{grid-column:1/-1}

@@ -1,7 +1,7 @@
 (() => {
 'use strict';
 
-const APP_VERSION = '11.5.9-whatsapp-address';
+const APP_VERSION = '11.5.10-rider-call';
 const KEY = 'sosRiderUnifiedV10';
 const V9_KEY = 'sosRiderUnifiedV9';
 const OLD_KEY = 'sosRiderGestV7';
@@ -1277,13 +1277,21 @@ function riderEtaMarkup(eta,status){
 }
 function orderCard(o){
   const pickup={label:o.pickupAddress,lat:o.pickupLat,lon:o.pickupLon},del={label:o.address,lat:o.lat,lon:o.lon};
+  const phone=String(o.phone||'').trim();
+  const dialNumber=phone.replace(/[\s().-]/g,'');
+  const canCall=o.status==='arrived' && /^\+?[0-9]{6,15}$/.test(dialNumber);
   let actions='';
   if(o.status==='to_pickup') actions=`<a class="btn ghost" href="${mapsNavigate(pickup,o.vehicle)}" target="_blank" rel="noopener">${icon('pin','btn-icon')} VAI AL RITIRO</a><button class="btn primary" data-order-action="picked" data-order-id="${o.id}">${icon('check','btn-icon')} RITIRATO</button>`;
   else if(o.status==='picked') actions=`<a class="btn ghost" href="${mapsNavigate(del,o.vehicle)}" target="_blank" rel="noopener">${icon('navigation','btn-icon')} NAVIGA CLIENTE</a><button class="btn primary" data-order-action="arrived" data-order-id="${o.id}">${icon('pin','btn-icon')} ARRIVATO</button>`;
-  else if(o.status==='arrived') actions=`<button class="btn ghost" data-order-action="cancel" data-order-id="${o.id}">ANNULLA</button><button class="btn primary" data-order-action="delivered" data-order-id="${o.id}">${icon('check','btn-icon')} CONSEGNATO</button>`;
+  else if(o.status==='arrived'){
+    const call=canCall?`<a class="btn ghost order-call" href="tel:${dialNumber}" aria-label="Chiama il cliente al ${esc(phone)}"><span>CHIAMA</span><b>${esc(phone)}</b></a>`:'';
+    const complete=`<button class="btn primary" data-order-action="delivered" data-order-id="${o.id}">${icon('check','btn-icon')} CONSEGNATO</button>`;
+    const cancel=`<button class="btn ghost" data-order-action="cancel" data-order-id="${o.id}">ANNULLA</button>`;
+    actions=canCall?call+complete+cancel:cancel+complete;
+  }
   const cash=o.payment==='cash'&&o.status==='arrived'?cashPanel(o):'';
   const live=o.remoteCode?findRemote(o.remoteCode):null;const etaHtml=riderEtaMarkup(live?.eta||null,o.status);
-  return `<article class="order-card" data-order-id="${o.id}"><div class="order-top"><div><div class="code">${esc(o.code)}</div><div class="tiny">${vehicleIcon(o.vehicle)} ${esc(vehicleLabel(o.vehicle))} · pronto ${esc(o.readyTime||'—')}</div></div><span class="pill yellow">${o.status==='to_pickup'?'DA RITIRARE':o.status==='picked'?'IN CONSEGNA':'ARRIVATO'}</span></div><div class="route-box"><b>${icon('store','mini-inline-icon')} ${esc(o.restaurant)}</b><br>${esc(o.pickupAddress)}<br><br><b>${icon('customer','mini-inline-icon')} ${esc(o.customer)}</b> · ${esc(o.phone||'—')}<br>${esc(o.address)}</div><div class="order-grid"><div class="kv"><small>TARIFFA SOS</small><b>${money(o.fee)}</b></div><div class="kv"><small>PAGAMENTO ORDINE</small><b>${esc(paymentLabel(o.payment))}</b></div>${o.payment==='cash'?`<div class="kv"><small>DA INCASSARE</small><b>${money(o.total)}</b></div>`:''}<div class="kv"><small>DISTANZA</small><b>${num(o.distanceKm).toFixed(1)} km</b></div></div>${etaHtml}${cash}<div class="order-actions">${actions}</div></article>`;
+  return `<article class="order-card" data-order-id="${o.id}"><div class="order-top"><div><div class="code">${esc(o.code)}</div><div class="tiny">${vehicleIcon(o.vehicle)} ${esc(vehicleLabel(o.vehicle))} · pronto ${esc(o.readyTime||'—')}</div></div><span class="pill yellow">${o.status==='to_pickup'?'DA RITIRARE':o.status==='picked'?'IN CONSEGNA':'ARRIVATO'}</span></div><div class="route-box"><b>${icon('store','mini-inline-icon')} ${esc(o.restaurant)}</b><br>${esc(o.pickupAddress)}<br><br><b>${icon('customer','mini-inline-icon')} ${esc(o.customer)}</b> · ${esc(o.phone||'—')}<br>${esc(o.address)}</div><div class="order-grid"><div class="kv"><small>TARIFFA SOS</small><b>${money(o.fee)}</b></div><div class="kv"><small>PAGAMENTO ORDINE</small><b>${esc(paymentLabel(o.payment))}</b></div>${o.payment==='cash'?`<div class="kv"><small>DA INCASSARE</small><b>${money(o.total)}</b></div>`:''}<div class="kv"><small>DISTANZA</small><b>${num(o.distanceKm).toFixed(1)} km</b></div></div>${etaHtml}${cash}<div class="order-actions${canCall?' order-actions-with-call':''}">${actions}</div></article>`;
 }
 async function orderAction(id,action){
   const o=state.orders.find(x=>x.id===id);if(!o)return;
