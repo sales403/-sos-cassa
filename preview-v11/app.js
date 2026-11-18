@@ -1194,7 +1194,7 @@ async function submitClientRequest(){
   }catch(e){status.className='status-line error';status.innerHTML=`⚠ Invio automatico non riuscito: ${esc(e.message)}<br><a class="btn whatsapp-btn full" style="margin-top:8px" href="${waLink(clientStructuredWhatsApp())}" target="_blank" rel="noopener">INVIA I DATI SU WHATSAPP</a>`;}finally{sendBtn.disabled=false;}
 }
 function showClientBatchStatus(batch,token){
-  $('clientFormCard').classList.add('hidden');$('clientQuoteSection').classList.add('hidden');$('clientRequestStatus').classList.remove('hidden');$('clientRequestCode').textContent=batch.batchId;$('clientStatusWhatsapp').href=waLink(`Ciao Marcello, ho inviato il giro SOS Rider ${batch.batchId}.`);lastClientStatus=null;updateClientBatchStatusUI(batch);renderClientTimeline([]);startClientBatchPolling(batch.batchId,token);$('clientRequestStatus').scrollIntoView({behavior:'smooth',block:'start'});
+  $('clientFormCard').classList.add('hidden');$('clientQuoteSection').classList.add('hidden');$('clientRequestStatus').classList.remove('hidden');$('clientRequestCode').textContent=batch.batchId;$('clientStatusWhatsapp').href=waLink(`Ciao Marcello, ho inviato il giro SOS Rider ${batch.batchId}.`);lastClientStatus=null;updateClientBatchStatusUI(batch);renderClientTimeline([]);startClientBatchPolling(batch.batchId,token);syncClientPushAfterRestore();$('clientRequestStatus').scrollIntoView({behavior:'smooth',block:'start'});
 }
 function updateClientBatchStatusUI(b){
   const badge=$('clientStatusBadge'),s=b.status||'new';if(lastClientStatus&&lastClientStatus!==s)playDing();lastClientStatus=s;badge.className='request-state';$('clientConfirmedPrice').textContent=`Tariffa giro: ${money(b.totalFee)}`;$('clientStatusIcon').textContent=s==='delivered'?'✓':s==='new'?'…':'⚡';
@@ -1207,8 +1207,63 @@ function updateClientBatchStatusUI(b){
 }
 function startClientBatchPolling(batchId,token){stopClientBatchPolling();const go=async()=>{try{const u=new URL(apiBase()+`/api/batches/${encodeURIComponent(batchId)}`);u.searchParams.set('token',token);const d=await fetchJson(u.toString(),{headers:{Accept:'application/json'}},7000);if(d?.batch){updateClientBatchStatusUI(d.batch);renderClientTimeline(d.events||[],d.batch,true);if(d.batch.items?.[0])updateClientLivePosition(d.batch.items[0].code,token,d.batch.status)}}catch(e){console.warn('Status giro non disponibile',e)}};clientBatchPolling=setInterval(go,4000);go();}
 function stopClientBatchPolling(){if(clientBatchPolling){clearInterval(clientBatchPolling);clientBatchPolling=null;}}
+
+let clientPushVerified=false;
+function currentClientPushOrder(){
+  try{
+    const o=JSON.parse(localStorage.getItem(CLIENT_ACTIVE_KEY)||'null');
+    if(!o?.token)return null;
+    return o.batch?{batchId:o.batchId,token:o.token}:{code:o.code,token:o.token};
+  }catch{return null}
+}
+function clientPushMessage(message,success=false){
+  const b=$('clientEnablePush'),t=$('clientPushInfo');
+  if(t)t.textContent=message;
+  if(b){b.textContent=success?'✓ NOTIFICHE ATTIVE':'🔔 ATTIVA NOTIFICHE';b.disabled=success;}
+}
+async function subscribeClientPush({askPermission=true}={}){
+  const order=currentClientPushOrder();
+  if(!order?.token||!(order.code||order.batchId))throw Error('Apri prima una richiesta valida.');
+  if(!('serviceWorker'in navigator)||!('PushManager'in window)||!('Notification'in window))
+    throw Error('Notifiche push non supportate su questo dispositivo.');
+  if(/iPhone|iPad|iPod/i.test(navigator.userAgent)&&!isStandalonePwa())
+    throw Error('Su iPhone aggiungi SOS Rider alla schermata Home e aprila dalla sua icona.');
+  const p=askPermission?await Notification.requestPermission():Notification.permission;
+  if(p!=='granted')throw Error('Consenti le notifiche nelle impostazioni di iOS.');
+  const reg=await navigator.serviceWorker.ready,key=PUBLIC_CONFIG.vapidPublicKey;
+  if(!key)throw Error('Configurazione notifiche mancante.');
+  const expected=base64UrlToUint8Array(key);
+  let sub=await reg.pushManager.getSubscription();
+  if(sub){
+    const k=sub.options?.applicationServerKey,actual=k?new Uint8Array(k):null;
+    if(!actual||actual.length!==expected.length||actual.some((v,i)=>v!==expected[i])){
+      await sub.unsubscribe();sub=null;
+    }
+  }
+  if(!sub)sub=await reg.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:expected});
+  const reply=await fetchJson(apiBase()+'/api/client/push/subscribe',{
+    method:'POST',headers:{'Content-Type':'application/json','Accept':'application/json'},
+    body:JSON.stringify({...order,subscription:sub.toJSON()})
+  },10000);
+  if(!reply?.ok||!reply?.push)throw Error('Registrazione dispositivo non confermata.');
+  clientPushVerified=true;clientPushMessage('Avvisi per questa consegna registrati. Prova con un cambio stato Rider.',true);
+}
+async function activateClientPush(){
+  const b=$('clientEnablePush');if(b)b.disabled=true;
+  try{await subscribeClientPush();}
+  catch(e){clientPushVerified=false;clientPushMessage('⚠ '+(e.message||e));}
+  finally{if(b&&!clientPushVerified)b.disabled=false;}
+}
+function syncClientPushAfterRestore(){
+  clientPushVerified=false;
+  clientPushMessage('Attiva per ricevere gli aggiornamenti anche fuori dall’app.');
+  if('Notification'in window&&Notification.permission==='granted'&&isStandalonePwa()){
+    subscribeClientPush({askPermission:false}).catch(e=>clientPushMessage('⚠ '+(e.message||e)));
+  }
+}
+
 function showClientRequestStatus(r,token,owned=false){
-  $('clientFormCard').classList.add('hidden');$('clientQuoteSection').classList.add('hidden');$('clientRequestStatus').classList.remove('hidden');$('clientRequestCode').textContent=r.code;$('clientStatusWhatsapp').href=waLink(`Ciao Marcello, ho inviato la richiesta SOS Rider ${r.code}.`);lastClientStatus=null;updateClientStatusUI(r);renderClientTimeline([]);startClientPolling(r.code,token,owned,true);$('clientRequestStatus').scrollIntoView({behavior:'smooth',block:'start'});
+  $('clientFormCard').classList.add('hidden');$('clientQuoteSection').classList.add('hidden');$('clientRequestStatus').classList.remove('hidden');$('clientRequestCode').textContent=r.code;$('clientStatusWhatsapp').href=waLink(`Ciao Marcello, ho inviato la richiesta SOS Rider ${r.code}.`);lastClientStatus=null;updateClientStatusUI(r);renderClientTimeline([]);startClientPolling(r.code,token,owned,true);syncClientPushAfterRestore();$('clientRequestStatus').scrollIntoView({behavior:'smooth',block:'start'});
 }
 const CLIENT_TIMELINE_LABELS={new:'Richiesta inviata',accepted:'Rider ha accettato la consegna',picked:'Ordine ritirato dal locale',arrived:'Rider arrivato a destinazione',delivered:'Consegna completata',rejected:'Richiesta rifiutata',cancelled:'Richiesta annullata'};
 function renderClientTimeline(events=[],request=null,isBatch=false){
@@ -1261,7 +1316,7 @@ function updateClientStatusUI(r){
   else if(s==='rejected'||s==='cancelled'){badge.classList.add('rejected');badge.textContent=s==='rejected'?'RICHIESTA NON ACCETTATA':'RICHIESTA ANNULLATA';$('clientStatusText').textContent=r.rejectionReason||'In questo momento la consegna non è disponibile.';$('clientStatusIcon').textContent='×';stopClientPolling();}
 }
 function restoreActiveClientRequest(){
-  try{const x=JSON.parse(localStorage.getItem(CLIENT_ACTIVE_KEY)||'null');if(x?.batch&&x?.batchId&&x?.token){$('clientRequestCode').textContent=x.batchId;$('clientFormCard').classList.add('hidden');$('clientQuoteSection').classList.add('hidden');$('clientRequestStatus').classList.remove('hidden');renderClientTimeline([]);startClientBatchPolling(x.batchId,x.token);return;}if(x?.code&&(x.token||x.owned)){showClientRequestStatus({code:x.code,status:'new'},x.token||'',!!x.owned)}}catch{}
+  try{const x=JSON.parse(localStorage.getItem(CLIENT_ACTIVE_KEY)||'null');if(x?.batch&&x?.batchId&&x?.token){$('clientRequestCode').textContent=x.batchId;$('clientFormCard').classList.add('hidden');$('clientQuoteSection').classList.add('hidden');$('clientRequestStatus').classList.remove('hidden');renderClientTimeline([]);startClientBatchPolling(x.batchId,x.token);syncClientPushAfterRestore();return;}if(x?.code&&(x.token||x.owned)){showClientRequestStatus({code:x.code,status:'new'},x.token||'',!!x.owned)}}catch{}
 }
 
 function startClientPolling(code,token,owned=false,immediate=false){
@@ -2211,7 +2266,8 @@ function bindEvents(){
   $('cReadyTime').addEventListener('input',()=>{updateLateHint();invalidateClientQuote();saveClientDraft()});$('cPayment').addEventListener('change',()=>{toggleOrderTotal();invalidateClientQuote();saveClientDraft()});
   $('clientRequestForm').addEventListener('input',e=>{if(!['cReadyTime','cPayment'].includes(e.target.id)){invalidateClientQuote();saveClientDraft()}});
   $('clientCalcQuote').onclick=calculateClientQuote;$('clientEditQuote').onclick=()=>{$('clientQuoteSection').classList.add('hidden');$('clientFormCard').scrollIntoView({behavior:'smooth',block:'start'})};$('clientSendRequest').onclick=submitClientRequest;
-  $('clientNewRequest').onclick=()=>{localStorage.removeItem(CLIENT_ACTIVE_KEY);stopClientPolling();stopClientBatchPolling();lastClientStatus=null;setBatchMode(false);$('clientRequestStatus').classList.add('hidden');$('clientFormCard').classList.remove('hidden');clearClientDeliveryFields();$('clientFormCard').scrollIntoView({behavior:'smooth'})};
+  if($('clientEnablePush'))$('clientEnablePush').onclick=activateClientPush;
+  $('clientNewRequest').onclick=()=>{clientPushVerified=false;localStorage.removeItem(CLIENT_ACTIVE_KEY);stopClientPolling();stopClientBatchPolling();lastClientStatus=null;setBatchMode(false);$('clientRequestStatus').classList.add('hidden');$('clientFormCard').classList.remove('hidden');clearClientDeliveryFields();$('clientFormCard').scrollIntoView({behavior:'smooth'})};
   $('clientRecentList').addEventListener('click',e=>{const track=e.target.closest('[data-track-client]');if(track){openClientRecentTracking(track.dataset.trackClient);return;}const b=e.target.closest('[data-repeat-client]');if(b)repeatClientRequest(b.dataset.repeatClient)});
   $('riderRefresh').onclick=manualRiderRefresh;$('openSettings').onclick=openSettings;$('riderAvailableBtn').onclick=()=>setRiderAvailability(true);$('riderOfflineBtn').onclick=()=>setRiderAvailability(false);if($('riderWeatherAutoBtn'))$('riderWeatherAutoBtn').onclick=()=>setRiderWeather('auto');if($('riderWeatherOnBtn'))$('riderWeatherOnBtn').onclick=()=>setRiderWeather('force_on');if($('riderWeatherOffBtn'))$('riderWeatherOffBtn').onclick=()=>setRiderWeather('force_off');$('riderEtaSelect').onchange=()=>{if(currentAvailability)setRiderAvailability(!!currentAvailability.enabled)};if($('riderGpsRefresh'))$('riderGpsRefresh').onclick=()=>{riderLocationError='';renderRiderGpsStatus();captureRiderLocationOnce(true).catch(e=>{onRiderPositionError(e)})};
   document.querySelectorAll('[data-rider-page]').forEach(b=>b.onclick=()=>switchRiderPage(b.dataset.riderPage));
