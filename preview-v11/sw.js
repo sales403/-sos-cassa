@@ -1,4 +1,4 @@
-const CACHE='sos-rider-v11-20261118-client-push-r2';
+const CACHE='sos-rider-v11-20261118-live-11-5-17-notifications';
 const ASSETS=['./','./index.html','./styles.css','./app.js','./config.js','./manifest.webmanifest','./icon-192.png','./icon-512.png','./logo-sos-rider.png','./rider-banner-v2-live.png','./icons.svg','./track.html','./track.js','./partner.html','./partner.js','./portal.css'];
 
 self.addEventListener('install',e=>{
