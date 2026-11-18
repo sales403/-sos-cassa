@@ -1430,19 +1430,18 @@ function editInitialFund(){
   ]);
 }
 
-// Il contatto con il cliente e la cassa sono passaggi locali Rider:
-// il backend mantiene gli stati ufficiali "arrived" e "delivered".
-function riderDoorStep(o){return o.doorStep==='cash'?'cash':'call';}
-function riderDoorActions(o,completedLabel='CONSEGNATO'){
-  if(riderDoorStep(o)==='cash'){
-    return `<div class="rider-door-step"><span>PASSAGGIO FINALE</span><b>${o.payment==='cash'?'CASSA E RESTO':'CONFERMA CONSEGNA'}</b></div><button type="button" class="btn primary" data-order-action="delivered" data-order-id="${o.id}">${icon('check','btn-icon')} ${completedLabel}</button>`;
-  }
+// Arrivato e Chiama cliente sono due scelte dello STESSO passo.
+// La cassa resta nascosta fino allo stato ARRIVATO confermato.
+function riderCallButton(o){
   const phone=String(o.phone||'').replace(/[^0-9+]/g,'');
-  const canCall=phone.replace(/\\D/g,'').length>=8;
-  const call=canCall
-    ? `<a class="btn primary" href="tel:${esc(phone)}" data-order-call="${o.id}">${icon('customer','btn-icon')} CHIAMA CLIENTE</a>`
-    : '<span class="rider-door-no-phone">Numero cliente non disponibile</span>';
-  return `<div class="rider-door-step"><span>PASSAGGIO 2 DI 3</span><b>CONTATTA IL CLIENTE</b></div>${call}<button type="button" class="btn ghost" data-order-action="skip_call" data-order-id="${o.id}">SALTA CHIAMATA</button>`;
+  if(phone.replace(/\D/g,'').length<8)return '';
+  return `<a class="btn ghost" href="tel:${esc(phone)}">${icon('customer','btn-icon')} CHIAMA CLIENTE</a>`;
+}
+function riderArrivalActions(o,stopLabel='ARRIVATO'){
+  return `${riderCallButton(o)}<button type="button" class="btn primary" data-order-action="arrived" data-order-id="${o.id}">${icon('pin','btn-icon')} ${stopLabel}</button>`;
+}
+function riderCompleteActions(o,label='CONSEGNATO'){
+  return `<button type="button" class="btn primary" data-order-action="delivered" data-order-id="${o.id}">${icon('check','btn-icon')} ${label}</button>`;
 }
 
 function batchOrderCard(arr){
@@ -1450,10 +1449,10 @@ function batchOrderCard(arr){
   const allPickup=active.every(o=>o.status==='to_pickup');
   if(allPickup){const pickup={label:first.pickupAddress,lat:first.pickupLat,lon:first.pickupLon};return `<article class="order-card batch-order"><div class="order-top"><div><div class="code">${esc(first.batchId)}</div><div class="tiny">GIRO · 2 CONSEGNE · pronto ${esc(first.readyTime||'—')}</div></div><span class="pill yellow">DA RITIRARE</span></div><div class="batch-pickup"><b>${icon('store','mini-inline-icon')} RITIRO UNICO · 2 ORDINI</b><span>${esc(first.pickupAddress)}</span></div><div class="batch-stop-list">${rows.map(o=>`<div><b>${o.batchStopIndex}️⃣ ${esc(o.customer)}</b><span>${esc(o.address)}</span></div>`).join('')}</div><div class="order-grid"><div class="kv"><small>TARIFFA GIRO</small><b>${money(first.batchTotalFee)}</b></div><div class="kv"><small>DISTANZA GIRO</small><b>${num(first.batchTotalDistanceKm).toFixed(1)} km</b></div></div><div class="order-actions"><a class="btn ghost" href="${mapsNavigate(pickup,first.vehicle)}" target="_blank" rel="noopener">${icon('pin','btn-icon')} VAI AL RITIRO</a><button class="btn primary" data-batch-order-action="picked" data-batch-id="${esc(first.batchId)}">${icon('check','btn-icon')} RITIRATI 2 ORDINI</button></div></article>`;}
   const del={label:next.address,lat:next.lat,lon:next.lon};let actions='',cash='';
-  if(next.status==='picked')actions=`<a class="btn ghost" href="${mapsNavigate(del,next.vehicle)}" target="_blank" rel="noopener">${icon('navigation','btn-icon')} NAVIGA STOP ${next.batchStopIndex}</a><button type="button" class="btn primary" data-order-action="arrived" data-order-id="${next.id}">${icon('pin','btn-icon')} ARRIVATO</button><button type="button" class="btn ghost" data-order-action="arrived_skip" data-order-id="${next.id}">SALTA</button>`;
+  if(next.status==='picked')actions=`<a class="btn ghost" href="${mapsNavigate(del,next.vehicle)}" target="_blank" rel="noopener">${icon('navigation','btn-icon')} NAVIGA STOP ${next.batchStopIndex}</a>`+riderArrivalActions(next);
   else if(next.status==='arrived'){
-    actions=riderDoorActions(next,`CONSEGNATO STOP ${next.batchStopIndex}`);
-    cash=next.payment==='cash'&&riderDoorStep(next)==='cash'?cashPanel(next):'';
+    actions=riderCompleteActions(next,`CONSEGNATO STOP ${next.batchStopIndex}`);
+    cash=next.payment==='cash'?cashPanel(next):'';
   }
   const done=rows.filter(o=>o.status==='delivered').length;const live=next.remoteCode?findRemote(next.remoteCode):null;return `<article class="order-card batch-order"><div class="order-top"><div><div class="code">${esc(first.batchId)}</div><div class="tiny">GIRO 2 STOP · ${done}/2 consegnate</div></div><span class="pill green">STOP ${next.batchStopIndex}/2</span></div><div class="batch-next-stop"><small>PROSSIMA CONSEGNA</small><b>${next.batchStopIndex}️⃣ ${esc(next.customer)}</b><span>${esc(next.phone||'')} · ${esc(next.address)}</span></div><div class="order-grid"><div class="kv"><small>PAGAMENTO</small><b>${esc(paymentLabel(next.payment))}</b></div>${next.payment==='cash'?`<div class="kv"><small>DA INCASSARE</small><b>${money(next.total)}</b></div>`:''}<div class="kv"><small>TARIFFA GIRO</small><b>${money(first.batchTotalFee)}</b></div></div>${riderEtaMarkup(live?.eta||null,next.status)}${cash}<div class="order-actions">${actions}</div><div class="batch-stop-list compact">${rows.map(o=>`<div class="${o.status==='delivered'?'done':''}"><b>${o.batchStopIndex}️⃣ ${esc(o.customer)}</b><small>${o.status==='delivered'?'✓ CONSEGNATA':o===next?'IN CORSO':'SUCCESSIVA'}</small></div>`).join('')}</div></article>`;
 }
@@ -1520,23 +1519,19 @@ function orderCard(o){
   const pickup={label:o.pickupAddress,lat:o.pickupLat,lon:o.pickupLon},del={label:o.address,lat:o.lat,lon:o.lon};
   let actions='';
   if(o.status==='to_pickup') actions=`<a class="btn ghost" href="${mapsNavigate(pickup,o.vehicle)}" target="_blank" rel="noopener">${icon('pin','btn-icon')} VAI AL RITIRO</a><button class="btn primary" data-order-action="picked" data-order-id="${o.id}">${icon('check','btn-icon')} RITIRATO</button>`;
-  else if(o.status==='picked') actions=`<a class="btn ghost" href="${mapsNavigate(del,o.vehicle)}" target="_blank" rel="noopener">${icon('navigation','btn-icon')} NAVIGA CLIENTE</a><button class="btn primary" data-order-action="arrived" data-order-id="${o.id}">${icon('pin','btn-icon')} ARRIVATO</button><button class="btn ghost" data-order-action="arrived_skip" data-order-id="${o.id}">SALTA</button>`;
-  else if(o.status==='arrived') actions=riderDoorActions(o);
-  const cash=o.payment==='cash'&&o.status==='arrived'&&riderDoorStep(o)==='cash'?cashPanel(o):'';
+  else if(o.status==='picked') actions=`<a class="btn ghost" href="${mapsNavigate(del,o.vehicle)}" target="_blank" rel="noopener">${icon('navigation','btn-icon')} NAVIGA CLIENTE</a>`+riderArrivalActions(o);
+  else if(o.status==='arrived') actions=riderCompleteActions(o);
+  const cash=o.payment==='cash'&&o.status==='arrived'?cashPanel(o):'';
   const live=o.remoteCode?findRemote(o.remoteCode):null;const etaHtml=riderEtaMarkup(live?.eta||null,o.status);
   return `<article class="order-card" data-order-id="${o.id}"><div class="order-top"><div><div class="code">${esc(o.code)}</div><div class="tiny">${vehicleIcon(o.vehicle)} ${esc(vehicleLabel(o.vehicle))} · pronto ${esc(o.readyTime||'—')}</div></div><span class="pill yellow">${o.status==='to_pickup'?'DA RITIRARE':o.status==='picked'?'IN CONSEGNA':'ARRIVATO'}</span></div><div class="route-box"><b>${icon('store','mini-inline-icon')} ${esc(o.restaurant)}</b><br>${esc(o.pickupAddress)}<br><br><b>${icon('customer','mini-inline-icon')} ${esc(o.customer)}</b> · ${esc(o.phone||'—')}<br>${esc(o.address)}</div><div class="order-grid"><div class="kv"><small>TARIFFA SOS</small><b>${money(o.fee)}</b></div><div class="kv"><small>PAGAMENTO ORDINE</small><b>${esc(paymentLabel(o.payment))}</b></div>${o.payment==='cash'?`<div class="kv"><small>DA INCASSARE</small><b>${money(o.total)}</b></div>`:''}<div class="kv"><small>DISTANZA</small><b>${num(o.distanceKm).toFixed(1)} km</b></div></div>${etaHtml}${cash}<div class="order-actions">${actions}</div></article>`;
 }
 async function orderAction(id,action){
   const o=state.orders.find(x=>x.id===id);if(!o)return;
-  if(action==='skip_call'){
-    if(o.status!=='arrived')return;
-    o.doorStep='cash';saveState();renderDeliveries();return;
-  }
-  if(action==='delivered'&&(o.status!=='arrived'||riderDoorStep(o)!=='cash'))return;
-  if(['arrived','arrived_skip'].includes(action)&&o.status!=='picked')return;
+  if(action==='delivered'&&o.status!=='arrived')return;
+  if(action==='arrived'&&o.status!=='picked')return;
   const before={status:o.status,pickedAt:o.pickedAt,arrivedAt:o.arrivedAt,deliveredAt:o.deliveredAt,outcome:o.outcome,received:o.received,change:o.change,doorStep:o.doorStep};
   if(action==='picked'){o.status='picked';o.pickedAt=nowIso();o.doorStep=null;}
-  else if(action==='arrived'||action==='arrived_skip'){o.status='arrived';o.arrivedAt=nowIso();o.doorStep=action==='arrived_skip'?'cash':'call';}
+  else if(action==='arrived'){o.status='arrived';o.arrivedAt=nowIso();o.doorStep='cash';}
   else if(action==='delivered'){
     if(o.payment==='cash'){
       o.received=num(o.received);if(o.received<o.total){alert(`Inserisci almeno ${money(o.total)} ricevuti dal cliente.`);return;}o.change=roundHalf(Math.max(0,o.received-o.total));
@@ -2240,16 +2235,6 @@ function bindEvents(){
       else if(action==='undo'){cashStacks[o.id]=cashStacks[o.id]||[];cashStacks[o.id].pop();o.received=cashStacks[o.id].reduce((a,v)=>a+v,0);o.change=o.received>=o.total?roundHalf(o.received-o.total):0;}
       else if(action==='reset'){cashStacks[o.id]=[];o.received=0;o.change=0;}
       saveState();renderDeliveries();return;
-    }
-    const call=e.target.closest('[data-order-call]');
-    if(call){
-      const o=state.orders.find(x=>x.id===call.dataset.orderCall);
-      if(o?.status==='arrived'&&riderDoorStep(o)==='call'){
-        o.doorStep='cash';saveState();
-        // Non rimuovere subito il link: iOS deve prima aprire il dialer.
-        setTimeout(()=>renderDeliveries(),250);
-      }
-      return;
     }
     const b=e.target.closest('[data-order-action]');if(b)orderAction(b.dataset.orderId,b.dataset.orderAction);
   });
