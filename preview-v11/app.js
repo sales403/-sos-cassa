@@ -600,12 +600,20 @@ async function setupBackgroundPush(){
   const permission=await Notification.requestPermission();
   if(permission!=='granted')throw new Error('Permesso notifiche non concesso.');
   const reg=await navigator.serviceWorker.ready;
+  const key=PUBLIC_CONFIG.vapidPublicKey;
+  if(!key)throw new Error('Chiave Web Push non configurata.');
+  const expected=base64UrlToUint8Array(key);
   let sub=await reg.pushManager.getSubscription();
-  if(!sub){
-    const key=PUBLIC_CONFIG.vapidPublicKey;
-    if(!key)throw new Error('Chiave Web Push non configurata.');
-    sub=await reg.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:base64UrlToUint8Array(key)});
+  // Chiave di staging ruotata: le sottoscrizioni precedenti non sono più valide.
+  if(sub){
+    const actualKey=sub.options?.applicationServerKey;
+    const actual=actualKey?new Uint8Array(actualKey):null;
+    if(!actual||actual.length!==expected.length||actual.some((v,i)=>v!==expected[i])){
+      await sub.unsubscribe();
+      sub=null;
+    }
   }
+  if(!sub)sub=await reg.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:expected});
   await fetchJson(apiBase()+'/api/rider/push/subscribe',{
     method:'POST',
     headers:riderHeaders(),
@@ -673,7 +681,6 @@ function startAlarm(code){
     document.body.appendChild(ov)
   }
   ov.classList.remove('hidden');
-  showRiderSystemNotification('SOS Rider · Nuova richiesta',code,code);
 }
 function stopAlarm(code){if(code&&alarmActiveCode&&code!==alarmActiveCode)return;if(alarmTimer)clearInterval(alarmTimer);alarmTimer=null;alarmActiveCode=null;navigator.vibrate?.(0);document.getElementById('alarmOverlay')?.classList.add('hidden')}
 
@@ -1244,7 +1251,13 @@ async function refreshRemoteRequests(){
     if(repaired){d=await fetchJson(u.toString(),{headers:riderHeaders()},8000);remoteRequests=d.requests||[];}
     $('syncDot').className='sync-dot online';$('syncTitle').textContent='Richieste online';$('syncText').textContent=`Sincronizzato ${new Date().toLocaleTimeString('it-IT',{hour:'2-digit',minute:'2-digit',second:'2-digit'})}`;$('riderSyncSmall').textContent=`${authUser?.email||'Rider'} · online`;renderRemoteRequests();
     const newCodes=new Set(remoteRequests.filter(r=>r.status==='new').map(r=>r.code));
-    const first=[...newCodes][0];if(first&&(!lastRemoteNewCodes.has(first)||!alarmActiveCode))startAlarm(first);lastRemoteNewCodes=newCodes;
+    const freshCodes=[...newCodes].filter(code=>!lastRemoteNewCodes.has(code));
+    // Avviso di sistema anche quando l'allarme sonoro facoltativo è disattivato.
+    for(const code of freshCodes)showRiderSystemNotification('SOS Rider · Nuova richiesta',code,'sos-rider-'+code);
+    const first=[...newCodes][0];
+    if(first&&alarmEnabled&&(freshCodes.length>0||!alarmActiveCode))startAlarm(first);
+    if(!first)stopAlarm();
+    lastRemoteNewCodes=newCodes;
     refreshAvailability();
   }catch(e){
     $('syncDot').className='sync-dot offline';$('syncTitle').textContent='Sync non disponibile';$('syncText').textContent=e.status===401||e.status===403?'Sessione o ruolo non valido. Accedi di nuovo.':'Controlla Worker/API e connessione.';$('riderSyncSmall').textContent='Offline · dati locali disponibili';
