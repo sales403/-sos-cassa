@@ -9,7 +9,7 @@
   <meta name="apple-mobile-web-app-title" content="SOS Rider V11 STAGING">
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="apple-touch-icon" href="icon-192.png">
-  <link rel="stylesheet" href="styles.css?v=11.4.2-rider-door-steps">
+  <link rel="stylesheet" href="styles.css?v=11.4.4-client-push">
   <title>SOS Rider Carpi-Soliera · V11 STAGING</title>
 </head>
 <body>
@@ -268,6 +268,10 @@
       </div>
       <div id="clientStatusBadge" class="request-state waiting">IN ATTESA DEL RIDER</div>
       <p id="clientStatusText">La richiesta è arrivata nell'Area Rider. Attendi la conferma di disponibilità.</p>
+      <div class="client-push-row">
+        <button id="clientEnablePush" type="button" class="btn ghost small">🔔 ATTIVA NOTIFICHE</button>
+        <small id="clientPushInfo" aria-live="polite">Ricevi gli aggiornamenti della consegna sull'iPhone.</small>
+      </div>
       <div id="clientEtaBox" class="live-eta-box hidden"></div>
       <div id="clientConfirmedPrice" class="confirmed-price"></div>
       <section id="clientTimeline" class="client-timeline" aria-label="Cronologia della consegna" aria-live="polite">
@@ -399,6 +403,6 @@
   </div>
 
   <script src="config.js?v=11.0.2-staging"></script>
-  <script type="module" src="app.js?v=11.4.3-push-diagnostic"></script>
+  <script type="module" src="app.js?v=11.4.4-client-push"></script>
 </body>
 </html>
