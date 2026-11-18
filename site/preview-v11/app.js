@@ -1,7 +1,7 @@
 (() => {
 'use strict';
 
-const APP_VERSION = '11.5.3-rider-off-highlight';
+const APP_VERSION = '11.5.6-address-autocomplete';
 const KEY = 'sosRiderUnifiedV10';
 const V9_KEY = 'sosRiderUnifiedV9';
 const OLD_KEY = 'sosRiderGestV7';
@@ -635,57 +635,16 @@ function featureLabel(f){
   if(p.state && p.state!==town) parts.push(p.state);
   return parts.filter(Boolean).join(', ');
 }
-let lastNominatimAt=0;
-function normalizeNominatimFeature(f){
-  const p=f?.properties||{}, a=p.address||{};
-  return {
-    type:'Feature',
-    geometry:f.geometry,
-    properties:{
-      name:p.name||a.road||a.pedestrian||a.village||a.town||a.city||'',
-      street:a.road||a.pedestrian||a.residential||'',
-      housenumber:a.house_number||'',
-      city:a.city||a.town||a.village||a.municipality||'',
-      locality:a.suburb||a.hamlet||'',
-      district:a.city_district||a.county||'',
-      county:a.county||'',
-      postcode:a.postcode||'',
-      state:a.state||'',
-      countrycode:String(a.country_code||'it').toUpperCase()
-    }
-  };
-}
 async function directPhoton(query,controller){
   const u=new URL('https://photon.komoot.io/api/');
   u.searchParams.set('q',query);
   u.searchParams.set('limit','7');
-  u.searchParams.set('lang','it');
   u.searchParams.set('lat','44.783');
   u.searchParams.set('lon','10.884');
   const r=await fetch(u.toString(),{signal:controller.signal,cache:'no-store',headers:{Accept:'application/json'}});
   if(!r.ok)throw new Error('Photon non disponibile');
   const d=await r.json();
   return d.features||[];
-}
-async function directNominatim(query,controller){
-  const wait=Math.max(0,1100-(Date.now()-lastNominatimAt));
-  if(wait)await new Promise((resolve,reject)=>{
-    const t=setTimeout(resolve,wait);
-    controller.signal.addEventListener('abort',()=>{clearTimeout(t);reject(new DOMException('Aborted','AbortError'))},{once:true});
-  });
-  lastNominatimAt=Date.now();
-  const u=new URL('https://nominatim.openstreetmap.org/search');
-  u.searchParams.set('q',query);
-  u.searchParams.set('format','geojson');
-  u.searchParams.set('addressdetails','1');
-  u.searchParams.set('countrycodes','it');
-  u.searchParams.set('limit','7');
-  u.searchParams.set('accept-language','it');
-  u.searchParams.set('viewbox','10.45,45.05,11.15,44.45');
-  const r=await fetch(u.toString(),{signal:controller.signal,cache:'no-store',headers:{Accept:'application/geo+json,application/json'}});
-  if(!r.ok)throw new Error('Nominatim non disponibile');
-  const d=await r.json();
-  return (d.features||[]).map(normalizeNominatimFeature);
 }
 async function searchAddresses(query, slotKey){
   const existing = searchSlots.get(slotKey);
@@ -705,44 +664,44 @@ async function searchAddresses(query, slotKey){
   }catch(e){ if(e.name==='AbortError') throw e; }
 
   // 2) Fallback diretto Photon
-  try{
-    const f=await directPhoton(query,controller);
-    if(f.length)return f;
-  }catch(e){ if(e.name==='AbortError') throw e; }
-
-  // 3) Fallback OpenStreetMap/Nominatim
-  const n=await directNominatim(query,controller);
-  if(n.length)return n;
-
-  return [];
+  return directPhoton(query,controller);
 }
-function wireAutocomplete({inputId,boxId,statusId,mapsId,slotKey,onSelect}){
+function wireAutocomplete({inputId,boxId,statusId,mapsId,slotKey,onSelect,signal}){
   const input=$(inputId), box=$(boxId), status=$(statusId);
   let timer=null, features=[];
   const close=()=>box.classList.add('hidden');
   input.addEventListener('input',()=>{
-    onSelect(null); clientQuote=null; hideClientQuote();
+    onSelect(null);
     clearTimeout(timer);
+    searchSlots.get(slotKey)?.controller?.abort();
+    close();
     const q=input.value.trim();
     if(q.length<3){close();status.textContent='Scrivi almeno 3 caratteri e seleziona un risultato.';return;}
     status.textContent='Cerco indirizzi reali…';
     timer=setTimeout(async()=>{
       try{
+        if(!input.isConnected)return;
         features=await searchAddresses(q,slotKey);
+        if(!input.isConnected || q!==input.value.trim())return;
         if(!features.length){ box.innerHTML='<div class="suggestion"><strong>Nessun risultato</strong><span>Controlla via, civico e località.</span></div>'; box.classList.remove('hidden'); status.textContent='Nessun indirizzo trovato.'; return; }
         box.innerHTML=features.slice(0,7).map((f,i)=>`<button class="suggestion" type="button" data-i="${i}"><strong>${esc(featureLabel(f)||f.properties?.name||'Indirizzo')}</strong><span>${esc([f.properties?.postcode,f.properties?.city||f.properties?.locality||f.properties?.district,f.properties?.state].filter(Boolean).join(' · '))}</span></button>`).join('');
         box.classList.remove('hidden'); status.textContent='Seleziona l’indirizzo corretto.';
-      }catch(e){ if(e.name!=='AbortError'){close();status.textContent='⚠ Autocomplete non disponibile. Riprova tra poco.';} }
+      }catch(e){ if(e.name!=='AbortError' && input.isConnected && q===input.value.trim()){close();status.textContent='⚠ Suggerimenti non disponibili.';} }
     },280);
   });
   box.addEventListener('click',e=>{
     const b=e.target.closest('[data-i]'); if(!b) return;
     const f=features[Number(b.dataset.i)], c=f?.geometry?.coordinates||[];
     const chosen={label:featureLabel(f)||input.value.trim(), lon:c[0]??null, lat:c[1]??null};
-    input.value=chosen.label; onSelect(chosen); close(); status.textContent='✓ Indirizzo verificato'; saveClientDraft();
+    input.value=chosen.label; onSelect(chosen); close(); status.textContent='✓ Indirizzo verificato';
   });
-  $(mapsId).addEventListener('click',()=>{ const q=input.value.trim(); if(q) window.open(mapsSearch(q),'_blank','noopener'); });
-  document.addEventListener('click',e=>{ if(!box.contains(e.target) && e.target!==input) close(); });
+  if(mapsId) $(mapsId).addEventListener('click',()=>{ const q=input.value.trim(); if(q) window.open(mapsSearch(q),'_blank','noopener'); });
+  document.addEventListener('click',e=>{ if(!box.contains(e.target) && e.target!==input) close(); },{signal});
+  signal?.addEventListener('abort',()=>{
+    clearTimeout(timer);
+    searchSlots.get(slotKey)?.controller?.abort();
+    searchSlots.delete(slotKey);
+  },{once:true});
 }
 
 // ---------- Client hub ----------
@@ -1385,16 +1344,20 @@ function openWhatsAppImporter(){
     {label:'ANALIZZA',cls:'primary',keep:true,fn:()=>{const d=parseWa($('mWaText').value);renderWaParsed(d)}}
   ]);
 }
+let waAddressListeners;
 function renderWaParsed(d){
+  waAddressListeners?.abort();
+  waAddressListeners=new AbortController();
+  let pickup=null, delivery=null;
   const r=$('mWaResult');
   r.innerHTML=`<div class="notice blue"><b>Controlla i campi prima di creare la consegna.</b><br>Il parser non sovrascrive dati nascosti: qui vedi esattamente cosa verrà registrato.</div>
   <div class="form-grid" style="margin-top:9px">
     <label>Locale<input id="mPRestaurant" value="${esc(d.restaurant||'')}"></label>
     <label>Ordine pronto<input id="mPReady" type="time" value="${esc(d.readyTime||'')}"></label>
-    <label class="full">Indirizzo ritiro<input id="mPPickup" value="${esc(d.pickupAddress||'')}"></label>
+    <div class="full"><label>Indirizzo ritiro<input id="mPPickup" autocomplete="off" value="${esc(d.pickupAddress||'')}"></label><div id="mPPickupSuggestions" class="suggestions hidden"></div><small id="mPPickupStatus" class="muted" aria-live="polite"></small></div>
     <label>Cliente<input id="mPCustomer" value="${esc(d.customer||'')}"></label>
     <label>Telefono<input id="mPPhone" inputmode="tel" value="${esc(d.phone||'')}"></label>
-    <label class="full">Indirizzo consegna<input id="mPAddress" value="${esc(d.address||'')}"></label>
+    <div class="full"><label>Indirizzo consegna<input id="mPAddress" autocomplete="off" value="${esc(d.address||'')}"></label><div id="mPAddressSuggestions" class="suggestions hidden"></div><small id="mPAddressStatus" class="muted" aria-live="polite"></small></div>
     <label>Servizio<select id="mPVehicle"><option value="ebike" ${d.vehicle==='ebike'?'selected':''}>Economy E-bike</option><option value="moto" ${d.vehicle==='moto'?'selected':''}>Moto Express</option><option value="auto" ${d.vehicle==='auto'?'selected':''}>Auto Cargo</option></select></label>
     <label>Pagamento<select id="mPPayment"><option value="paid" ${d.payment==='paid'?'selected':''}>Già pagato</option><option value="cash" ${d.payment==='cash'?'selected':''}>Contanti da incassare</option><option value="pos" ${d.payment==='pos'?'selected':''}>POS locale</option></select></label>
     <label>Importo ordine<input id="mPOrderTotal" type="number" min="0" step="0.01" value="${num(d.orderTotal)||''}"></label>
@@ -1402,12 +1365,15 @@ function renderWaParsed(d){
     <label class="full">Note<textarea id="mPNotes" rows="2">${esc(d.notes||'')}</textarea></label>
   </div>
   <button id="mCreateParsed" class="btn primary full" style="margin-top:8px">CREA CONSEGNA</button>`;
-  $('mCreateParsed').onclick=()=>createManualFromParsed({restaurant:$('mPRestaurant').value.trim(),pickupAddress:$('mPPickup').value.trim(),readyTime:$('mPReady').value,customer:$('mPCustomer').value.trim(),phone:digits($('mPPhone').value),address:$('mPAddress').value.trim(),vehicle:$('mPVehicle').value,payment:$('mPPayment').value,orderTotal:num($('mPOrderTotal').value),fee:num($('mPFee').value),notes:$('mPNotes').value.trim()});
+  const signal=waAddressListeners.signal;
+  wireAutocomplete({inputId:'mPPickup',boxId:'mPPickupSuggestions',statusId:'mPPickupStatus',slotKey:'wa-pickup',signal,onSelect:v=>{pickup=v;}});
+  wireAutocomplete({inputId:'mPAddress',boxId:'mPAddressSuggestions',statusId:'mPAddressStatus',slotKey:'wa-delivery',signal,onSelect:v=>{delivery=v;}});
+  $('mCreateParsed').onclick=()=>createManualFromParsed({pickup,delivery,restaurant:$('mPRestaurant').value.trim(),pickupAddress:$('mPPickup').value.trim(),readyTime:$('mPReady').value,customer:$('mPCustomer').value.trim(),phone:digits($('mPPhone').value),address:$('mPAddress').value.trim(),vehicle:$('mPVehicle').value,payment:$('mPPayment').value,orderTotal:num($('mPOrderTotal').value),fee:num($('mPFee').value),notes:$('mPNotes').value.trim()});
 }
 function createManualFromParsed(d){
   ensureShiftThen(()=>{
     if(!d.restaurant||!d.pickupAddress||!d.customer||!d.address){alert('Completa almeno locale, ritiro, cliente e indirizzo di consegna.');return;}
-    const o={id:uid('ORD'),remoteCode:null,shiftId:currentShift().id,code:`SOS-${String(state.orders.length+1).padStart(3,'0')}`,restaurant:d.restaurant,pickupAddress:d.pickupAddress,readyTime:d.readyTime,customer:d.customer,phone:d.phone,address:d.address,total:num(d.orderTotal),fee:num(d.fee),payment:d.payment,vehicle:d.vehicle,distanceKm:0,durationMin:0,baseFee:num(d.fee),lateFee:isLateTime(d.readyTime)?2:0,pickupLat:null,pickupLon:null,lat:null,lon:null,received:0,change:0,status:'to_pickup',outcome:null,problemNote:'',cashSorted:false,restaurantSettled:false,createdAt:nowIso(),pickedAt:null,arrivedAt:null,deliveredAt:null,notes:d.notes||''};state.orders.push(o);saveState();closeModal();renderRiderAll();switchRiderPage('deliveries');
+    const o={id:uid('ORD'),remoteCode:null,shiftId:currentShift().id,code:`SOS-${String(state.orders.length+1).padStart(3,'0')}`,restaurant:d.restaurant,pickupAddress:d.pickupAddress,readyTime:d.readyTime,customer:d.customer,phone:d.phone,address:d.address,total:num(d.orderTotal),fee:num(d.fee),payment:d.payment,vehicle:d.vehicle,distanceKm:0,durationMin:0,baseFee:num(d.fee),lateFee:isLateTime(d.readyTime)?2:0,pickupLat:d.pickup?.lat??null,pickupLon:d.pickup?.lon??null,lat:d.delivery?.lat??null,lon:d.delivery?.lon??null,received:0,change:0,status:'to_pickup',outcome:null,problemNote:'',cashSorted:false,restaurantSettled:false,createdAt:nowIso(),pickedAt:null,arrivedAt:null,deliveredAt:null,notes:d.notes||''};state.orders.push(o);saveState();closeModal();renderRiderAll();switchRiderPage('deliveries');
   });
 }
 
@@ -1487,8 +1453,8 @@ function csvExport(){const rows=[['Codice','Locale','Cliente','Telefono','Ritiro
 function download(name,text,type='text/plain;charset=utf-8'){const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([text],{type}));a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),500)}
 
 // ---------- Modal / settings ----------
-function openModal(title,html,actions=[]){$('modalTitle').textContent=title;$('modalBody').innerHTML=html;$('modalActions').innerHTML='';for(const a of actions){const b=document.createElement('button');b.className='btn '+(a.cls||'ghost');b.textContent=a.label;b.onclick=()=>{if(a.fn)a.fn();if(!a.keep && a.label!=='ANNULLA' && !a.fn)closeModal();else if(!a.keep && a.label==='ANNULLA')closeModal()};$('modalActions').appendChild(b)}$('modalBackdrop').classList.remove('hidden')}
-function closeModal(){$('modalBackdrop').classList.add('hidden');$('modalBody').innerHTML='';$('modalActions').innerHTML=''}
+function openModal(title,html,actions=[]){waAddressListeners?.abort();$('modalTitle').textContent=title;$('modalBody').innerHTML=html;$('modalActions').innerHTML='';for(const a of actions){const b=document.createElement('button');b.className='btn '+(a.cls||'ghost');b.textContent=a.label;b.onclick=()=>{if(a.fn)a.fn();if(!a.keep && a.label!=='ANNULLA' && !a.fn)closeModal();else if(!a.keep && a.label==='ANNULLA')closeModal()};$('modalActions').appendChild(b)}$('modalBackdrop').classList.remove('hidden')}
+function closeModal(){waAddressListeners?.abort();$('modalBackdrop').classList.add('hidden');$('modalBody').innerHTML='';$('modalActions').innerHTML=''}
 function openSettings(){
   openModal('Impostazioni',`<div class="eyebrow">SOS RIDER V${APP_VERSION}</div><section class="settings-notify"><div class="eyebrow">NOTIFICHE RIDER</div><b id="mRiderAlarmState">${esc(alarmUiText || (alarmEnabled?'Push attive su questo dispositivo':'Notifiche da attivare'))}</b><small>Push di sistema ad app chiusa. Con Area Rider aperta: allarme e vibrazione quando consentiti dal dispositivo.</small><div class="dual-actions"><button id="mTestPush" class="btn ghost">TEST PUSH</button><button id="mEnableRiderAlarm" class="btn primary">${alarmEnabled?'🔔 ATTIVO':'🔔 ATTIVA NOTIFICHE'}</button></div></section><label style="margin-top:10px">URL Worker/API<input id="mApiBase" value="${esc(apiBase())}"></label><button id="mTestApi" class="btn ghost full" style="margin-top:8px">TEST SERVER</button><div id="mApiStatus" class="status-line"></div><div class="notice green">Accesso Rider: ${esc(authUser?.email||'—')} · ruolo verificato dal backend.</div><div class="notice yellow">Tema automatico: giorno 07:00-18:29, notte 18:30-06:59. Il selettore ◐ può forzare Day/Night.</div><div class="dual-actions"><button id="mBackup" class="btn ghost">BACKUP JSON</button><button id="mImport" class="btn ghost">IMPORTA JSON</button></div><div class="dual-actions"><button id="mLogout" class="btn ghost">ESCI ACCOUNT</button><a class="btn ghost" href="legacy-v8.3.html">APRI V8.3 BACKUP</a></div><button id="mPasskey" class="btn ghost full" style="margin-top:8px">🔑 REGISTRA PASSKEY <span class="beta-tag">BETA</span></button><button id="mInstall" class="btn primary full" style="margin-top:8px">INSTALLA APP</button>`,[
     {label:'CHIUDI',cls:'ghost',fn:closeModal,keep:true},
@@ -1570,8 +1536,8 @@ function bindEvents(){
 }
 
 function initAutocomplete(){
-  wireAutocomplete({inputId:'cPickup',boxId:'cPickupSuggestions',statusId:'cPickupStatus',mapsId:'cPickupMaps',slotKey:'client-pickup',onSelect:v=>{clientPickup=v;saveClientDraft()}});
-  wireAutocomplete({inputId:'cDelivery',boxId:'cDeliverySuggestions',statusId:'cDeliveryStatus',mapsId:'cDeliveryMaps',slotKey:'client-delivery',onSelect:v=>{clientDelivery=v;saveClientDraft()}});
+  wireAutocomplete({inputId:'cPickup',boxId:'cPickupSuggestions',statusId:'cPickupStatus',mapsId:'cPickupMaps',slotKey:'client-pickup',onSelect:v=>{clientPickup=v;invalidateClientQuote();saveClientDraft()}});
+  wireAutocomplete({inputId:'cDelivery',boxId:'cDeliverySuggestions',statusId:'cDeliveryStatus',mapsId:'cDeliveryMaps',slotKey:'client-delivery',onSelect:v=>{clientDelivery=v;invalidateClientQuote();saveClientDraft()}});
 }
 
 async function bootRoute(){

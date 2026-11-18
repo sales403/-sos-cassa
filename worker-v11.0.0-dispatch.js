@@ -697,7 +697,6 @@ async function handleAddress(url, cors) {
   const u = new URL('https://photon.komoot.io/api/');
   u.searchParams.set('q', q);
   u.searchParams.set('limit', '10');
-  u.searchParams.set('lang', 'it');
   u.searchParams.set('lat', '44.783');
   u.searchParams.set('lon', '10.884');
 

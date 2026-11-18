@@ -1,4 +1,4 @@
-const CACHE='sos-rider-v11-20261118-pricing-4band-1155';
+const CACHE='sos-rider-v11-20261118-address-autocomplete-1156';
 const ASSETS=['./','./index.html','./styles.css','./app.js','./config.js','./manifest.webmanifest','./icon-192.png','./icon-512.png','./logo-sos-rider.png','./rider-banner-v2-live.png','./icons.svg'];
 
 self.addEventListener('install',e=>{
