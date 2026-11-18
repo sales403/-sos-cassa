@@ -653,3 +653,8 @@ html[data-theme="day"] #riderAvailabilityControl .operator-toggle .btn:not(.is-s
 .wa-rider-quote{margin-top:12px}
 .wa-rider-quote small{display:block;margin:7px 0}
 .wa-rider-quote .btn{margin-top:8px}
+
+.shift-deliveries-list-heading{margin-top:14px}
+.shift-deliveries-list-heading h3{margin:0;font-size:15px}
+.shift-deliveries #activeOrders>.order-card{padding-inline:0;border:0;background:transparent;border-radius:0}
+.shift-deliveries #activeOrders>.order-card+.order-card{border-top:1px solid var(--line2)}

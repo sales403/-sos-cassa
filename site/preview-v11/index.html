@@ -9,7 +9,7 @@
   <meta name="apple-mobile-web-app-title" content="SOS Rider V11 STAGING">
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="apple-touch-icon" href="icon-192.png">
-  <link rel="stylesheet" href="styles.css?v=11.5.11-rider-balances">
+  <link rel="stylesheet" href="styles.css?v=11.5.12-shift-deliveries">
   <title>SOS Rider Carpi-Soliera · V11 STAGING</title>
 </head>
 <body>
@@ -352,8 +352,21 @@
           <div class="stat-card stat-due"><div class="stat-card-head"><span class="stat-icon"><svg class="ui-icon" aria-hidden="true"><use href="icons.svg#icon-store-euro"></use></svg></span><small>Da rendere locali</small></div><b id="statDue">€0</b></div>
           <div class="stat-card stat-profit hot"><div class="stat-card-head"><span class="stat-icon"><svg class="ui-icon" aria-hidden="true"><use href="icons.svg#icon-bolt-coin"></use></svg></span><small>Tariffe SOS maturate</small></div><b id="statFees">€0</b></div>
         </section>
-        <section class="card section operational-card"><div class="section-head"><div class="section-title-with-icon"><span class="section-icon"><svg class="ui-icon" aria-hidden="true"><use href="icons.svg#icon-shift-clock"></use></svg></span><div><div class="eyebrow">TURNO ATTUALE</div><h2 id="shiftName">—</h2></div></div><button id="closeShiftBtn" class="btn ghost small" type="button">CHIUDI</button></div><p id="shiftMeta" class="muted"></p></section>
-        <section class="card section operational-card"><div class="section-head"><div class="section-title-with-icon"><span class="section-icon"><svg class="ui-icon" aria-hidden="true"><use href="icons.svg#icon-delivery-box"></use></svg></span><h2>Consegne attive</h2></div><span id="activeCount" class="pill yellow">0</span></div><div id="activeOrders"></div></section>
+        <section class="card section operational-card shift-deliveries" aria-labelledby="shiftName">
+          <div class="section-head">
+            <div class="section-title-with-icon">
+              <span class="section-icon"><svg class="ui-icon" aria-hidden="true"><use href="icons.svg#icon-shift-clock"></use></svg></span>
+              <div><div class="eyebrow">TURNO ATTUALE</div><h2 id="shiftName">—</h2></div>
+            </div>
+            <button id="closeShiftBtn" class="btn ghost small" type="button">CHIUDI</button>
+          </div>
+          <p id="shiftMeta" class="muted"></p>
+          <div class="section-head shift-deliveries-list-heading">
+            <h3>Consegne attive</h3>
+            <span id="activeCount" class="pill yellow">0</span>
+          </div>
+          <div id="activeOrders"></div>
+        </section>
       </div>
         <section class="card section operational-card"><div class="section-title-with-icon"><span class="section-icon"><svg class="ui-icon" aria-hidden="true"><use href="icons.svg#icon-store-euro"></use></svg></span><h2>Saldi con i locali</h2></div><div id="restaurantCash"></div></section>
     </section>
