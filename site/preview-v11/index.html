@@ -9,7 +9,7 @@
   <meta name="apple-mobile-web-app-title" content="SOS Rider V11 STAGING">
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="apple-touch-icon" href="icon-192.png">
-  <link rel="stylesheet" href="styles.css?v=11.5.14-analytics-days">
+  <link rel="stylesheet" href="styles.css?v=11.5.15-history-reset">
   <title>SOS Rider Carpi-Soliera · V11 STAGING</title>
 </head>
 <body>
@@ -373,7 +373,7 @@
 
     <section id="riderPageHistory" class="rider-page">
       <div class="page-title-row"><div><div class="eyebrow">ARCHIVIO</div><h1>Storico</h1></div><div class="archive-actions"><button id="exportHistory" class="btn ghost small" type="button">CSV</button><button id="resetRiderLocal" class="btn ghost small" type="button">AZZERA DATI LOCALI</button></div></div>
-      <p class="client-list-hint">Elimina singole consegne chiuse e saldate o azzera turni, storico e incassi solo su questo dispositivo. Le richieste su D1 restano conservate.</p>
+      <p class="client-list-hint">Elimina una consegna dallo storico anche durante il turno e con saldi da regolare. AZZERA DATI LOCALI rimuove tutti i turni, gli ordini e gli importi da questo dispositivo, incluse eventuali consegne aperte. I dati online restano conservati.</p>
       <section class="card"><input id="historySearch" placeholder="Cerca cliente, locale, indirizzo, codice…"></section>
       <section id="historyList" class="section"></section>
     </section>
@@ -410,6 +410,6 @@
   </div>
 
   <script src="config.js?v=11.0.1-staging"></script>
-  <script type="module" src="app.js?v=11.5.14-analytics-days"></script>
+  <script type="module" src="app.js?v=11.5.15-history-reset"></script>
 </body>
 </html>

@@ -1,4 +1,4 @@
-const CACHE='sos-rider-v11-20261118-analytics-days-11514';
+const CACHE='sos-rider-v11-20261118-history-reset-11515';
 const CASH_NOTES=[5,10,20,50,100,200,500].map(amount=>'./cash-notes/'+amount+'.jpg');
 const ASSETS=['./','./index.html','./styles.css','./app.js','./config.js','./manifest.webmanifest','./icon-192.png','./icon-512.png','./logo-sos-rider.png','./rider-banner-v2-live.png','./icons.svg'];
 

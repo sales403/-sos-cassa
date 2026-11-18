@@ -1,7 +1,7 @@
 (() => {
 'use strict';
 
-const APP_VERSION = '11.5.14-analytics-days';
+const APP_VERSION = '11.5.15-history-reset';
 const KEY = 'sosRiderUnifiedV10';
 const V9_KEY = 'sosRiderUnifiedV9';
 const OLD_KEY = 'sosRiderGestV7';
@@ -1614,18 +1614,13 @@ function deleteRiderLocalHistory(id){
   const order=state.orders.find(o=>o.id===id);
   if(!order)return;
   if(!riderFinished(order)){alert('Questa consegna è ancora attiva.');return;}
-  if(state.currentShiftId&&order.shiftId===state.currentShiftId){alert('Chiudi prima il turno corrente.');return;}
-  if(riderUnsettledCash(order)){alert('Prima sistema i contanti e salda il locale: non possiamo cancellare un incasso da rendere.');return;}
-  if(!confirm('Eliminare '+String(order.code||'questa consegna')+' dallo storico e dalle analisi di QUESTO DISPOSITIVO? Sul server D1 non verrà cancellato nulla.'))return;
+  if(!confirm('Eliminare '+String(order.code||'questa consegna')+' dallo storico e dalle analisi di QUESTO DISPOSITIVO? Verranno rimossi anche i relativi importi dai riepiloghi locali. I dati online restano conservati.'))return;
   state.orders=state.orders.filter(o=>o.id!==id);
   saveState();renderRiderAll();
 }
 function resetRiderLocalRecords(){
-  if(state.currentShiftId){alert('Per azzerare chiudi prima il turno corrente.');return;}
-  if(state.orders.some(o=>!riderFinished(o))){alert('Ci sono consegne aperte: prima concludile o annullale in modo corretto.');return;}
-  if(state.orders.some(riderUnsettledCash)){alert('Hai incassi da sistemare o da rendere ai locali. Completa i saldi prima del reset.');return;}
   if(!state.orders.length&&!state.shifts.length){alert('Lo storico locale è già vuoto.');return;}
-  if(prompt('AZZERAMENTO SOLO LOCALE. Verrà scaricato un backup e poi eliminati turni, ordini e importi registrati su questo telefono. Sul database Cloudflare D1 non cambia niente. Per confermare digita AZZERA:')!=='AZZERA')return;
+  if(prompt('AZZERAMENTO SOLO LOCALE. Verrà scaricato un backup e poi eliminati turni, ordini e importi registrati su questo telefono. Saranno rimossi anche eventuali consegne aperte e saldi locali, e il turno locale verrà azzerato. I dati online restano conservati. Per confermare digita AZZERA:')!=='AZZERA')return;
   const archive={exportedAt:nowIso(),version:APP_VERSION,shifts:state.shifts,orders:state.orders};
   download('sos-rider-backup-locale-'+new Date().toISOString().slice(0,10)+'.json',JSON.stringify(archive,null,2),'application/json');
   state.orders=[];state.shifts=[];state.currentShiftId=null;
