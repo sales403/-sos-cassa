@@ -737,3 +737,8 @@ html[data-theme="day"] #riderAvailabilityControl .operator-toggle .btn[aria-pres
 .client-push-row{display:flex;align-items:center;flex-wrap:wrap;gap:8px;margin:10px 0 12px}
 .client-push-row .btn{min-height:40px;white-space:nowrap}
 .client-push-row small{flex:1;min-width:150px;color:var(--muted,#999);font-size:11px;line-height:1.4}
+
+/* Navigazione de-enfatizzata: le uniche CTA principali del rider sono Chiama e Arrivato. */
+.order-actions .rider-route-link{grid-column:1/-1;display:inline-flex;align-items:center;gap:6px;width:max-content;max-width:100%;padding:7px 2px;font-size:12px;font-weight:700;color:var(--muted,#aaa);text-decoration:underline;text-underline-offset:3px}
+.order-actions .rider-route-link .btn-icon{width:17px;height:17px}
+.order-actions [data-order-action="arrived"]{min-height:48px}
