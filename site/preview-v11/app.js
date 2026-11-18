@@ -1,7 +1,7 @@
 (() => {
 'use strict';
 
-const APP_VERSION = '11.5.6-address-autocomplete';
+const APP_VERSION = '11.5.8-whatsapp-address';
 const KEY = 'sosRiderUnifiedV10';
 const V9_KEY = 'sosRiderUnifiedV9';
 const OLD_KEY = 'sosRiderGestV7';
@@ -666,42 +666,106 @@ async function searchAddresses(query, slotKey){
   // 2) Fallback diretto Photon
   return directPhoton(query,controller);
 }
-function wireAutocomplete({inputId,boxId,statusId,mapsId,slotKey,onSelect,signal}){
+function normalizeStreetAddress(value){
+  return String(value||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'')
+    .toLowerCase().replace(/\bp\.\s*zza\b/g,'piazza').replace(/\b(?:mo|italia|emilia romagna)\b/g,' ')
+    .replace(/[^a-z0-9]+/g,' ').trim().replace(/ +/g,' ');
+}
+function exactStreetAddress(query,features){
+  const address=normalizeStreetAddress(query);
+  const matches=features.filter(({properties:p,geometry})=>{
+    if(!p?.street || !p.housenumber || !geometry?.coordinates?.slice(0,2).every(Number.isFinite) || geometry.coordinates.length<2)return false;
+    const street=normalizeStreetAddress(p.street);
+    const number=normalizeStreetAddress(p.housenumber).replace(/ /g,'');
+    const towns=[p.city,p.locality,p.district].filter(Boolean).map(normalizeStreetAddress);
+    const postcode=normalizeStreetAddress(p.postcode);
+    return towns.some(town=>town && [town,postcode+' '+town,town+' '+postcode].some(locality=>
+      [street+' '+number,street+' '+normalizeStreetAddress(p.housenumber)].some(line=>address===line+' '+locality.trim())
+    ));
+  });
+  if(!matches.length)return null;
+  const first=matches[0];
+  const [lon,lat]=first.geometry.coordinates;
+  // The same civic may be mapped both as an address and as an establishment.
+  return matches.every(({geometry:{coordinates:c}})=>Math.abs(c[0]-lon)<0.00025 && Math.abs(c[1]-lat)<0.00025) ? first : null;
+}
+function wireAutocomplete({inputId,boxId,statusId,mapsId,slotKey,onSelect,signal,verifyExact=false}){
   const input=$(inputId), box=$(boxId), status=$(statusId);
-  let timer=null, features=[];
+  let timer=null, features=[], revision=0;
   const close=()=>box.classList.add('hidden');
-  input.addEventListener('input',()=>{
+  const message=(value,state='')=>{
+    status.textContent=value;
+    if(!verifyExact)return;
+    status.classList.toggle('error',state==='error');
+    status.classList.toggle('ok',state==='ok');
+    input.setAttribute('aria-invalid',String(state==='error'));
+  };
+  const select=f=>{
+    const [lon,lat]=f?.geometry?.coordinates||[];
+    if(!Number.isFinite(lon)||!Number.isFinite(lat))return;
+    const chosen={label:featureLabel(f)||input.value.trim(),lon,lat};
+    input.value=chosen.label; onSelect(chosen); close(); message('✓ Indirizzo verificato','ok');
+  };
+  const lookup=()=>{
+    const request=++revision;
     onSelect(null);
     clearTimeout(timer);
     searchSlots.get(slotKey)?.controller?.abort();
     close();
     const q=input.value.trim();
-    if(q.length<3){close();status.textContent='Scrivi almeno 3 caratteri e seleziona un risultato.';return;}
-    status.textContent='Cerco indirizzi reali…';
+    if(q.length<3){
+      message(verifyExact?'Inserisci via, civico e località.':'Scrivi almeno 3 caratteri e seleziona un risultato.',verifyExact?'error':'');
+      return;
+    }
+    message('Cerco indirizzi…');
     timer=setTimeout(async()=>{
       try{
         if(!input.isConnected)return;
-        features=await searchAddresses(q,slotKey);
-        if(!input.isConnected || q!==input.value.trim())return;
-        if(!features.length){ box.innerHTML='<div class="suggestion"><strong>Nessun risultato</strong><span>Controlla via, civico e località.</span></div>'; box.classList.remove('hidden'); status.textContent='Nessun indirizzo trovato.'; return; }
-        box.innerHTML=features.slice(0,7).map((f,i)=>`<button class="suggestion" type="button" data-i="${i}"><strong>${esc(featureLabel(f)||f.properties?.name||'Indirizzo')}</strong><span>${esc([f.properties?.postcode,f.properties?.city||f.properties?.locality||f.properties?.district,f.properties?.state].filter(Boolean).join(' · '))}</span></button>`).join('');
-        box.classList.remove('hidden'); status.textContent='Seleziona l’indirizzo corretto.';
-      }catch(e){ if(e.name!=='AbortError' && input.isConnected && q===input.value.trim()){close();status.textContent='⚠ Suggerimenti non disponibili.';} }
+        const results=await searchAddresses(q,slotKey);
+        if(!input.isConnected || request!==revision)return;
+        features=results.filter(f=>{
+          const [lon,lat]=f?.geometry?.coordinates||[];
+          if(!Number.isFinite(lon)||!Number.isFinite(lat))return false;
+          if(!verifyExact)return true;
+          const p=f.properties||{};
+          return (!p.countrycode || p.countrycode.toUpperCase()==='IT') && (p.street || p.osm_key==='highway');
+        });
+        if(verifyExact){
+          const exact=exactStreetAddress(q,features);
+          if(exact){select(exact);return;}
+          message('⚠ Indirizzo non verificato. Controlla via, civico e località oppure scegli un civico dai suggerimenti.','error');
+        }else if(!features.length){
+          message('Nessun indirizzo trovato.');
+        }else{
+          message('Seleziona l’indirizzo corretto.');
+        }
+        if(!features.length)return;
+        box.innerHTML=features.slice(0,7).map((f,i)=>`<button class="suggestion" type="button" data-i="${i}"><strong>${esc(featureLabel(f)||f.properties?.name||'Indirizzo')}</strong><span>${esc(verifyExact&&!f.properties?.housenumber?'Via trovata · aggiungi il civico':[f.properties?.postcode,f.properties?.city||f.properties?.locality||f.properties?.district,f.properties?.state].filter(Boolean).join(' · '))}</span></button>`).join('');
+        box.classList.remove('hidden');
+      }catch(e){ if(e.name!=='AbortError' && input.isConnected && request===revision){close();message('⚠ Ricerca indirizzi non disponibile. Riprova.', 'error');} }
     },280);
-  });
+  };
+  input.addEventListener('input',lookup);
   box.addEventListener('click',e=>{
     const b=e.target.closest('[data-i]'); if(!b) return;
-    const f=features[Number(b.dataset.i)], c=f?.geometry?.coordinates||[];
-    const chosen={label:featureLabel(f)||input.value.trim(), lon:c[0]??null, lat:c[1]??null};
-    input.value=chosen.label; onSelect(chosen); close(); status.textContent='✓ Indirizzo verificato';
+    const f=features[Number(b.dataset.i)];
+    if(verifyExact && !f?.properties?.housenumber){
+      close();
+      message('⚠ Via trovata. Aggiungi il numero civico e la località.','error');
+      input.focus();
+      return;
+    }
+    select(f);
   });
   if(mapsId) $(mapsId).addEventListener('click',()=>{ const q=input.value.trim(); if(q) window.open(mapsSearch(q),'_blank','noopener'); });
-  document.addEventListener('click',e=>{ if(!box.contains(e.target) && e.target!==input) close(); },{signal});
+  if(!verifyExact)document.addEventListener('click',e=>{ if(!box.contains(e.target) && e.target!==input) close(); },{signal});
   signal?.addEventListener('abort',()=>{
+    ++revision;
     clearTimeout(timer);
     searchSlots.get(slotKey)?.controller?.abort();
     searchSlots.delete(slotKey);
   },{once:true});
+  if(verifyExact)lookup();
 }
 
 // ---------- Client hub ----------
@@ -1341,7 +1405,15 @@ function parseWa(raw){
 function openWhatsAppImporter(){
   openModal('Importa da WhatsApp',`<p class="muted"><b>Modalità rapida:</b> bastano nome, telefono, servizio, indirizzo e <b>orario indicativo di ritiro</b>. Può scrivere anche “20:30”, “verso le 20:30”, “tra 20 min” o “subito”. I dati del locale puoi completarli tu.</p><label>Incolla messaggio<textarea id="mWaText" rows="8" placeholder="Marcello\n3495153092\nEconomy E-bike\nVia Malpighi 5 Carpi\n20:30 circa"></textarea></label><div id="mWaResult" class="status-line"></div>`,[
     {label:'ANNULLA',cls:'ghost'},
-    {label:'ANALIZZA',cls:'primary',keep:true,fn:()=>{const d=parseWa($('mWaText').value);renderWaParsed(d)}}
+    {label:'ANALIZZA',cls:'primary',keep:true,fn:()=>{
+      const message=$('mWaText');
+      if(!message)return;
+      const parsed=parseWa(message.value);
+      openModal('Importa da WhatsApp','<div id="mWaResult" class="status-line"></div>',[
+        {label:'ANNULLA',cls:'ghost'}
+      ]);
+      renderWaParsed(parsed);
+    }}
   ]);
 }
 let waAddressListeners;
@@ -1354,10 +1426,10 @@ function renderWaParsed(d){
   <div class="form-grid" style="margin-top:9px">
     <label>Locale<input id="mPRestaurant" value="${esc(d.restaurant||'')}"></label>
     <label>Ordine pronto<input id="mPReady" type="time" value="${esc(d.readyTime||'')}"></label>
-    <div class="full"><label>Indirizzo ritiro<input id="mPPickup" autocomplete="off" value="${esc(d.pickupAddress||'')}"></label><div id="mPPickupSuggestions" class="suggestions hidden"></div><small id="mPPickupStatus" class="muted" aria-live="polite"></small></div>
+    <div class="full"><label>Indirizzo ritiro<input id="mPPickup" autocomplete="off" value="${esc(d.pickupAddress||'')}"></label><div id="mPPickupSuggestions" class="suggestions wa-address-suggestions hidden"></div><small id="mPPickupStatus" class="status-line" aria-live="polite"></small></div>
     <label>Cliente<input id="mPCustomer" value="${esc(d.customer||'')}"></label>
     <label>Telefono<input id="mPPhone" inputmode="tel" value="${esc(d.phone||'')}"></label>
-    <div class="full"><label>Indirizzo consegna<input id="mPAddress" autocomplete="off" value="${esc(d.address||'')}"></label><div id="mPAddressSuggestions" class="suggestions hidden"></div><small id="mPAddressStatus" class="muted" aria-live="polite"></small></div>
+    <div class="full"><label>Indirizzo consegna<input id="mPAddress" autocomplete="off" value="${esc(d.address||'')}"></label><div id="mPAddressSuggestions" class="suggestions wa-address-suggestions hidden"></div><small id="mPAddressStatus" class="status-line" aria-live="polite"></small></div>
     <label>Servizio<select id="mPVehicle"><option value="ebike" ${d.vehicle==='ebike'?'selected':''}>Economy E-bike</option><option value="moto" ${d.vehicle==='moto'?'selected':''}>Moto Express</option><option value="auto" ${d.vehicle==='auto'?'selected':''}>Auto Cargo</option></select></label>
     <label>Pagamento<select id="mPPayment"><option value="paid" ${d.payment==='paid'?'selected':''}>Già pagato</option><option value="cash" ${d.payment==='cash'?'selected':''}>Contanti da incassare</option><option value="pos" ${d.payment==='pos'?'selected':''}>POS locale</option></select></label>
     <label>Importo ordine<input id="mPOrderTotal" type="number" min="0" step="0.01" value="${num(d.orderTotal)||''}"></label>
@@ -1366,9 +1438,14 @@ function renderWaParsed(d){
   </div>
   <button id="mCreateParsed" class="btn primary full" style="margin-top:8px">CREA CONSEGNA</button>`;
   const signal=waAddressListeners.signal;
-  wireAutocomplete({inputId:'mPPickup',boxId:'mPPickupSuggestions',statusId:'mPPickupStatus',slotKey:'wa-pickup',signal,onSelect:v=>{pickup=v;}});
-  wireAutocomplete({inputId:'mPAddress',boxId:'mPAddressSuggestions',statusId:'mPAddressStatus',slotKey:'wa-delivery',signal,onSelect:v=>{delivery=v;}});
-  $('mCreateParsed').onclick=()=>createManualFromParsed({pickup,delivery,restaurant:$('mPRestaurant').value.trim(),pickupAddress:$('mPPickup').value.trim(),readyTime:$('mPReady').value,customer:$('mPCustomer').value.trim(),phone:digits($('mPPhone').value),address:$('mPAddress').value.trim(),vehicle:$('mPVehicle').value,payment:$('mPPayment').value,orderTotal:num($('mPOrderTotal').value),fee:num($('mPFee').value),notes:$('mPNotes').value.trim()});
+  const createButton=$('mCreateParsed');
+  const updateCreateButton=()=>{createButton.disabled=!pickup||!delivery;};
+  wireAutocomplete({inputId:'mPPickup',boxId:'mPPickupSuggestions',statusId:'mPPickupStatus',slotKey:'wa-pickup',signal,verifyExact:true,onSelect:v=>{pickup=v;updateCreateButton();}});
+  wireAutocomplete({inputId:'mPAddress',boxId:'mPAddressSuggestions',statusId:'mPAddressStatus',slotKey:'wa-delivery',signal,verifyExact:true,onSelect:v=>{delivery=v;updateCreateButton();}});
+  createButton.onclick=()=>{
+    if(!pickup||!delivery)return;
+    createManualFromParsed({pickup,delivery,restaurant:$('mPRestaurant').value.trim(),pickupAddress:$('mPPickup').value.trim(),readyTime:$('mPReady').value,customer:$('mPCustomer').value.trim(),phone:digits($('mPPhone').value),address:$('mPAddress').value.trim(),vehicle:$('mPVehicle').value,payment:$('mPPayment').value,orderTotal:num($('mPOrderTotal').value),fee:num($('mPFee').value),notes:$('mPNotes').value.trim()});
+  };
 }
 function createManualFromParsed(d){
   ensureShiftThen(()=>{

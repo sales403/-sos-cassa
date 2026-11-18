@@ -640,3 +640,5 @@ html[data-theme="day"] .home-route-actions .home-whatsapp{background:#e4f9eb;bor
 html[data-theme="day"] #riderAvailabilityControl .operator-toggle .btn:not(.is-selected){
   background:#fff;color:#24272b;border-color:#cfd3d8;
 }
+
+.wa-address-suggestions{position:static;max-height:12rem;overflow:auto;box-shadow:none}
