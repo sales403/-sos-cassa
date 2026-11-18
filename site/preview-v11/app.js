@@ -1,7 +1,7 @@
 (() => {
 'use strict';
 
-const APP_VERSION = '11.5.13-euro-cash-pad';
+const APP_VERSION = '11.5.14-analytics-days';
 const KEY = 'sosRiderUnifiedV10';
 const V9_KEY = 'sosRiderUnifiedV9';
 const OLD_KEY = 'sosRiderGestV7';
@@ -1662,32 +1662,51 @@ function analyticsBounds(period=analyticsPeriod){
   else if(period==='lastMonth'){end=new Date(now.getFullYear(),now.getMonth(),1);start=new Date(now.getFullYear(),now.getMonth()-1,1);label='Mese scorso';}
   return {start,end,label};
 }
-function analyticsOrders(){
-  const done=state.orders.filter(o=>o.status==='delivered'&&o.outcome!=='cancelled');
-  const {start,end}=analyticsBounds();
-  if(!start)return done;
-  return done.filter(o=>{const d=new Date(o.deliveredAt||o.createdAt);return d>=start&&d<end});
-}
-function analyticsSeries(arr){
-  const byDay={};
-  arr.forEach(o=>{const d=new Date(o.deliveredAt||o.createdAt);const k=d.toISOString().slice(0,10);byDay[k]=(byDay[k]||0)+num(o.fee)});
-  const {start,end}=analyticsBounds();
-  if(start&&end){
-    const rows=[];
-    for(let d=new Date(start);d<end;d.setDate(d.getDate()+1)){
-      const key=d.toISOString().slice(0,10);
-      rows.push({key,label:d.toLocaleDateString('it-IT',{day:'2-digit',month:'2-digit'}),value:byDay[key]||0});
-    }
-    return rows;
+function analyticsOrderDate(order){
+  for(const timestamp of [order.deliveredAt,order.createdAt]){
+    if(!timestamp)continue;
+    const date=new Date(timestamp);
+    if(Number.isFinite(date.getTime()))return date;
   }
-  return Object.entries(byDay).sort((a,b)=>a[0].localeCompare(b[0])).map(([key,value])=>({key,label:new Date(key+'T12:00:00').toLocaleDateString('it-IT',{day:'2-digit',month:'2-digit'}),value}));
+  return null;
+}
+const analyticsDayLabel=date=>date.toLocaleDateString('it-IT',{day:'2-digit',month:'2-digit'});
+const analyticsDayKey=date=>[date.getFullYear(),date.getMonth()+1,date.getDate()].map(n=>String(n).padStart(2,'0')).join('-');
+function analyticsOrders({start,end}){
+  return state.orders.filter(o=>{
+    if(!deliveredOrder(o))return false;
+    const date=analyticsOrderDate(o);
+    return date&&(!start||(date>=start&&date<end));
+  });
+}
+function analyticsSeries(orders,{start,end}){
+  const byDay=new Map();
+  for(const order of orders){
+    const date=analyticsOrderDate(order);
+    if(!date)continue;
+    const key=analyticsDayKey(date);
+    const day=byDay.get(key)||{key,label:analyticsDayLabel(date),cents:0};
+    day.cents+=cents(order.fee);
+    byDay.set(key,day);
+  }
+  if(!start||!end)return [...byDay.values()].sort((a,b)=>a.key.localeCompare(b.key));
+  const days=[];
+  for(let date=new Date(start);date<end;date.setDate(date.getDate()+1)){
+    const key=analyticsDayKey(date);
+    days.push(byDay.get(key)||{key,label:analyticsDayLabel(date),cents:0});
+  }
+  return days;
 }
 function renderAnalytics(){
-  const arr=analyticsOrders(),rev=arr.reduce((a,o)=>a+num(o.fee),0),value=arr.reduce((a,o)=>a+num(o.total),0);
+  const bounds=analyticsBounds(),arr=analyticsOrders(bounds);
+  const days=analyticsSeries(arr,bounds);
+  const rev=days.reduce((total,day)=>total+day.cents,0)/100;
+  const value=arr.reduce((a,o)=>a+num(o.total),0);
   $('aRevenue').textContent=money(rev);$('aRiderPaid').textContent=money(arr.reduce((sum,o)=>sum+cents(o.fee)-riderFeeDue(o),0)/100);$('aRiderDue').textContent=money(arr.reduce((sum,o)=>sum+riderFeeDue(o),0)/100);$('aOrders').textContent=arr.length;$('aAvg').textContent=money(arr.length?rev/arr.length:0);$('aOrderValue').textContent=money(value);
-  const bounds=analyticsBounds();if($('analyticsRangeLabel'))$('analyticsRangeLabel').textContent=bounds.label;
-  const days=analyticsSeries(arr),max=Math.max(1,...days.map(x=>x.value));
-  $('dailyChart').innerHTML=days.length?days.map(x=>`<div class="bar-wrap"><div class="bar-value">${money(x.value).replace(',00','')}</div><div class="bar ${x.value?'has-value':'zero'}" style="height:${x.value?Math.max(6,x.value/max*130):3}px"></div><div class="bar-label">${x.label}</div></div>`).join(''):'<p class="muted">Nessun dato nel periodo.</p>';
+  if($('analyticsRangeLabel'))$('analyticsRangeLabel').textContent=bounds.label;
+  const chart=$('dailyChart'), max=Math.max(1,...days.map(day=>day.cents));
+  chart.classList.toggle('chart-fit-days',days.length>0&&days.length<=7);
+  chart.innerHTML=days.length?days.map(day=>`<div class="bar-wrap"><div class="bar-value">${money(day.cents/100).replace(',00','')}</div><div class="bar ${day.cents?'has-value':'zero'}" style="height:${day.cents?Math.max(6,day.cents/max*130):3}px"></div><div class="bar-label">${day.label}</div></div>`).join(''):'<p class="muted">Nessun dato nel periodo.</p>';
   const ranks={};arr.forEach(o=>{const k=o.restaurant||'Senza nome';ranks[k]=ranks[k]||{n:0,v:0};ranks[k].n++;ranks[k].v+=num(o.fee)});
   const list=Object.entries(ranks).sort((a,b)=>b[1].v-a[1].v).slice(0,8);
   $('restaurantRank').innerHTML=list.length?list.map(([name,x],i)=>`<div class="rank-row"><div class="rank-num">${i+1}</div><div><b>${esc(name)}</b><div class="tiny">${x.n} consegne</div></div><b>${money(x.v)}</b></div>`).join(''):'<p class="muted">Nessun dato.</p>';

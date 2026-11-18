@@ -679,3 +679,8 @@ html[data-theme="day"] #riderAvailabilityControl .operator-toggle .btn:not(.is-s
 .cash-other{margin-top:10px;font-size:12px}
 .cash-other summary{cursor:pointer;min-height:29px}
 .cash-image-credit{display:block;margin-top:8px;font-size:9px;opacity:.75}
+
+#dailyChart{justify-content:flex-start}
+#dailyChart.chart-fit-days{gap:3px;padding-inline:0}
+#dailyChart.chart-fit-days .bar-wrap{flex:1 1 0;min-width:0}
+#dailyChart.chart-fit-days .bar{max-width:90%}
