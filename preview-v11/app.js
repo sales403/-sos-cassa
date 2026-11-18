@@ -54,6 +54,7 @@ let alarmTimer = null;
 let alarmActiveCode = null;
 let alarmEnabled = localStorage.getItem('sosRiderAlarmEnabledV10') === '1';
 let alarmUiText = '';
+let riderPushRegistered = false;
 let lastRemoteNewCodes = new Set();
 let cashStacks = {};
 let riderGeoWatchId = null;
@@ -280,6 +281,10 @@ function showRider(){
   startRiderPolling(); startAvailabilityPolling();
   updateAlarmUI();
   renderRiderGpsStatus();
+  if('Notification' in window && Notification.permission==='granted' && isStandalonePwa()){
+    setupBackgroundPush({askPermission:false}).then(()=>updateAlarmUI('✓ iPhone registrato sul server · prova TEST PUSH'))
+      .catch(e=>{riderPushRegistered=false;updateAlarmUI('⚠ Push non registrate: '+(e.message||e));});
+  }
 }
 
 // ---------- Tema DAY / NIGHT ----------
@@ -580,9 +585,9 @@ function playDing(){const c=getAudioCtx('client');if(!c)return;c.resume?.();tone
 function alarmBurst(){const c=getAudioCtx('alarm');if(c){c.resume?.();tone(c,740,.22,.38);tone(c,980,.22,.38,.28);tone(c,740,.22,.38,.56)}if(navigator.vibrate)navigator.vibrate([420,140,420,140,650]);}
 function updateAlarmUI(pushText=''){
   if(pushText) alarmUiText=pushText;
-  const label=alarmUiText || (alarmEnabled?'Push attive su questo dispositivo':'Notifiche da attivare');
+  const label=alarmUiText || (riderPushRegistered?'iPhone registrato sul server':'Push da attivare o verificare');
   if($('mRiderAlarmState')) $('mRiderAlarmState').textContent=label;
-  if($('mEnableRiderAlarm')) $('mEnableRiderAlarm').innerHTML=icon('bell','btn-icon')+' '+(alarmEnabled?'ATTIVO':'ATTIVA NOTIFICHE');
+  if($('mEnableRiderAlarm')) $('mEnableRiderAlarm').innerHTML=icon('bell','btn-icon')+' '+(riderPushRegistered?'RIPARA PUSH':'ATTIVA PUSH');
 }
 function base64UrlToUint8Array(v){
   const s=String(v||'').replace(/-/g,'+').replace(/_/g,'/');
@@ -593,11 +598,11 @@ function base64UrlToUint8Array(v){
 function isStandalonePwa(){
   return window.matchMedia?.('(display-mode: standalone)').matches || window.navigator.standalone===true;
 }
-async function setupBackgroundPush(){
+async function setupBackgroundPush({askPermission=true}={}){
   if(!authSession||authProfile?.role!=='rider')throw new Error('Accedi come Rider prima di attivare le push.');
   if(!('serviceWorker'in navigator) || !('PushManager'in window) || !('Notification'in window))throw new Error('Questo dispositivo/browser non supporta Web Push.');
   if(/iPhone|iPad|iPod/i.test(navigator.userAgent) && !isStandalonePwa())throw new Error('Su iPhone aggiungi SOS Rider alla schermata Home e aprila dall’icona.');
-  const permission=await Notification.requestPermission();
+  const permission=askPermission?await Notification.requestPermission():Notification.permission;
   if(permission!=='granted')throw new Error('Permesso notifiche non concesso.');
   const reg=await navigator.serviceWorker.ready;
   const key=PUBLIC_CONFIG.vapidPublicKey;
@@ -614,11 +619,13 @@ async function setupBackgroundPush(){
     }
   }
   if(!sub)sub=await reg.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:expected});
-  await fetchJson(apiBase()+'/api/rider/push/subscribe',{
+  const confirmed=await fetchJson(apiBase()+'/api/rider/push/subscribe',{
     method:'POST',
     headers:riderHeaders(),
     body:JSON.stringify({subscription:sub.toJSON(),device:clampText(navigator.userAgent,220)})
   },9000);
+  if(!confirmed?.ok||!confirmed?.push)throw Error('Il server non ha confermato la push.');
+  riderPushRegistered=true;
   localStorage.setItem('sosRiderPushEnabledV10','1');
   return sub;
 }
@@ -632,18 +639,40 @@ async function enableAlarm(){
   updateAlarmUI('Attivo su questo dispositivo · attivo le push…');
   try{
     await setupBackgroundPush();
-    updateAlarmUI('Push attive anche ad app chiusa');
+    updateAlarmUI('✓ Registrazione server riuscita · esegui TEST PUSH');
   }catch(e){
     console.warn('Web Push non attiva',e);
-    updateAlarmUI('Allarme app attivo · push da completare');
+    riderPushRegistered=false;
+    updateAlarmUI('⚠ Push non attive: '+(e.message||e));
   }
 }
+
+async function diagnoseRiderPush(){
+  const el=$('mPushDiagnostics');if(!el)return;
+  let sw=false,subscription=false;
+  try{
+    if('serviceWorker'in navigator){
+      const reg=await navigator.serviceWorker.getRegistration('./');
+      sw=!!reg?.active;
+      subscription=!!(await reg?.pushManager?.getSubscription());
+    }
+    const lines=[
+      'PWA da Home: '+(isStandalonePwa()?'OK':'NO'),
+      'Permesso iOS: '+(('Notification'in window)?Notification.permission:'non supportato'),
+      'Service Worker: '+(sw?'OK':'ASSENTE'),
+      'Subscription iPhone: '+(subscription?'PRESENTE':'ASSENTE'),
+      'Registrazione Cloudflare: '+(riderPushRegistered?'CONFERMATA':'NON CONFERMATA')
+    ];
+    el.textContent=lines.join(' · ');
+  }catch(e){el.textContent='Diagnostica incompleta: '+(e.message||e);}
+}
+
 async function testRiderPush(){
   const b=$('mTestPush');
   if(b){b.disabled=true;b.textContent='TEST…';}
   try{
     const d=await fetchJson(apiBase()+'/api/rider/push/test',{method:'POST',headers:riderHeaders(),body:'{}'},10000);
-    updateAlarmUI(`Test push inviato · ${d.sent||0} dispositivo/i`);
+    updateAlarmUI((d.sent||0)>0?`Provider push: ${d.sent} invio/i accettato/i; verifica il telefono`:'⚠ ZERO notifiche inviate: attiva le push su questo iPhone');
   }catch(e){
     updateAlarmUI('Test push non disponibile · '+(e.message||e));
   }finally{
@@ -2144,13 +2173,15 @@ function download(name,text,type='text/plain;charset=utf-8'){const a=document.cr
 function openModal(title,html,actions=[]){$('modalTitle').textContent=title;$('modalBody').innerHTML=html;$('modalActions').innerHTML='';for(const a of actions){const b=document.createElement('button');b.className='btn '+(a.cls||'ghost');b.textContent=a.label;b.onclick=()=>{if(a.fn)a.fn();if(!a.keep && a.label!=='ANNULLA' && !a.fn)closeModal();else if(!a.keep && a.label==='ANNULLA')closeModal()};$('modalActions').appendChild(b)}$('modalBackdrop').classList.remove('hidden')}
 function closeModal(){$('modalBackdrop').classList.add('hidden');$('modalBody').innerHTML='';$('modalActions').innerHTML=''}
 function openSettings(){
-  openModal('Impostazioni',`<div class="eyebrow">SOS RIDER V${APP_VERSION}</div><section class="settings-notify"><div class="eyebrow">NOTIFICHE RIDER</div><b id="mRiderAlarmState">${esc(alarmUiText || (alarmEnabled?'Push attive su questo dispositivo':'Notifiche da attivare'))}</b><small>Push di sistema ad app chiusa. Con Area Rider aperta: allarme e vibrazione quando consentiti dal dispositivo.</small><div class="dual-actions"><button id="mTestPush" class="btn ghost">TEST PUSH</button><button id="mEnableRiderAlarm" class="btn primary">${alarmEnabled?'🔔 ATTIVO':'🔔 ATTIVA NOTIFICHE'}</button></div></section><label style="margin-top:10px">URL Worker/API<input id="mApiBase" value="${esc(apiBase())}"></label><button id="mTestApi" class="btn ghost full" style="margin-top:8px">TEST SERVER</button><div id="mApiStatus" class="status-line"></div><div class="notice green">Accesso Rider: ${esc(authUser?.email||'—')} · ruolo verificato dal backend.</div><div class="notice yellow">Tema automatico: giorno 07:00-18:29, notte 18:30-06:59. Il selettore ◐ può forzare Day/Night.</div><div class="dual-actions"><button id="mBackup" class="btn ghost">BACKUP JSON</button><button id="mImport" class="btn ghost">IMPORTA JSON</button></div><div class="dual-actions"><button id="mLogout" class="btn ghost">ESCI ACCOUNT</button><a class="btn ghost" href="legacy-v8.3.html">APRI V8.3 BACKUP</a></div><button id="mPasskey" class="btn ghost full" style="margin-top:8px">🔑 REGISTRA PASSKEY <span class="beta-tag">BETA</span></button><button id="mInstall" class="btn primary full" style="margin-top:8px">INSTALLA APP</button>`,[
+  openModal('Impostazioni',`<div class="eyebrow">SOS RIDER V${APP_VERSION}</div><section class="settings-notify"><div class="eyebrow">NOTIFICHE RIDER</div><b id="mRiderAlarmState">${esc(alarmUiText || (alarmEnabled?'Push attive su questo dispositivo':'Notifiche da attivare'))}</b><small>Push di sistema ad app chiusa. Con Area Rider aperta: allarme e vibrazione quando consentiti dal dispositivo.</small><div id="mPushDiagnostics" class="status-line" style="margin:8px 0;font-size:12px">Verifica PWA, permessi e sottoscrizione…</div><div class="dual-actions"><button id="mDiagnosePush" class="btn ghost">DIAGNOSTICA</button></div><div class="dual-actions"><button id="mTestPush" class="btn ghost">TEST PUSH</button><button id="mEnableRiderAlarm" class="btn primary">${alarmEnabled?'🔔 ATTIVO':'🔔 ATTIVA NOTIFICHE'}</button></div></section><label style="margin-top:10px">URL Worker/API<input id="mApiBase" value="${esc(apiBase())}"></label><button id="mTestApi" class="btn ghost full" style="margin-top:8px">TEST SERVER</button><div id="mApiStatus" class="status-line"></div><div class="notice green">Accesso Rider: ${esc(authUser?.email||'—')} · ruolo verificato dal backend.</div><div class="notice yellow">Tema automatico: giorno 07:00-18:29, notte 18:30-06:59. Il selettore ◐ può forzare Day/Night.</div><div class="dual-actions"><button id="mBackup" class="btn ghost">BACKUP JSON</button><button id="mImport" class="btn ghost">IMPORTA JSON</button></div><div class="dual-actions"><button id="mLogout" class="btn ghost">ESCI ACCOUNT</button><a class="btn ghost" href="legacy-v8.3.html">APRI V8.3 BACKUP</a></div><button id="mPasskey" class="btn ghost full" style="margin-top:8px">🔑 REGISTRA PASSKEY <span class="beta-tag">BETA</span></button><button id="mInstall" class="btn primary full" style="margin-top:8px">INSTALLA APP</button>`,[
     {label:'CHIUDI',cls:'ghost',fn:closeModal,keep:true},
     {label:'SALVA',cls:'primary',keep:true,fn:()=>{state.settings.apiBase=($('mApiBase').value.trim()||DEFAULT_API).replace(/\/+$/,'');saveState();$('mApiStatus').className='status-line ok';$('mApiStatus').textContent='✓ URL salvato.';}}
   ]);
   $('mTestApi').onclick=async()=>{const el=$('mApiStatus');el.className='status-line';el.textContent='Test…';try{const base=($('mApiBase').value.trim()||DEFAULT_API).replace(/\/+$/,'');const d=await fetchJson(base+'/api/status',{headers:{Accept:'application/json'}},7000);el.className='status-line ok';el.textContent=`✓ ${d.version||'Server'} online · autocomplete ${d.capabilities?.address?'OK':'?'} · auth ${d.capabilities?.auth?'OK':'da configurare'} · Telegram ${d.capabilities?.telegram?'OK':'da configurare'}`;}catch(e){el.className='status-line error';el.textContent='⚠ '+e.message}};
   if($('mEnableRiderAlarm')) $('mEnableRiderAlarm').onclick=enableAlarm;
   if($('mTestPush')) $('mTestPush').onclick=testRiderPush;
+  if($('mDiagnosePush'))$('mDiagnosePush').onclick=diagnoseRiderPush;
+  diagnoseRiderPush();
   updateAlarmUI();
   $('mBackup').onclick=()=>download(`sos-rider-v10-backup-${new Date().toISOString().slice(0,10)}.json`,JSON.stringify(state,null,2),'application/json');
   $('mImport').onclick=()=>{const input=document.createElement('input');input.type='file';input.accept='.json,application/json';input.onchange=async()=>{try{const d=JSON.parse(await input.files[0].text());if(!Array.isArray(d.orders)||!Array.isArray(d.shifts))throw 0;state={...defaultState(),...d,settings:{...defaultState().settings,...(d.settings||{})}};saveState();closeModal();renderRiderAll();alert('Backup importato.')}catch{alert('Backup non valido.')}};input.click()};
