@@ -1504,7 +1504,7 @@ function batchOrderCard(arr){
   const allPickup=active.every(o=>o.status==='to_pickup');
   if(allPickup){const pickup={label:first.pickupAddress,lat:first.pickupLat,lon:first.pickupLon};return `<article class="order-card batch-order"><div class="order-top"><div><div class="code">${esc(first.batchId)}</div><div class="tiny">GIRO · 2 CONSEGNE · pronto ${esc(first.readyTime||'—')}</div></div><span class="pill yellow">DA RITIRARE</span></div><div class="batch-pickup"><b>${icon('store','mini-inline-icon')} RITIRO UNICO · 2 ORDINI</b><span>${esc(first.pickupAddress)}</span></div><div class="batch-stop-list">${rows.map(o=>`<div><b>${o.batchStopIndex}️⃣ ${esc(o.customer)}</b><span>${esc(o.address)}</span></div>`).join('')}</div><div class="order-grid"><div class="kv"><small>TARIFFA GIRO</small><b>${money(first.batchTotalFee)}</b></div><div class="kv"><small>DISTANZA GIRO</small><b>${num(first.batchTotalDistanceKm).toFixed(1)} km</b></div></div><div class="order-actions"><a class="btn ghost" href="${mapsNavigate(pickup,first.vehicle)}" target="_blank" rel="noopener">${icon('pin','btn-icon')} VAI AL RITIRO</a><button class="btn primary" data-batch-order-action="picked" data-batch-id="${esc(first.batchId)}">${icon('check','btn-icon')} RITIRATI 2 ORDINI</button></div></article>`;}
   const del={label:next.address,lat:next.lat,lon:next.lon};let actions='',cash='';
-  if(next.status==='picked')actions=`<a class="btn ghost" href="${mapsNavigate(del,next.vehicle)}" target="_blank" rel="noopener">${icon('navigation','btn-icon')} NAVIGA STOP ${next.batchStopIndex}</a>`+riderArrivalActions(next);
+  if(next.status==='picked')actions=`<a class="rider-route-link" href="${mapsNavigate(del,next.vehicle)}" target="_blank" rel="noopener">${icon('navigation','btn-icon')} Apri navigatore · Stop ${next.batchStopIndex}</a>`+riderArrivalActions(next);
   else if(next.status==='arrived'){
     actions=riderCompleteActions(next,`CONSEGNATO STOP ${next.batchStopIndex}`);
     cash=next.payment==='cash'?cashPanel(next):'';
@@ -1574,7 +1574,7 @@ function orderCard(o){
   const pickup={label:o.pickupAddress,lat:o.pickupLat,lon:o.pickupLon},del={label:o.address,lat:o.lat,lon:o.lon};
   let actions='';
   if(o.status==='to_pickup') actions=`<a class="btn ghost" href="${mapsNavigate(pickup,o.vehicle)}" target="_blank" rel="noopener">${icon('pin','btn-icon')} VAI AL RITIRO</a><button class="btn primary" data-order-action="picked" data-order-id="${o.id}">${icon('check','btn-icon')} RITIRATO</button>`;
-  else if(o.status==='picked') actions=`<a class="btn ghost" href="${mapsNavigate(del,o.vehicle)}" target="_blank" rel="noopener">${icon('navigation','btn-icon')} NAVIGA CLIENTE</a>`+riderArrivalActions(o);
+  else if(o.status==='picked') actions=`<a class="rider-route-link" href="${mapsNavigate(del,o.vehicle)}" target="_blank" rel="noopener">${icon('navigation','btn-icon')} Apri navigatore</a>`+riderArrivalActions(o);
   else if(o.status==='arrived') actions=riderCompleteActions(o);
   const cash=o.payment==='cash'&&o.status==='arrived'?cashPanel(o):'';
   const live=o.remoteCode?findRemote(o.remoteCode):null;const etaHtml=riderEtaMarkup(live?.eta||null,o.status);
