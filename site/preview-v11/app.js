@@ -1,7 +1,7 @@
 (() => {
 'use strict';
 
-const APP_VERSION = '11.5.8-whatsapp-address';
+const APP_VERSION = '11.5.9-whatsapp-address';
 const KEY = 'sosRiderUnifiedV10';
 const V9_KEY = 'sosRiderUnifiedV9';
 const OLD_KEY = 'sosRiderGestV7';
@@ -728,7 +728,7 @@ function wireAutocomplete({inputId,boxId,statusId,mapsId,slotKey,onSelect,signal
           if(!Number.isFinite(lon)||!Number.isFinite(lat))return false;
           if(!verifyExact)return true;
           const p=f.properties||{};
-          return (!p.countrycode || p.countrycode.toUpperCase()==='IT') && (p.street || p.osm_key==='highway');
+          return (!p.countrycode || p.countrycode.toUpperCase()==='IT') && (p.street || p.osm_key==='highway' || p.osm_value==='square');
         });
         if(verifyExact){
           const exact=exactStreetAddress(q,features);
@@ -750,9 +750,14 @@ function wireAutocomplete({inputId,boxId,statusId,mapsId,slotKey,onSelect,signal
     const b=e.target.closest('[data-i]'); if(!b) return;
     const f=features[Number(b.dataset.i)];
     if(verifyExact && !f?.properties?.housenumber){
+      const p=f.properties;
+      const street=p.street||p.name||input.value.trim();
+      const town=p.city||p.locality||p.district;
+      input.value=town?street+', '+town:street;
       close();
-      message('⚠ Via trovata. Aggiungi il numero civico e la località.','error');
+      message('⚠ Via trovata. Aggiungi il numero civico.','error');
       input.focus();
+      input.setSelectionRange(street.length,street.length);
       return;
     }
     select(f);
