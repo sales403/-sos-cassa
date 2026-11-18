@@ -127,6 +127,13 @@ async function fetchJson(url, options={}, timeoutMs=9000){
   } finally { clearTimeout(timer); }
 }
 
+async function requireCurrentPricingBackend(){
+  // Il preventivo viene emesso soltanto dal Worker V11 con listino 4 fasce.
+  const status=await fetchJson(apiBase()+'/api/status',{headers:{'Accept':'application/json'}},9000);
+  if(!status?.ok || !String(status.version||'').includes('11.4.1-pricing-4band-staging')){
+    throw new Error('Tariffario sul server in aggiornamento. Preventivo non disponibile: contattaci su WhatsApp.');
+  }
+}
 function vehicleLabel(v){ return v==='moto' ? 'Moto Express' : v==='auto' ? 'Auto Cargo' : 'Economy E-bike'; }
 function vehicleIcon(v){ return icon(v==='moto' ? 'moto' : v==='auto' ? 'auto' : 'ebike','mini-inline-icon'); }
 function paymentLabel(v){ return v==='cash' ? 'Contanti da incassare' : v==='pos' ? 'POS del locale' : 'Ordine già pagato'; }
@@ -139,11 +146,11 @@ function tariffFor(km, vehicle, readyTime){
   km=Number(km);
   if(!Number.isFinite(km)||km<0)throw Error('Distanza stradale non valida');
   if(km>8)throw Error('Oltre 8 km serve un preventivo personalizzato: contattaci su WhatsApp.');
-  const table={ebike:[6.50,8.50,12.50],moto:[9.50,12.50,16.50],auto:[12.50,15.50,20.50]};
+  const table={ebike:[4.50,6.50,8.50,12.50],moto:[7.50,9.50,12.50,16.50],auto:[10.50,12.50,15.50,20.50]};
   if(!Object.hasOwn(table,vehicle))throw Error('Servizio non valido');
-  const base=table[vehicle][km<=3?0:km<=5?1:2];
-  const lateFee = isLateTime(readyTime) ? 2 : 0;
-  return {base,lateFee,total:roundHalf(base+lateFee),micro:false};
+  const base=table[vehicle][km<=1?0:km<=3?1:km<=5?2:3];
+  const lateFee=isLateTime(readyTime)?2:0;
+  return {base,lateFee,total:roundHalf(base+lateFee),micro:vehicle==='ebike'&&km<=1};
 }
 
 async function routeBetween(a,b,vehicle){
@@ -780,9 +787,19 @@ async function calculateClientQuote(){
   const status=$('clientFormStatus'); status.className='status-line'; status.textContent='Calcolo percorso e tariffa sul server…';
   try{
     const d=validateClientForm(true);
+    await requireCurrentPricingBackend();
     const res=await fetchJson(apiBase()+'/api/quote',{method:'POST',headers:{'Accept':'application/json','Content-Type':'application/json'},body:JSON.stringify({pickupLat:d.pickupLat,pickupLon:d.pickupLon,deliveryLat:d.deliveryLat,deliveryLon:d.deliveryLon,service:d.service,readyTime:d.readyTime})},10000);
     const q=res.quote;if(!q||!Number.isFinite(Number(q.totalFee)))throw new Error('Preventivo server non disponibile.');
-    clientQuote={distanceKm:Number(q.distanceKm),durationMin:Number(q.durationMin)||0,source:q.routeSource||'server',base:Number(q.baseFee),lateFee:Number(q.lateFee)||0,total:Number(q.totalFee),micro:!!q.microDelivery,service:d.service,readyTime:d.readyTime,createdAt:Date.now()};
+    const expected=tariffFor(Number(q.distanceKm),d.service,d.readyTime);
+    const weatherFee=Number(q.weatherFee||0);
+    if(![0,3].includes(weatherFee)||
+       Math.abs(Number(q.baseFee)-expected.base)>0.001||
+       Math.abs(Number(q.lateFee)-expected.lateFee)>0.001||
+       Math.abs(Number(q.totalFee)-(expected.total+weatherFee))>0.001||
+       Number(q.extraStopFee||0)!==0){
+      throw new Error('Tariffario in aggiornamento sul server. Per ora richiedi il preventivo su WhatsApp.');
+    }
+    clientQuote={distanceKm:Number(q.distanceKm),durationMin:Number(q.durationMin)||0,source:q.routeSource||'server',base:Number(q.baseFee),lateFee:Number(q.lateFee)||0,weatherFee,total:Number(q.totalFee),micro:!!q.microDelivery,service:d.service,readyTime:d.readyTime,createdAt:Date.now()};
     clientSubmissionId=null;
     currentAvailability=res.availability||currentAvailability;renderAvailability();renderClientQuote();await generateClientQuoteImage();
     $('clientQuoteSection').classList.remove('hidden');updateClientFlowUI();$('clientQuoteSection').scrollIntoView({behavior:'smooth',block:'start'});
@@ -793,12 +810,13 @@ async function calculateClientQuote(){
 
 function renderClientQuote(){
   if(!clientQuote) return;
-  $('cqService').textContent=clientQuote.micro?'Micro E-bike':vehicleLabel(clientQuote.service);
+  $('cqService').textContent=vehicleLabel(clientQuote.service);
   $('cqTotal').textContent=money(clientQuote.total);
   $('cqDistance').textContent=`${clientQuote.distanceKm.toFixed(1)} km`;
   $('cqBase').textContent=money(clientQuote.base);
   $('cqLateRow').classList.toggle('hidden', !clientQuote.lateFee);
   $('cqLateNotice').classList.toggle('hidden', !clientQuote.lateFee);
+  $('cqWeatherRow').classList.toggle('hidden', !clientQuote.weatherFee);
   $('clientQuoteRouteBadge').textContent='PERCORSO CALCOLATO';
 }
 
@@ -821,9 +839,9 @@ async function generateClientQuoteImage(){
   x.fillStyle=day?'#8b6a00':accent;x.font='900 38px Arial';x.fillText('PREVENTIVO CONSEGNA',340,132);x.fillStyle=text;x.font='900 30px Arial';x.fillText('SOS RIDER CARPI-SOLIERA',340,180);x.fillStyle=muted;x.font='22px Arial';x.fillText('Il tuo rider di emergenza',340,220);
   x.strokeStyle=accent;x.lineWidth=4;x.beginPath();x.moveTo(105,320);x.lineTo(975,320);x.stroke();let y=370;
   const field=(label,value)=>{x.fillStyle=muted;x.font='700 18px Arial';x.fillText(label.toUpperCase(),110,y);y+=34;x.fillStyle=text;x.font='800 28px Arial';y=wrapText(x,value||'—',110,y,850,34,2);y+=28;};
-  field('Locale / richiedente',d.requesterName);field('Ritiro',d.pickupAddress);field('Consegna',d.deliveryAddress);field('Ordine pronto',d.readyTime+(clientQuote.lateFee?' · supplemento serale +2 €':''));field('Servizio',clientQuote.micro?'MICRO E-BIKE · entro 1 km':vehicleLabel(clientQuote.service));field('Distanza calcolata',`${clientQuote.distanceKm.toFixed(1)} km`);
+  field('Locale / richiedente',d.requesterName);field('Ritiro',d.pickupAddress);field('Consegna',d.deliveryAddress);field('Ordine pronto',d.readyTime+(clientQuote.lateFee?' · supplemento serale +2 €':''));field('Servizio',vehicleLabel(clientQuote.service));field('Distanza calcolata',`${clientQuote.distanceKm.toFixed(1)} km`);
   x.fillStyle=soft;x.fillRect(100,y-5,880,150);x.strokeStyle=line;x.strokeRect(100,y-5,880,150);x.fillStyle=muted;x.font='700 19px Arial';x.fillText('TOTALE CONSEGNA',125,y+35);x.fillStyle=day?'#8a6b00':accent;x.font='900 62px Arial';x.fillText(money(clientQuote.total),125,y+104);y+=180;
-  x.fillStyle=muted;x.font='20px Arial';x.fillText(`${clientQuote.micro?'Micro E-bike':'Tariffa base'} ${money(clientQuote.base)}${clientQuote.lateFee?'  +  serale €2,00':''}`,110,y);y+=38;x.fillStyle=text;x.font='700 20px Arial';x.fillText('Tariffa verificata dal server · richiesta soggetta a disponibilità rider.',110,y);y+=45;x.fillStyle=muted;x.font='20px Arial';x.fillText('WhatsApp Marcello · 349 515 3092',110,1240);$('clientQuoteImage').src=c.toDataURL('image/png');
+  x.fillStyle=muted;x.font='20px Arial';x.fillText(`Tariffa base ${money(clientQuote.base)}${clientQuote.lateFee?'  +  serale €2,00':''}${clientQuote.weatherFee?'  +  meteo avverso €3,00':''}`,110,y);y+=38;x.fillStyle=text;x.font='700 20px Arial';x.fillText('Tariffa verificata dal server · richiesta soggetta a disponibilità rider.',110,y);y+=45;x.fillStyle=muted;x.font='20px Arial';x.fillText('WhatsApp Marcello · 349 515 3092',110,1240);$('clientQuoteImage').src=c.toDataURL('image/png');
 }
 
 function clientHistory(){try{return JSON.parse(localStorage.getItem(clientScopedKey(CLIENT_HISTORY_KEY))||'[]')}catch{return[]}}
@@ -946,7 +964,7 @@ function setClientVehicle(v,invalidate=true){
 }
 function toggleOrderTotal(){ $('cOrderTotalWrap').classList.toggle('hidden',$('cPayment').value!=='cash'); if($('cPayment').value!=='cash')$('cOrderTotal').value=''; }
 function clientStructuredWhatsApp(d=clientFormData(), q=clientQuote){
-  return `Ciao Marcello, avrei bisogno di una consegna SOS.\n\n*Locale:* ${d.requesterName||'—'}\n*Ritiro:* ${d.pickupAddress||'—'}\n*Ordine pronto:* ${d.readyTime||'—'}\n*Destinatario:* ${d.recipientName||'—'}\n*Telefono:* ${d.recipientPhone||'—'}\n*Consegna:* ${d.deliveryAddress||'—'}\n*Servizio:* ${vehicleLabel(d.service)}\n*Pagamento:* ${paymentLabel(d.payment)}${d.payment==='cash'?`\n*Importo ordine:* ${money(d.orderTotal)}`:''}${q?`\n*Tariffa SOS:* ${money(q.total)}${q.lateFee?' (include +€2 serale)':''}`:''}${d.notes?`\n*Note:* ${d.notes}`:''}`;
+  return `Ciao Marcello, avrei bisogno di una consegna SOS.\n\n*Locale:* ${d.requesterName||'—'}\n*Ritiro:* ${d.pickupAddress||'—'}\n*Ordine pronto:* ${d.readyTime||'—'}\n*Destinatario:* ${d.recipientName||'—'}\n*Telefono:* ${d.recipientPhone||'—'}\n*Consegna:* ${d.deliveryAddress||'—'}\n*Servizio:* ${vehicleLabel(d.service)}\n*Pagamento:* ${paymentLabel(d.payment)}${d.payment==='cash'?`\n*Importo ordine:* ${money(d.orderTotal)}`:''}${q?`\n*Tariffa SOS:* ${money(q.total)}${q.lateFee?' (include +€2 serale)':''}${q.weatherFee?' (include +€3 meteo avverso)':''}`:''}${d.notes?`\n*Note:* ${d.notes}`:''}`;
 }
 async function submitClientRequest(){
   const status=$('clientSendStatus'),sendBtn=$('clientSendRequest');
@@ -963,7 +981,7 @@ async function submitClientRequest(){
     const headers=authSession&&authProfile?.role==='client'?authHeaders():{'Accept':'application/json','Content-Type':'application/json'};
     const res=await fetchJson(apiBase()+'/api/requests',{method:'POST',headers,body:JSON.stringify(payload)},12000);
     if(!res?.request?.code||!res?.clientToken)throw new Error('Risposta server incompleta.');
-    const r=res.request;clientQuote={service:r.service,distanceKm:Number(r.distanceKm),durationMin:Number(r.durationMin)||0,source:r.routeSource||'server',base:Number(r.baseFee),lateFee:Number(r.lateFee),total:Number(r.totalFee),micro:!!r.microDelivery,readyTime:r.readyTime};renderClientQuote();await generateClientQuoteImage();
+    const r=res.request;clientQuote={service:r.service,distanceKm:Number(r.distanceKm),durationMin:Number(r.durationMin)||0,source:r.routeSource||'server',base:Number(r.baseFee),lateFee:Number(r.lateFee),total:Number(r.totalFee),weatherFee:Number(r.weatherFee)||0,micro:!!r.microDelivery,readyTime:r.readyTime};renderClientQuote();await generateClientQuoteImage();
     localStorage.setItem(clientScopedKey(CLIENT_ACTIVE_KEY),JSON.stringify({code:r.code,token:res.clientToken,owned:!!(authSession&&authProfile?.role==='client')}));addClientHistory(r.code);saveClientDraft();
     if(authProfile?.role==='client')updateMyProfile({displayName:d.requesterName,phone:d.requesterPhone,pickupAddress:d.pickupAddress,pickupLat:d.pickupLat,pickupLon:d.pickupLon}).catch(()=>{});
     clientSubmissionId=null;

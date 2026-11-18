@@ -19,18 +19,18 @@ const tariff = runInNewContext(
 );
 
 const prices = {
-  ebike: [6.5, 8.5, 12.5],
-  moto: [9.5, 12.5, 16.5],
-  auto: [12.5, 15.5, 20.5]
+  ebike: [4.5, 6.5, 8.5, 12.5],
+  moto: [7.5, 9.5, 12.5, 16.5],
+  auto: [10.5, 12.5, 15.5, 20.5]
 };
 
-test('Le 3 fasce ufficiali coincidono per ogni veicolo sulle soglie esatte', () => {
-  for (const [vehicle, [first, second, third]] of Object.entries(prices)) {
-    for (const [km, expected] of [[0, first], [0.2, first], [3, first], [3.001, second], [5, second], [5.001, third], [8, third]]) {
+test('Le 4 fasce ufficiali coincidono con il sito sulle soglie esatte', () => {
+  for (const [vehicle, [first, second, third, fourth]] of Object.entries(prices)) {
+    for (const [km, expected] of [[0, first], [0.2, first], [1, first], [1.001, second], [3, second], [3.001, third], [5, third], [5.001, fourth], [8, fourth]]) {
       const fee = tariff(km, vehicle, '19:00');
       assert.equal(fee.totalFee, expected, `${vehicle} @ ${km} km`);
       assert.equal(fee.baseFee, expected);
-      assert.equal(fee.microDelivery, false);
+      assert.equal(fee.microDelivery, vehicle === 'ebike' && km <= 1);
       assert.equal(fee.lateFee, 0);
       assert.equal(fee.weatherFee, 0);
     }
@@ -54,22 +54,22 @@ test('Oltre 8 km occorre preventivo dedicato e non un prezzo automatico', () => 
   assert.throws(() => tariff(8.01, 'auto', '20:00'), /oltre 8 km/i);
 });
 
-test('Tutti i frontend correnti mostrano i minimi aggiornati e nessuna micro tariffa', () => {
+test('Tutti i frontend mostrano il prezzo iniziale corretto per mezzo', () => {
   for (const name of ['index.html', 'preview-v11/index.html', 'site/preview-v11/index.html']) {
     const html = source(name);
-    for (const value of ['da €6,50', 'da €9,50', 'da €12,50']) assert.ok(html.includes(value), `${name}: ${value}`);
-    assert.doesNotMatch(html, /Microconsegna E-bike entro 1 km/);
+    for (const value of ['da €4,50', 'da €7,50', 'da €10,50']) assert.ok(html.includes(value), `${name}: ${value}`);
     assert.doesNotMatch(html, /Seconda fermata \/ gestione giro/);
   }
 });
 
-test('Il sito offre le 3 fasce, i soli 2 supplementi e la nota partner', () => {
+test('Il sito offre le 4 fasce, i soli 2 supplementi e la nota partner', () => {
   const html = source('site/index.html');
-  for (const value of ['€ 6,50', '€ 8,50', '€ 12,50', '€ 9,50', '€ 16,50', '€ 15,50', '€ 20,50']) {
+  for (const value of ['€ 4,50', '€ 6,50', '€ 8,50', '€ 12,50', '€ 7,50', '€ 9,50', '€ 16,50', '€ 10,50', '€ 15,50', '€ 20,50']) {
     assert.ok(html.includes(value), `Manca ${value}`);
   }
   assert.equal((html.match(/<div class="premium-band-list">/g) || []).length, 3);
-  assert.equal((html.match(/<span>Fino a 3 km<\/span>/g) || []).length, 3);
+  assert.equal((html.match(/<span>Fino a 1 km<\/span>/g) || []).length, 3);
+  assert.equal((html.match(/<span>Oltre 1 fino a 3 km<\/span>/g) || []).length, 3);
   assert.equal((html.match(/<span>Oltre 3 fino a 5 km<\/span>/g) || []).length, 3);
   assert.equal((html.match(/<span>Oltre 5 fino a 8 km<\/span>/g) || []).length, 3);
   assert.equal((html.match(/class="premium-night-fee reveal"/g) || []).length, 2);
@@ -83,19 +83,37 @@ test('La variante client non applica tariffe locali incompatibili', () => {
     const start = js.indexOf('function tariffFor(');
     const end = js.indexOf('async function ', start);
     const snippet = js.slice(start, end);
-    assert.ok(snippet.includes('6.50,8.50,12.50'), name);
-    assert.ok(snippet.includes('12.50,15.50,20.50'), name);
+    assert.ok(snippet.includes('4.50,6.50,8.50,12.50'), name);
+    assert.ok(snippet.includes('7.50,9.50,12.50,16.50'), name);
+    assert.ok(snippet.includes('10.50,12.50,15.50,20.50'), name);
+    assert.match(snippet, /km<=1\?0:km<=3\?1:km<=5\?2:3/);
     assert.doesNotMatch(snippet, /micro\?2\.50|\[1,2\.50\]/);
   }
 });
 
 test('Il client blocca preventivi di un Worker non ancora aggiornato', () => {
-  for(const path of ['app.js','preview-v11/app.js']){
+  for(const path of ['app.js','preview-v11/app.js','site/preview-v11/app.js']){
     const js=source(path);
     assert.match(js,/Math\.abs\(Number\(q\.baseFee\)-expected\.base\)/);
-    assert.match(js,/Number\(q\.extraStopFee\)!==0/);
+    assert.match(js,/Number\(q\.extraStopFee(?:\|\|0)?\)!==0/);
     assert.match(js,/Tariffario in aggiornamento sul server/);
   }
+});
+
+test('Il vecchio modulo Worker nel branch non può creare prezzi inferiori a quelli del sito', () => {
+  const oldWorker = source('worker.js');
+  const begin = oldWorker.indexOf('function isLate(');
+  const finish = oldWorker.indexOf('// ---------- Auth Supabase ----------', begin);
+  assert.ok(begin >= 0 && finish > begin);
+  const f = runInNewContext(oldWorker.slice(begin,finish)+'\ntariffFor',{
+    fail: message => { throw Error(message); }
+  });
+  for (const [vehicle, bands] of Object.entries(prices)) {
+    for (const [km, price] of [[1,bands[0]],[3,bands[1]],[5,bands[2]],[8,bands[3]]]) {
+      assert.equal(f(km,vehicle,'19:00').totalFee, price);
+    }
+  }
+  assert.throws(()=>f(8.001,'ebike','19:00'),/oltre 8 km/i);
 });
 
 test('Preventivi batch senza extra fermata: si sommano due tariffe base e gli extra una volta', async () => {
